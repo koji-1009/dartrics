@@ -18,3 +18,7 @@
   (Hitz & Montazeri 1995, connected-component variant), DIT, NOC,
   Class Length. The engine builds a project-wide `ClassIndex` so DIT
   and NOC can resolve direct supertype/subtype links across files.
+- Coupling metrics: CBO and RFC at class scope; Ca / Ce / Instability /
+  Abstractness / Distance from main sequence at library scope (Martin
+  1994). The engine builds a `LibraryIndex` of project-internal import
+  edges to drive Ca/Ce, and counts abstract classes + mixins for `A`.

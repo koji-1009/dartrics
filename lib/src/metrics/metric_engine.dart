@@ -9,6 +9,8 @@ import '../models/source_location.dart';
 import 'class/_default_class_metrics.dart';
 import 'class/class_metric.dart';
 import 'function/_default_function_metrics.dart';
+import 'library/_default_library_metrics.dart';
+import 'library/library_metric.dart';
 import 'metric.dart';
 
 /// Runs the registered metric calculators against every resolved Dart
@@ -17,13 +19,16 @@ class MetricEngine {
   MetricEngine({
     List<FunctionMetric>? functionMetrics,
     List<ClassMetric>? classMetrics,
+    List<LibraryMetric>? libraryMetrics,
     Map<String, MetricThresholds>? thresholds,
   })  : functionMetrics = functionMetrics ?? defaultFunctionMetrics,
         classMetrics = classMetrics ?? defaultClassMetrics,
+        libraryMetrics = libraryMetrics ?? defaultLibraryMetrics,
         thresholds = thresholds ?? const {};
 
   final List<FunctionMetric> functionMetrics;
   final List<ClassMetric> classMetrics;
+  final List<LibraryMetric> libraryMetrics;
   final Map<String, MetricThresholds> thresholds;
 
   Future<List<MetricRecord>> analyze(AnalyzerRunner runner) async {
@@ -42,13 +47,35 @@ class MetricEngine {
       resolved.add(_ResolvedFile(path: path, unit: unit, classes: classCollector.classes));
     }
     final classIndex = ClassIndex.build(allClasses);
+    final libraryIndex = LibraryIndex.build(
+      [for (final f in resolved) (path: f.path, unit: f.unit)],
+    );
 
     final records = <MetricRecord>[];
     for (final file in resolved) {
       records.addAll(_functionRecordsFor(file));
       records.addAll(_classRecordsFor(file, classIndex));
+      records.add(_libraryRecordFor(file, libraryIndex));
     }
     return records;
+  }
+
+  MetricRecord _libraryRecordFor(_ResolvedFile file, LibraryIndex index) {
+    final input = LibraryMetricInput(path: file.path, index: index);
+    final values = <String, num>{};
+    for (final calc in libraryMetrics) {
+      values[calc.id] = calc.compute(input);
+    }
+    return MetricRecord(
+      file: file.path,
+      scope: ScopeRef(
+        kind: ScopeKind.library,
+        name: file.path,
+        location: SourceLocation(path: file.path, line: 1, column: 1),
+      ),
+      values: values,
+      violations: _violationsFor(values),
+    );
   }
 
   Iterable<MetricRecord> _functionRecordsFor(_ResolvedFile file) sync* {
