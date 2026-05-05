@@ -6,7 +6,7 @@ Dart code-quality metrics and unused public-API detection.
 
 ## Status
 
-Pre-alpha — landing the metric suite phase by phase ahead of the first pub.dev release. No public-API stability guarantees yet.
+`0.1.0` — first pub.dev release with both the CLI and the analyzer plugin. Public API is provisional through the `0.x` series.
 
 ## Install
 
@@ -78,9 +78,32 @@ dartrics report metrics.json --reporter md > report.md
 
 Performs Periphery-style reachability analysis over a name-based reference graph, rooted at `main`, declarations annotated with `@pragma('vm:entry-point')`, and (when `excludeExported` is enabled) declarations under `lib/` outside `lib/src/`. The detector follows `export ... show ...` clauses so re-exported `lib/src/` symbols stay reachable. Reports unused public functions, classes, mixins, extensions, typedefs, enums, and top-level fields. Private (underscore-prefixed) names are intentionally skipped because `dart analyze`'s `dead_code` lint already covers them.
 
-## Configuration
+## Analyzer plugin
 
-`dartrics` reads its settings from a `dartrics:` section in `analysis_options.yaml` (default; override with `--config <path>`). The Phase 6 `dartrics_lint` analyzer plugin reads from the same file, so the CLI and the IDE share thresholds.
+`dartrics` ships its own analyzer plugin so the four lightweight function-level rules surface inline in `dart analyze` and the IDE.
+
+```yaml
+# analysis_options.yaml in your project
+plugins:
+  dartrics: ^0.1.0
+```
+
+After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin reports four rules as default-on warnings:
+
+| Rule | Threshold (v0.1) |
+|---|---|
+| `dartrics_cyclomatic_complexity` | 10 |
+| `dartrics_cognitive_complexity` | 15 |
+| `dartrics_maximum_nesting_level` | 4 |
+| `dartrics_number_of_parameters` | 4 |
+
+Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused detector intentionally stay CLI-only because they require a project-wide index that an analysis-server plugin can't maintain efficiently per file.
+
+User-configurable thresholds via `analysis_options.yaml`'s `dartrics:` section is on the roadmap; `0.1` ships with the defaults above baked into each rule.
+
+## Configuration (CLI)
+
+The `dartrics` CLI reads from a `dartrics:` section in `analysis_options.yaml` (default; override with `--config <path>`).
 
 ```yaml
 analyzer:
@@ -162,31 +185,28 @@ Common options:
 ```
 dartrics/
 ├── bin/dartrics.dart              # minimal CLI entrypoint
-├── lib/                           # core library (CLI + engine)
-│   ├── dartrics.dart              # public exports
+├── lib/
+│   ├── dartrics.dart              # public exports for embedders
+│   ├── main.dart                  # analyzer-plugin entrypoint (final plugin = ...)
 │   └── src/
 │       ├── cli/                   # CommandRunner + subcommands
 │       ├── config/                # YAML loader
+│       ├── lint/                  # analyzer plugin: DartricsPlugin + AnalysisRules
 │       ├── metrics/{function,class,library}/
 │       ├── models/                # AnalysisReport, ScopeRef, …
 │       ├── reporters/             # console, json, md, ai, sarif
 │       └── unused/                # reachability graph + detector
-├── packages/
-│   └── dartrics_lint/             # analyzer-plugin companion package
 ├── test/                          # unit + integration tests (100% line coverage)
-└── analysis_options.yaml          # strict lint config + (eventually) dartrics: thresholds
+└── analysis_options.yaml          # strict lint config
 ```
 
-## Companion package
-
-`packages/dartrics_lint/` ships the lightweight function-level diagnostics as a library that the analyzer-plugin entrypoint can consume. Heavier class- and library-level metrics plus the unused detector remain CLI-only. See [`packages/dartrics_lint/README.md`](packages/dartrics_lint/README.md).
+The CLI (`bin/dartrics.dart`) and the analyzer plugin (`lib/main.dart`) live in the same package and share `lib/src/`. Users get both with a single `dart pub global activate dartrics` and one `plugins:` line.
 
 ## Development
 
 ```bash
-dart pub get                              # at repo root
-dart pub get -C packages/dartrics_lint    # plus the companion package
-dart format lib test packages/dartrics_lint
+dart pub get
+dart format lib test
 dart analyze
 dart test
 dart pub run coverage:test_with_coverage  # 100% line coverage is required

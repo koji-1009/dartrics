@@ -5,16 +5,17 @@ Conventions for AI coding agents (Claude Code, Cursor, Codex, etc.) and human co
 ## Repository layout
 
 - `bin/dartrics.dart` — minimal CLI entrypoint; defers to `lib/src/entry_point.dart`.
+- `lib/main.dart` — analyzer-plugin entrypoint; the analysis-server reads `final plugin = DartricsPlugin()` from here when a project's `analysis_options.yaml` enables `plugins: dartrics`.
 - `lib/src/cli/` — `CommandRunner` + `analyze` / `unused` / `report` subcommands and the shared option set.
 - `lib/src/analyzer_runner.dart` — sole abstraction over `package:analyzer`. Keep direct analyzer API calls inside this file; the rest of the codebase is shielded from analyzer's frequent breaking changes.
-- `lib/src/config/` — YAML loader for `analysis_options.yaml`'s `dartrics:` section.
+- `lib/src/config/` — YAML loader for the CLI's `dartrics:` section in `analysis_options.yaml`.
+- `lib/src/lint/` — analyzer plugin: `DartricsPlugin` plus the four `AnalysisRule`s under `rules/`. Each rule wraps a function-level metric calculator and reports through `LintCode` with `{0}`/`{1}` placeholders.
 - `lib/src/metrics/{function,class,library}/` — per-scope metric calculators. Each implements `FunctionMetric` / `ClassMetric` / `LibraryMetric`.
 - `lib/src/metrics/metric_engine.dart` — orchestrator that resolves every Dart file once and runs the registered calculators.
 - `lib/src/models/` — `AnalysisReport`, `MetricRecord`, `ScopeRef`, `UnusedDeclaration`, `SourceLocation`. Stable JSON schema lives here.
 - `lib/src/reporters/` — `console` / `json` / `md` / `ai` / `sarif`. `md` and `ai` finalise through `package:dapper`.
 - `lib/src/unused/` — public-API reachability graph + BFS detector.
-- `packages/dartrics_lint/` — analyzer-plugin companion package; depends on `dartrics` via path.
-- `test/` mirrors `lib/src/` 1-to-1; each metric has a golden test against hand-verified values.
+- `test/` mirrors `lib/src/` 1-to-1; each metric has a golden test against hand-verified values; each plugin rule has an `AnalysisRuleTest` (analyzer_testing + test_reflective_loader).
 
 ## Workflow before every commit
 
@@ -22,7 +23,6 @@ Run, in this order, and address every finding:
 
 ```bash
 dart format lib test
-dart format packages/dartrics_lint
 dart analyze
 dart test
 dart pub run coverage:test_with_coverage   # 100% line coverage required
@@ -40,9 +40,10 @@ Why each step:
 1. Pick the right scope file under `lib/src/metrics/`.
 2. Implement the calculator, anchoring its docstring to the original paper / spec. Don't paraphrase the formula; quote it.
 3. Register it in the corresponding `_default_*_metrics.dart` list so the engine picks it up.
-4. Add golden tests in `test/metrics/.../<metric>_test.dart` with hand-computed values from a paper example or a small fixture you can verify by inspection.
+4. Add golden tests in `test/metrics/.../<metric>_test.dart` with hand-verified values from a paper example or a small fixture you can verify by inspection.
 5. Update `README.md`'s metric table.
-6. Update `CHANGELOG.md` under `## Unreleased`.
+6. Update `CHANGELOG.md` under the next-release section.
+7. If the metric is function-level and cheap, also add an `AnalysisRule` under `lib/src/lint/rules/` so it surfaces through the analyzer plugin (see `cyclomatic_complexity_rule.dart` as a template) and register it in `DartricsPlugin.register`. Heavier metrics stay CLI-only.
 
 ## Adding a new reporter
 
@@ -53,7 +54,7 @@ Why each step:
 
 ## Configuration
 
-`dartrics` reads from a `dartrics:` section inside `analysis_options.yaml` (default; override with `--config <path>`). The companion `dartrics_lint` plugin reads the same file. Keep the schema doc in `README.md` in sync with `lib/src/config/config.dart` and `lib/src/config/config_loader.dart`.
+The CLI reads from a `dartrics:` section inside `analysis_options.yaml` (default; override with `--config <path>`). Keep the schema doc in `README.md` in sync with `lib/src/config/config.dart` and `lib/src/config/config_loader.dart`. The analyzer plugin currently uses thresholds baked into each rule class; user-configurable thresholds are on the roadmap and will land in `lib/src/lint/` alongside the YAML loader.
 
 ## Commits
 
