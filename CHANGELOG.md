@@ -14,3 +14,7 @@
 - `MetricEngine` walks every resolved compilation unit and computes the full
   default metric set for each function / method / constructor declaration,
   attaching configurable threshold-based violations.
+- Class-level metrics: NOM, WMC (Chidamber & Kemerer 1994), LCOM4
+  (Hitz & Montazeri 1995, connected-component variant), DIT, NOC,
+  Class Length. The engine builds a project-wide `ClassIndex` so DIT
+  and NOC can resolve direct supertype/subtype links across files.
