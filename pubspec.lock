@@ -81,6 +81,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+  dapper:
+    dependency: "direct main"
+    description:
+      name: dapper
+      sha256: c6e571d0706b761ee6b709528c0a8e5860bf0d84c6c343448700be1eb7318840
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.6"
   file:
     dependency: transitive
     description:
@@ -145,6 +153,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
+  markdown:
+    dependency: transitive
+    description:
+      name: markdown
+      sha256: ee85086ad7698b42522c6ad42fe195f1b9898e4d974a1af4576c1a3a176cada9
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.3.1"
   matcher:
     dependency: transitive
     description:

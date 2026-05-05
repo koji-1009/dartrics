@@ -30,3 +30,7 @@
   classes, mixins, extensions, typedefs, enums, and top-level fields.
   `dartrics analyze` emits both metrics and unused; `dartrics unused`
   is the unused-only fast path.
+- Reporters: `md` (Markdown for PR comments, finalised through
+  `package:dapper`'s `formatMarkdown`), `ai` (LLM-optimised YAML-ish
+  with snippet windows, finalised through `formatYaml`), and `sarif`
+  (SARIF 2.1.0 envelope ingestable by GitHub Code Scanning / GitLab).

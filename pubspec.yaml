@@ -12,6 +12,7 @@ executables:
 dependencies:
   analyzer: ^13.0.0
   args: ^2.5.0
+  dapper: ^1.4.6
   glob: ^2.1.0
   io: ^1.0.0
   logging: ^1.2.0
