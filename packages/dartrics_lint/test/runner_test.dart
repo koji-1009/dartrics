@@ -66,4 +66,45 @@ int rate(int x) {
     expect(paramD, hasLength(1));
     expect(paramD.first.severity, DiagnosticSeverity.error);
   });
+
+  test('class methods and constructors are visited as separate scopes', () {
+    const source = '''
+class C {
+  C() {
+    if (true) {
+      if (true) {
+        if (true) {
+          if (true) {
+            if (true) print('a');
+          }
+        }
+      }
+    }
+  }
+  void m(int a, int b, int c, int d, int e) {}
+}
+''';
+    final result = parseString(content: source);
+    final diagnostics = diagnose(
+      unit: result.unit,
+      lineInfo: result.lineInfo,
+      path: 'r.dart',
+      source: source,
+      // Lower the parameter warning so the 5-arg method definitely triggers
+      // even if the default ever drifts.
+      config: const DartricsLintConfig(
+        numberOfParameters: RuleConfig(enabled: true, warning: 4),
+      ),
+    );
+    // The constructor's 5-deep nested ifs trip max-nesting (default warn=4);
+    // the method's 5-parameter signature trips number-of-parameters.
+    expect(
+      diagnostics.where((d) => d.ruleId == 'maximum-nesting-level'),
+      isNotEmpty,
+    );
+    expect(
+      diagnostics.where((d) => d.ruleId == 'number-of-parameters'),
+      isNotEmpty,
+    );
+  });
 }

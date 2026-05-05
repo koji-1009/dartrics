@@ -90,7 +90,7 @@ class MetricEngine {
     final collector = _FunctionCollector();
     file.unit.unit.accept(collector);
     for (final decl in collector.declarations) {
-      final input = FunctionMetricInput(
+      final input = FunctionMetricInput.fromDeclaration(
         unit: file.unit.unit,
         source: file.unit.content,
         lineInfo: file.unit.lineInfo,

@@ -17,7 +17,7 @@ List<DartricsDiagnostic> diagnose({
 }) {
   final out = <DartricsDiagnostic>[];
   final visitor = _DeclVisitor((decl) {
-    final input = FunctionMetricInput(
+    final input = FunctionMetricInput.fromDeclaration(
       unit: unit,
       source: source,
       lineInfo: lineInfo,
@@ -66,8 +66,6 @@ num _thresholdOf(DiagnosticSeverity severity, RuleConfig rc) {
       return rc.error ?? rc.warning ?? 0;
     case DiagnosticSeverity.warning:
       return rc.warning ?? 0;
-    case DiagnosticSeverity.info:
-      return 0;
   }
 }
 

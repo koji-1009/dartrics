@@ -25,4 +25,16 @@ int f(int x) {
     final input = inputFor('int f() => 1;', name: 'f');
     expect(m.compute(input), 1);
   });
+
+  test('inline `/* ... */` block comment is stripped without losing the line',
+      () {
+    final input = inputFor('''
+int f() {
+  var x = 1 /* inline */ + 2; /* trailing */
+  return x;
+}
+''', name: 'f');
+    // braces (2) + the var line (1) + return line (1) = 4
+    expect(m.compute(input), 4);
+  });
 }

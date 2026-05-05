@@ -92,11 +92,8 @@ class HalsteadVolume implements FunctionMetric {
   @override
   String get id => 'halstead-volume';
   @override
-  num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 0;
-    return HalsteadCounts.fromBody(body).volume;
-  }
+  num compute(FunctionMetricInput input) =>
+      HalsteadCounts.fromBody(input.body).volume;
 }
 
 /// Halstead Difficulty — `(n1/2) · (N2/n2)`. (Halstead, 1977.)
@@ -105,11 +102,8 @@ class HalsteadDifficulty implements FunctionMetric {
   @override
   String get id => 'halstead-difficulty';
   @override
-  num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 0;
-    return HalsteadCounts.fromBody(body).difficulty;
-  }
+  num compute(FunctionMetricInput input) =>
+      HalsteadCounts.fromBody(input.body).difficulty;
 }
 
 /// Halstead Effort — `D · V`. (Halstead, 1977.)
@@ -118,9 +112,6 @@ class HalsteadEffort implements FunctionMetric {
   @override
   String get id => 'halstead-effort';
   @override
-  num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 0;
-    return HalsteadCounts.fromBody(body).effort;
-  }
+  num compute(FunctionMetricInput input) =>
+      HalsteadCounts.fromBody(input.body).effort;
 }

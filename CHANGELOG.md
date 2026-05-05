@@ -58,3 +58,20 @@
 - `ConfigException` now exits with `78 EX_CONFIG` and `UsageException`
   with `64 EX_USAGE` instead of being swallowed by the
   `runZonedGuarded` `EX_SOFTWARE` fall-through.
+- Cognitive complexity no longer double-counts a nested local function
+  (the wrapping `FunctionDeclaration` is the bookkeeping unit).
+- Maximum nesting level no longer descends into local-function bodies
+  (those bodies are measured separately by the engine).
+
+### Engineering
+
+- `FunctionMetricInput` adopts a strict `fromDeclaration` factory and
+  removes the dead `body` / `parameters` null-fallback branches; every
+  metric now consumes a non-nullable `body`.
+- LCOM4's union-find drops the rank-balancing branches that were never
+  reached on real-world class inputs.
+- `dartrics_lint`'s `DiagnosticSeverity` shrank to `{warning, error}`
+  (the unused `info` value was dead code).
+- 100% line coverage on both `dartrics` and `dartrics_lint` (verified
+  via `dart pub run coverage:test_with_coverage`). The detector itself
+  flagged the formerly-unused `MetricLevel` enum on first dogfooding.

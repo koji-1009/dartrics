@@ -23,4 +23,4 @@ class DartricsDiagnostic {
   final int length;
 }
 
-enum DiagnosticSeverity { info, warning, error }
+enum DiagnosticSeverity { warning, error }

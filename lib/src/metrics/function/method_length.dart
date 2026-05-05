@@ -12,10 +12,8 @@ class MethodLength implements FunctionMetric {
 
   @override
   num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 0;
-    final start = input.lineInfo.getLocation(body.offset).lineNumber;
-    final end = input.lineInfo.getLocation(body.end).lineNumber;
+    final start = input.lineInfo.getLocation(input.body.offset).lineNumber;
+    final end = input.lineInfo.getLocation(input.body.end).lineNumber;
     return end - start + 1;
   }
 }

@@ -113,4 +113,36 @@ void main() {}
     final names = unused.map((u) => u.name).toList();
     expect(names, isNot(contains('_privateNeverCalled')));
   });
+
+  test('every top-level declaration kind is collected and classified',
+      () async {
+    final unused = await const UnusedDetector().detect(
+      [
+        _src('/proj/lib/all.dart', '''
+class K {}
+mixin M {}
+extension Ex on int {
+  int twice() => this * 2;
+}
+extension on int {
+  int triple() => this * 3;
+}
+typedef int OldStyleFun(int x);
+typedef TFun = int Function(int);
+typedef TGeneric<T> = List<T>;
+enum E { a, b }
+const topField = 7;
+void main() {}
+'''),
+      ],
+      const UnusedConfig(excludeExported: false),
+    );
+    final names = unused.map((u) => u.name).toSet();
+    expect(
+      names,
+      containsAll([
+        'K', 'M', 'Ex', 'OldStyleFun', 'TFun', 'TGeneric', 'E', 'topField',
+      ]),
+    );
+  });
 }

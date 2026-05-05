@@ -12,7 +12,9 @@ void main() {
     final temp = File('${tmp.path}/ai.yaml');
     final sink = temp.openWrite();
     AiReporter(
-      sourceLoader: (path) => {path: 'line1\nline2\nline3\nline4\nline5\n'},
+      sourceLoader: (path) => {
+        path: List.generate(100, (i) => 'line${i + 1}').join('\n'),
+      },
     ).report(buildSampleReport(), sink);
     await sink.close();
 

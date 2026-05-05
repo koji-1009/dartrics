@@ -30,10 +30,8 @@ class CognitiveComplexity implements FunctionMetric {
 
   @override
   num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 0;
     final visitor = _CognitiveVisitor();
-    body.accept(visitor);
+    input.body.accept(visitor);
     return visitor.score;
   }
 }
@@ -164,9 +162,13 @@ class _CognitiveVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitFunctionExpression(FunctionExpression node) {
-    // Lambdas/closures nest the visual layout, so add nesting depth to the
-    // outer function's reading load. Their *own* score is measured separately
-    // when the engine reaches their declaration.
+    if (node.parent is FunctionDeclaration) {
+      // The wrapping FunctionDeclaration (top-level or local) is the
+      // bookkeeping unit for nesting; counting the inner expression too
+      // would double-charge a nested method/lambda.
+      super.visitFunctionExpression(node);
+      return;
+    }
     _enterNesting();
     super.visitFunctionExpression(node);
     _exitNesting();

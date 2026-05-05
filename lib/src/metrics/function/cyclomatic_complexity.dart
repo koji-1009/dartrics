@@ -20,10 +20,8 @@ class CyclomaticComplexity implements FunctionMetric {
 
   @override
   num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 1;
     final visitor = _CyclomaticVisitor();
-    body.accept(visitor);
+    input.body.accept(visitor);
     return 1 + visitor.count;
   }
 }
@@ -69,12 +67,6 @@ class _CyclomaticVisitor extends RecursiveAstVisitor<void> {
   void visitDoStatement(DoStatement node) {
     count++;
     super.visitDoStatement(node);
-  }
-
-  @override
-  void visitSwitchCase(SwitchCase node) {
-    count++;
-    super.visitSwitchCase(node);
   }
 
   @override

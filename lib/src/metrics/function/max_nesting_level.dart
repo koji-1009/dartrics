@@ -18,10 +18,8 @@ class MaxNestingLevel implements FunctionMetric {
 
   @override
   num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 0;
     final visitor = _NestingVisitor();
-    body.accept(visitor);
+    input.body.accept(visitor);
     return visitor.maxDepth;
   }
 }
@@ -88,16 +86,14 @@ class _NestingVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitFunctionExpression(FunctionExpression node) {
-    // Closures introduce a visual nesting level for the reader; only the
-    // *outer* function gets credited here. Nested function metrics are
-    // computed separately when the engine visits their declarations.
-    if (node.parent is ExpressionFunctionBody ||
-        node.parent is BlockFunctionBody ||
-        node.parent is FunctionDeclaration) {
-      // This is the body's own FunctionExpression — don't count.
-      super.visitFunctionExpression(node);
+    if (node.parent is FunctionDeclaration) {
+      // Local function declaration (`void inner() {}` inside a body) —
+      // measured separately by the engine on its own pass; don't descend
+      // into its statements when computing the outer function's nesting.
       return;
     }
+    // Closure (e.g. `xs.forEach((x) {...})`) — introduces a visual nesting
+    // level for the reader.
     _enter();
     super.visitFunctionExpression(node);
     _exit();

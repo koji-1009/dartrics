@@ -127,12 +127,9 @@ class _AccessVisitor extends RecursiveAstVisitor<void> {
 }
 
 class _UnionFind {
-  _UnionFind(int n)
-      : parent = List<int>.generate(n, (i) => i),
-        rank = List<int>.filled(n, 0);
+  _UnionFind(int n) : parent = List<int>.generate(n, (i) => i);
 
   final List<int> parent;
-  final List<int> rank;
 
   int find(int x) {
     while (parent[x] != x) {
@@ -143,16 +140,9 @@ class _UnionFind {
   }
 
   void union(int a, int b) {
-    final ra = find(a), rb = find(b);
-    if (ra == rb) return;
-    if (rank[ra] < rank[rb]) {
-      parent[ra] = rb;
-    } else if (rank[ra] > rank[rb]) {
-      parent[rb] = ra;
-    } else {
-      parent[rb] = ra;
-      rank[ra]++;
-    }
+    final ra = find(a);
+    final rb = find(b);
+    if (ra != rb) parent[rb] = ra;
   }
 
   int componentCount() {

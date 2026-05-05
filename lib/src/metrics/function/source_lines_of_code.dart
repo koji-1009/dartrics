@@ -12,9 +12,7 @@ class SourceLinesOfCode implements FunctionMetric {
 
   @override
   num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 0;
-    final text = input.source.substring(body.offset, body.end);
+    final text = input.source.substring(input.body.offset, input.body.end);
     int count = 0;
     bool inBlockComment = false;
 

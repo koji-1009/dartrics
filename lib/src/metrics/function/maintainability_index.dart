@@ -21,9 +21,7 @@ class MaintainabilityIndex implements FunctionMetric {
 
   @override
   num compute(FunctionMetricInput input) {
-    final body = input.body;
-    if (body == null) return 171;
-    final volume = HalsteadCounts.fromBody(body).volume;
+    final volume = HalsteadCounts.fromBody(input.body).volume;
     final cc = const CyclomaticComplexity().compute(input);
     final loc = const MethodLength().compute(input);
     if (volume <= 0 || loc <= 0) return 171;

@@ -5,7 +5,9 @@ import 'md_reporter.dart';
 import 'reporter.dart';
 import 'sarif_reporter.dart';
 
-/// Resolves the [Reporter] implementation for [name].
+/// Resolves the [Reporter] implementation for [name]. The CLI argument
+/// parser restricts [name] to the known set, so this function relies on
+/// `default → console` rather than a dead unreachable fallthrough.
 Reporter pickReporter(String name) {
   switch (name) {
     case 'json':
@@ -16,8 +18,7 @@ Reporter pickReporter(String name) {
       return AiReporter();
     case 'sarif':
       return SarifReporter();
-    case 'console':
+    default:
       return ConsoleReporter();
   }
-  return ConsoleReporter();
 }
