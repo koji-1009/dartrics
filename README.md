@@ -24,7 +24,7 @@ dartrics analyze lib/ --reporter json --output metrics.json
 dartrics analyze lib/ --reporter md > report.md
 
 # Token-efficient YAML-ish report optimized for LLM consumption
-dartrics analyze lib/ --reporter ai | claude -p "閾値超過部分をリファクタしろ"
+dartrics analyze lib/ --reporter ai | claude -p "Refactor the threshold violations"
 
 # SARIF 2.1.0 for GitHub Code Scanning / GitLab ingestion
 dartrics analyze lib/ --reporter sarif --output dartrics.sarif
