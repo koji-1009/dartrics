@@ -101,6 +101,36 @@ int f() { return 1; }
     },
   );
 
+  test('analyze with no positional arg falls back to --root', () async {
+    final code = await buildCommandRunner().run([
+      'analyze',
+      '--root',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      '${dir.path}/a-root.json',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(code, 0);
+  });
+
+  test('unused with no positional arg falls back to --root', () async {
+    final code = await buildCommandRunner().run([
+      'unused',
+      '--root',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      '${dir.path}/u-root.json',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(code, 0);
+  });
+
   test('analyze --output - prints to stdout (default sink path)', () async {
     final code = await buildCommandRunner().run([
       'analyze',

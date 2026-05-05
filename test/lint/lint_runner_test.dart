@@ -1,5 +1,5 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:dartrics_lint/dartrics_lint.dart';
+import 'package:dartrics/dartrics.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -17,6 +17,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "13.0.0"
+  analyzer_plugin:
+    dependency: "direct main"
+    description:
+      name: analyzer_plugin
+      sha256: "9a81dc36f7f71890d7cf83960a3a7df1e6c9a24035f98eb848e91ad48b1d21c6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.14.9"
   args:
     dependency: "direct main"
     description:
@@ -89,6 +97,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.6"
+  dart_style:
+    dependency: transitive
+    description:
+      name: dart_style
+      sha256: "59d53ef8eaed9d288ed9767618e2b31c4fa0383a127db59d5eb2e737a7638a60"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.9"
   file:
     dependency: transitive
     description:

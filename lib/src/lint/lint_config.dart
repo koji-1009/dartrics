@@ -1,9 +1,9 @@
-/// Per-rule on/off configuration for `dartrics_lint`.
+/// Per-rule on/off configuration for the dartrics analyzer plugin.
 ///
-/// Mirrors the `dartrics_lint:` section of `analysis_options.yaml`.
-/// Defaults follow the design's recommendation: cheap function-level
-/// metrics are on by default, expensive cross-class / project-wide ones
-/// stay off and remain available through the CLI.
+/// Mirrors the `dartrics:` section of `analysis_options.yaml`. Defaults
+/// follow the design's recommendation: cheap function-level metrics are on
+/// by default; heavier cross-class / project-wide metrics stay off and
+/// remain available through the CLI.
 class DartricsLintConfig {
   const DartricsLintConfig({
     this.cyclomaticComplexity = const RuleConfig(

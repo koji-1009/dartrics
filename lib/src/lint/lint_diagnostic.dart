@@ -1,8 +1,8 @@
-/// Lightweight diagnostic record emitted by `dartrics_lint`.
+/// Lightweight diagnostic record emitted by the dartrics analyzer plugin.
 ///
 /// The plugin entrypoint translates this into the analyzer-plugin
-/// protocol's `AnalysisError` shape; CLI and tests can consume it
-/// directly without the protocol overhead.
+/// protocol's `AnalysisError` shape; CLI and tests can consume it directly
+/// without the protocol overhead.
 class DartricsDiagnostic {
   const DartricsDiagnostic({
     required this.ruleId,

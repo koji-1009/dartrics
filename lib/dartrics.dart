@@ -1,11 +1,15 @@
 /// Programmatic entry for embedding dartrics.
 ///
-/// Exposes the metric calculator types and analysis-report shapes used by
-/// CLI and the `dartrics_lint` analyzer plugin. The function-level metrics
-/// are stable across the v0 series; class- and library-level types remain
+/// Exposes the metric calculator types, analysis-report shapes, and the
+/// analyzer-plugin diagnostic types. Function-level metrics are stable
+/// across the v0 series; class- and library-level types remain
 /// `@experimental` until project-wide indices stabilize.
 library;
 
+export 'src/lint/lint_config.dart' show DartricsLintConfig, RuleConfig;
+export 'src/lint/lint_diagnostic.dart'
+    show DartricsDiagnostic, DiagnosticSeverity;
+export 'src/lint/lint_runner.dart' show diagnose;
 export 'src/metrics/function/cognitive_complexity.dart'
     show CognitiveComplexity;
 export 'src/metrics/function/cyclomatic_complexity.dart'

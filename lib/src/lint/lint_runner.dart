@@ -1,13 +1,18 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/source/line_info.dart';
-import 'package:dartrics/dartrics.dart';
 
-import 'config.dart';
-import 'diagnostic.dart';
+import '../metrics/function/cognitive_complexity.dart';
+import '../metrics/function/cyclomatic_complexity.dart';
+import '../metrics/function/max_nesting_level.dart';
+import '../metrics/function/number_of_parameters.dart';
+import '../metrics/metric.dart';
+import 'lint_config.dart';
+import 'lint_diagnostic.dart';
 
 /// Runs every enabled lightweight metric over [unit] and returns the
-/// diagnostics produced by threshold violations.
+/// diagnostics produced by threshold violations. Both the CLI plugin
+/// entrypoint and standalone embedders go through this function.
 List<DartricsDiagnostic> diagnose({
   required CompilationUnit unit,
   required LineInfo lineInfo,
