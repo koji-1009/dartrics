@@ -19,24 +19,26 @@ class UnusedThing {}
     await dir.delete(recursive: true);
   });
 
-  test('analyze --output writes JSON to a file and --verbose enables fine logs',
-      () async {
-    final out = File('${dir.path}/out.json');
-    final code = await buildCommandRunner().run([
-      'analyze',
-      '${dir.path}/lib',
-      '--reporter',
-      'json',
-      '--output',
-      out.path,
-      '--verbose',
-      '--config',
-      '${dir.path}/no.yaml',
-    ]);
-    expect(code, 0);
-    expect(out.existsSync(), isTrue);
-    expect(out.readAsStringSync(), contains('"version"'));
-  });
+  test(
+    'analyze --output writes JSON to a file and --verbose enables fine logs',
+    () async {
+      final out = File('${dir.path}/out.json');
+      final code = await buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        out.path,
+        '--verbose',
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      expect(code, 0);
+      expect(out.existsSync(), isTrue);
+      expect(out.readAsStringSync(), contains('"version"'));
+    },
+  );
 
   test('unused --output writes to a file', () async {
     final out = File('${dir.path}/u.json');
@@ -70,32 +72,34 @@ class UnusedThing {}
     expect(code, 1);
   });
 
-  test('analyze --fatal-warnings exits 1 when violations exceed warning threshold',
-      () async {
-    // Threshold of warning=0 forces every method's CC ≥ 1 to violate.
-    final config = File('${dir.path}/strict.yaml');
-    await config.writeAsString('''
+  test(
+    'analyze --fatal-warnings exits 1 when violations exceed warning threshold',
+    () async {
+      // Threshold of warning=0 forces every method's CC ≥ 1 to violate.
+      final config = File('${dir.path}/strict.yaml');
+      await config.writeAsString('''
 dartrics:
   metrics:
     cyclomatic-complexity:
       warning: 0
 ''');
-    await File('${dir.path}/lib/foo.dart').writeAsString('''
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
 int f() { return 1; }
 ''');
-    final code = await buildCommandRunner().run([
-      'analyze',
-      '${dir.path}/lib',
-      '--reporter',
-      'json',
-      '--output',
-      '${dir.path}/a.json',
-      '--fatal-warnings',
-      '--config',
-      config.path,
-    ]);
-    expect(code, 1);
-  });
+      final code = await buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        '${dir.path}/a.json',
+        '--fatal-warnings',
+        '--config',
+        config.path,
+      ]);
+      expect(code, 1);
+    },
+  );
 
   test('analyze --output - prints to stdout (default sink path)', () async {
     final code = await buildCommandRunner().run([
@@ -127,22 +131,24 @@ int f() { return 1; }
     expect(code, 0);
   });
 
-  test('analyze --fatal-style exits 1 when an info-level violation is present',
-      () async {
-    // Currently dartrics never emits Severity.info, so --fatal-style is a
-    // no-op; exit stays 0 even on a clean file. Document the current
-    // behavior: it does not flip to 1.
-    final code = await buildCommandRunner().run([
-      'analyze',
-      '${dir.path}/lib',
-      '--reporter',
-      'json',
-      '--output',
-      '${dir.path}/a2.json',
-      '--fatal-style',
-      '--config',
-      '${dir.path}/no.yaml',
-    ]);
-    expect(code, 0);
-  });
+  test(
+    'analyze --fatal-style exits 1 when an info-level violation is present',
+    () async {
+      // Currently dartrics never emits Severity.info, so --fatal-style is a
+      // no-op; exit stays 0 even on a clean file. Document the current
+      // behavior: it does not flip to 1.
+      final code = await buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        '${dir.path}/a2.json',
+        '--fatal-style',
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      expect(code, 0);
+    },
+  );
 }

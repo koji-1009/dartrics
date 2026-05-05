@@ -29,7 +29,9 @@ class AnalyzeCommand extends Command<int> {
   Future<int> run() async {
     final options = CommonOptions.from(this);
     final config = await loadConfig(options.configPath);
-    final paths = options.rest.isNotEmpty ? options.rest : <String>[options.root];
+    final paths = options.rest.isNotEmpty
+        ? options.rest
+        : <String>[options.root];
     final report = await _analyze(paths, config);
     return _emit(report, options);
   }
@@ -39,15 +41,12 @@ class AnalyzeCommand extends Command<int> {
     final units = await runner.resolveAll();
     final engine = MetricEngine(thresholds: config.metricThresholds);
     final records = engine.analyzeResolved(units);
-    final unused = await const UnusedDetector().detect(
-      [for (final u in units) (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo)],
-      config.unused,
-    );
-    return AnalysisReport(
-      version: '1.0',
-      metrics: records,
-      unused: unused,
-    )..attachAnalyzedFileCount(units.length);
+    final unused = await const UnusedDetector().detect([
+      for (final u in units)
+        (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
+    ], config.unused);
+    return AnalysisReport(version: '1.0', metrics: records, unused: unused)
+      ..attachAnalyzedFileCount(units.length);
   }
 
   Future<int> _emit(AnalysisReport report, CommonOptions options) async {

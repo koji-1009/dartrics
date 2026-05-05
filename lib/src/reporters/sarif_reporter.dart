@@ -18,9 +18,10 @@ class SarifReporter implements Reporter {
           'ruleId': v.metricId,
           'level': _level(v.severity),
           'message': {
-            'text': '${v.metricId} = ${m.values[v.metricId]} '
+            'text':
+                '${v.metricId} = ${m.values[v.metricId]} '
                 'exceeds the ${v.severity.name} threshold of ${v.threshold} '
-                'in ${m.scope.name}.'
+                'in ${m.scope.name}.',
           },
           'locations': [
             {
@@ -41,8 +42,9 @@ class SarifReporter implements Reporter {
         'ruleId': 'unused-declaration',
         'level': 'warning',
         'message': {
-          'text': 'Public ${u.kind.name} `${u.name}` is never reached '
-              'from any entry point.'
+          'text':
+              'Public ${u.kind.name} `${u.name}` is never reached '
+              'from any entry point.',
         },
         'locations': [
           {

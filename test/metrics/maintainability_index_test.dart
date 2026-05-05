@@ -26,7 +26,10 @@ int f(int x) {
     final bigScore = mi.compute(big);
     expect(smallScore, inInclusiveRange(0, 171));
     expect(bigScore, inInclusiveRange(0, 171));
-    expect(smallScore, greaterThan(bigScore),
-        reason: 'simpler function must be more maintainable');
+    expect(
+      smallScore,
+      greaterThan(bigScore),
+      reason: 'simpler function must be more maintainable',
+    );
   });
 }

@@ -9,10 +9,7 @@ import 'package:analyzer/source/line_info.dart';
 /// element model, which is significantly slower and not needed for the
 /// typical mid-size project.
 class ClassIndex {
-  ClassIndex._({
-    required this.byName,
-    required this.directChildren,
-  });
+  ClassIndex._({required this.byName, required this.directChildren});
 
   final Map<String, ClassDeclaration> byName;
   final Map<String, List<String>> directChildren;

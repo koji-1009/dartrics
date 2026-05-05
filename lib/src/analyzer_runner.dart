@@ -11,10 +11,7 @@ import 'package:path/path.dart' as p;
 /// rest of dartrics is insulated from analyzer's frequent breaking changes
 /// (see §16 of project_plan.md).
 class AnalyzerRunner {
-  AnalyzerRunner({
-    required this.roots,
-    this.exclude = const [],
-  });
+  AnalyzerRunner({required this.roots, this.exclude = const []});
 
   final List<String> roots;
   final List<String> exclude;
@@ -44,7 +41,10 @@ class AnalyzerRunner {
         }
         continue;
       }
-      await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      await for (final entity in dir.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (entity is! File) continue;
         final path = entity.path;
         if (!path.endsWith('.dart')) continue;

@@ -25,10 +25,7 @@ class LibraryStats {
 }
 
 class LibraryIndex {
-  LibraryIndex._({
-    required this.stats,
-    required this.importers,
-  });
+  LibraryIndex._({required this.stats, required this.importers});
 
   /// Constructs a [LibraryIndex] directly from precomputed stats. Used by
   /// tests that don't want to spin up a full analyzer context.

@@ -11,16 +11,9 @@ AnalysisReport buildSampleReport() {
     scope: ScopeRef(
       kind: ScopeKind.method,
       name: 'Foo.bar',
-      location: SourceLocation(
-        path: '/proj/lib/foo.dart',
-        line: 42,
-        column: 3,
-      ),
+      location: SourceLocation(path: '/proj/lib/foo.dart', line: 42, column: 3),
     ),
-    values: {
-      'cyclomatic-complexity': 12,
-      'cognitive-complexity': 18,
-    },
+    values: {'cyclomatic-complexity': 12, 'cognitive-complexity': 18},
     violations: [
       MetricViolation(
         metricId: 'cyclomatic-complexity',
@@ -32,11 +25,7 @@ AnalysisReport buildSampleReport() {
   const unused = UnusedDeclaration(
     kind: UnusedKind.function,
     name: '_legacyFormatter',
-    location: SourceLocation(
-      path: '/proj/lib/util.dart',
-      line: 88,
-      column: 1,
-    ),
+    location: SourceLocation(path: '/proj/lib/util.dart', line: 88, column: 1),
   );
   return AnalysisReport(
     version: '1.0',

@@ -36,7 +36,10 @@ class Lcom4 implements ClassMetric {
   }
 
   _Accesses _collectAccesses(_ClassView view) {
-    final accessedFields = List.generate(view.methods.length, (_) => <String>{});
+    final accessedFields = List.generate(
+      view.methods.length,
+      (_) => <String>{},
+    );
     final calledMethods = List.generate(view.methods.length, (_) => <int>{});
     for (var i = 0; i < view.methods.length; i++) {
       final body = _bodyOf(view.methods[i]);
@@ -85,10 +88,12 @@ class _ClassView {
         for (final v in member.fields.variables) {
           fieldNames.add(v.name.lexeme);
         }
-      } else if (member is MethodDeclaration && member.body is! EmptyFunctionBody) {
+      } else if (member is MethodDeclaration &&
+          member.body is! EmptyFunctionBody) {
         methodIndex[member.name.lexeme] = methods.length;
         methods.add(member);
-      } else if (member is ConstructorDeclaration && member.body is! EmptyFunctionBody) {
+      } else if (member is ConstructorDeclaration &&
+          member.body is! EmptyFunctionBody) {
         final n = member.name?.lexeme ?? cls.namePart.typeName.lexeme;
         methodIndex[n] = methods.length;
         methods.add(member);

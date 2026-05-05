@@ -42,7 +42,9 @@ class UnusedDetector {
       byName.putIfAbsent(d.name, () => <DeclarationRecord>[]).add(d);
     }
 
-    final roots = <DeclarationRecord>{...resolveEntryPoints(declarations, config)};
+    final roots = <DeclarationRecord>{
+      ...resolveEntryPoints(declarations, config),
+    };
     if (config.excludeExported) {
       // Names referenced anywhere inside a "public" lib file (incl. its
       // export-directive `show` clauses) are treated as additional roots.
@@ -64,11 +66,9 @@ class UnusedDetector {
     for (final d in declarations) {
       if (d.name.startsWith('_')) continue; // analyzer's dead_code covers this
       if (reachable.contains(d)) continue;
-      unused.add(UnusedDeclaration(
-        kind: d.kind,
-        name: d.name,
-        location: d.location,
-      ));
+      unused.add(
+        UnusedDeclaration(kind: d.kind, name: d.name, location: d.location),
+      );
     }
     return unused;
   }
@@ -82,19 +82,25 @@ void _collectFromUnit(
 ) {
   SourceLocation locOf(int offset) {
     final loc = lineInfo.getLocation(offset);
-    return SourceLocation(path: path, line: loc.lineNumber, column: loc.columnNumber);
+    return SourceLocation(
+      path: path,
+      line: loc.lineNumber,
+      column: loc.columnNumber,
+    );
   }
 
   for (final decl in unit.declarations) {
     final entries = _entriesFor(decl);
     for (final entry in entries) {
-      out.add(_record(
-        name: entry.name,
-        kind: entry.kind,
-        location: locOf(entry.offset),
-        bodyNode: decl,
-        metadata: decl.metadata,
-      ));
+      out.add(
+        _record(
+          name: entry.name,
+          kind: entry.kind,
+          location: locOf(entry.offset),
+          bodyNode: decl,
+          metadata: decl.metadata,
+        ),
+      );
     }
   }
 }
@@ -111,17 +117,23 @@ List<_Entry> _entriesFor(CompilationUnitMember decl) {
     return [_Entry(decl.name.lexeme, UnusedKind.function, decl.offset)];
   }
   if (decl is ClassDeclaration) {
-    return [_Entry(decl.namePart.typeName.lexeme, UnusedKind.klass, decl.offset)];
+    return [
+      _Entry(decl.namePart.typeName.lexeme, UnusedKind.klass, decl.offset),
+    ];
   }
   if (decl is MixinDeclaration) {
     return [_Entry(decl.name.lexeme, UnusedKind.klass, decl.offset)];
   }
   if (decl is ExtensionDeclaration) {
     final n = decl.name?.lexeme;
-    return n == null ? const [] : [_Entry(n, UnusedKind.extension, decl.offset)];
+    return n == null
+        ? const []
+        : [_Entry(n, UnusedKind.extension, decl.offset)];
   }
   if (decl is EnumDeclaration) {
-    return [_Entry(decl.namePart.typeName.lexeme, UnusedKind.enumValue, decl.offset)];
+    return [
+      _Entry(decl.namePart.typeName.lexeme, UnusedKind.enumValue, decl.offset),
+    ];
   }
   if (decl is FunctionTypeAlias) {
     return [_Entry(decl.name.lexeme, UnusedKind.typedef, decl.offset)];

@@ -23,26 +23,26 @@ List<DartricsDiagnostic> diagnose({
       lineInfo: lineInfo,
       declaration: decl,
     );
-    void check<M extends FunctionMetric>(
-      M metric,
-      RuleConfig rc,
-    ) {
+    void check<M extends FunctionMetric>(M metric, RuleConfig rc) {
       if (!rc.enabled) return;
       final value = metric.compute(input);
       final severity = _severityFor(value, rc);
       if (severity == null) return;
       final loc = lineInfo.getLocation(decl.offset);
       final scopeLength = decl.length;
-      out.add(DartricsDiagnostic(
-        ruleId: metric.id,
-        severity: severity,
-        message: '${metric.id} = $value '
-            'exceeds the ${severity.name} threshold (${_thresholdOf(severity, rc)})',
-        path: path,
-        line: loc.lineNumber,
-        column: loc.columnNumber,
-        length: scopeLength,
-      ));
+      out.add(
+        DartricsDiagnostic(
+          ruleId: metric.id,
+          severity: severity,
+          message:
+              '${metric.id} = $value '
+              'exceeds the ${severity.name} threshold (${_thresholdOf(severity, rc)})',
+          path: path,
+          line: loc.lineNumber,
+          column: loc.columnNumber,
+          length: scopeLength,
+        ),
+      );
     }
 
     check(const CyclomaticComplexity(), config.cyclomaticComplexity);
@@ -55,8 +55,12 @@ List<DartricsDiagnostic> diagnose({
 }
 
 DiagnosticSeverity? _severityFor(num value, RuleConfig rc) {
-  if (rc.error != null && value >= rc.error!) return DiagnosticSeverity.error;
-  if (rc.warning != null && value >= rc.warning!) return DiagnosticSeverity.warning;
+  if (rc.error != null && value >= rc.error!) {
+    return DiagnosticSeverity.error;
+  }
+  if (rc.warning != null && value >= rc.warning!) {
+    return DiagnosticSeverity.warning;
+  }
   return null;
 }
 

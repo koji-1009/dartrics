@@ -17,27 +17,33 @@ void main() {
 
   test('re-emits a saved JSON report into another format', () async {
     final input = File('${dir.path}/metrics.json');
-    await input.writeAsString(jsonEncode({
-      'version': '1.0',
-      'metrics': [
-        {
-          'file': '/proj/lib/x.dart',
-          'scope': {'type': 'method', 'name': 'X.y', 'line': 7},
-          'values': {'cyclomatic-complexity': 12},
-          'violations': [
-            {'metric': 'cyclomatic-complexity', 'level': 'warning', 'threshold': 10},
-          ],
-        },
-      ],
-      'unused': [
-        {
-          'file': '/proj/lib/u.dart',
-          'name': 'leftover',
-          'kind': 'function',
-          'line': 5,
-        },
-      ],
-    }));
+    await input.writeAsString(
+      jsonEncode({
+        'version': '1.0',
+        'metrics': [
+          {
+            'file': '/proj/lib/x.dart',
+            'scope': {'type': 'method', 'name': 'X.y', 'line': 7},
+            'values': {'cyclomatic-complexity': 12},
+            'violations': [
+              {
+                'metric': 'cyclomatic-complexity',
+                'level': 'warning',
+                'threshold': 10,
+              },
+            ],
+          },
+        ],
+        'unused': [
+          {
+            'file': '/proj/lib/u.dart',
+            'name': 'leftover',
+            'kind': 'function',
+            'line': 5,
+          },
+        ],
+      }),
+    );
     final out = File('${dir.path}/report.md');
     final code = await buildCommandRunner().run([
       'report',

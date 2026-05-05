@@ -46,10 +46,13 @@ class MdReporter implements Reporter {
   }
 
   void _writeViolations(StringBuffer buf, AnalysisReport report) {
-    final withViolations =
-        report.metrics.where((m) => m.violations.isNotEmpty).toList();
+    final withViolations = report.metrics
+        .where((m) => m.violations.isNotEmpty)
+        .toList();
     if (withViolations.isEmpty) return;
-    buf..writeln('## Violations')..writeln();
+    buf
+      ..writeln('## Violations')
+      ..writeln();
     for (final m in withViolations) {
       buf.writeln(
         '### `${m.file}:${m.scope.location.line}` — `${m.scope.name}`',
@@ -67,7 +70,9 @@ class MdReporter implements Reporter {
 
   void _writeUnused(StringBuffer buf, AnalysisReport report) {
     if (report.unused.isEmpty) return;
-    buf..writeln('## Unused Declarations')..writeln();
+    buf
+      ..writeln('## Unused Declarations')
+      ..writeln();
     for (final u in report.unused) {
       buf.writeln(
         '- `${u.location.path}:${u.location.line}` — ${u.kind.name} `${u.name}`',

@@ -26,7 +26,8 @@ int rate(int x) {
     );
     expect(
       diagnostics.any(
-        (d) => d.ruleId == 'cyclomatic-complexity' &&
+        (d) =>
+            d.ruleId == 'cyclomatic-complexity' &&
             d.severity == DiagnosticSeverity.warning,
       ),
       isTrue,
@@ -52,7 +53,8 @@ int rate(int x) {
   });
 
   test('number-of-parameters > 8 produces error severity', () {
-    const source = 'int f(int a, int b, int c, int d, int e, int g, int h, int i, int j) => 0;';
+    const source =
+        'int f(int a, int b, int c, int d, int e, int g, int h, int i, int j) => 0;';
     final result = parseString(content: source);
     final diagnostics = diagnose(
       unit: result.unit,

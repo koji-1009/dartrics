@@ -6,10 +6,18 @@
 /// stay off and remain available through the CLI.
 class DartricsLintConfig {
   const DartricsLintConfig({
-    this.cyclomaticComplexity = const RuleConfig(enabled: true, warning: 10, error: 20),
+    this.cyclomaticComplexity = const RuleConfig(
+      enabled: true,
+      warning: 10,
+      error: 20,
+    ),
     this.cognitiveComplexity = const RuleConfig(enabled: true, warning: 15),
     this.maxNestingLevel = const RuleConfig(enabled: true, warning: 4),
-    this.numberOfParameters = const RuleConfig(enabled: true, warning: 4, error: 8),
+    this.numberOfParameters = const RuleConfig(
+      enabled: true,
+      warning: 4,
+      error: 8,
+    ),
   });
 
   final RuleConfig cyclomaticComplexity;

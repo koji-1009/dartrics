@@ -35,9 +35,11 @@ void main() {
     expect(config.metricThresholds, isEmpty);
   });
 
-  test('parses metric thresholds, exclude globs, and unused settings', () async {
-    final f = File('${dir.path}/full.yaml');
-    await f.writeAsString('''
+  test(
+    'parses metric thresholds, exclude globs, and unused settings',
+    () async {
+      final f = File('${dir.path}/full.yaml');
+      await f.writeAsString('''
 dartrics:
   metrics:
     cyclomatic-complexity:
@@ -54,22 +56,20 @@ dartrics:
   exclude:
     - "lib/generated/**"
 ''');
-    final config = await loadConfig(f.path);
-    expect(config.metricThresholds['cyclomatic-complexity']?.warning, 10);
-    expect(config.metricThresholds['cyclomatic-complexity']?.error, 20);
-    expect(config.metricThresholds['cognitive-complexity']?.warning, 15);
-    expect(config.unused.entryPoints, ['main', 'bootstrap']);
-    expect(config.unused.excludeExported, isFalse);
-    expect(config.unused.ignoreAnnotations, ['keepalive']);
-    expect(config.exclude, ['lib/generated/**']);
-  });
+      final config = await loadConfig(f.path);
+      expect(config.metricThresholds['cyclomatic-complexity']?.warning, 10);
+      expect(config.metricThresholds['cyclomatic-complexity']?.error, 20);
+      expect(config.metricThresholds['cognitive-complexity']?.warning, 15);
+      expect(config.unused.entryPoints, ['main', 'bootstrap']);
+      expect(config.unused.excludeExported, isFalse);
+      expect(config.unused.ignoreAnnotations, ['keepalive']);
+      expect(config.exclude, ['lib/generated/**']);
+    },
+  );
 
   test('throws ConfigException on malformed YAML', () async {
     final f = File('${dir.path}/broken.yaml');
     await f.writeAsString('dartrics:\n  metrics:\n    {broken\n');
-    await expectLater(
-      loadConfig(f.path),
-      throwsA(isA<ConfigException>()),
-    );
+    await expectLater(loadConfig(f.path), throwsA(isA<ConfigException>()));
   });
 }

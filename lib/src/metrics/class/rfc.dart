@@ -33,7 +33,9 @@ class ResponseForClass implements ClassMetric {
         member.body.accept(_InvocationCollector(invoked));
       }
     }
-    final union = <String>{}..addAll(declared)..addAll(invoked);
+    final union = <String>{}
+      ..addAll(declared)
+      ..addAll(invoked);
     return union.length;
   }
 }

@@ -1,6 +1,14 @@
 import 'source_location.dart';
 
-enum UnusedKind { function, method, klass, field, typedef, enumValue, extension }
+enum UnusedKind {
+  function,
+  method,
+  klass,
+  field,
+  typedef,
+  enumValue,
+  extension,
+}
 
 class UnusedDeclaration {
   const UnusedDeclaration({
@@ -14,9 +22,9 @@ class UnusedDeclaration {
   final SourceLocation location;
 
   Map<String, Object?> toJson() => {
-        'file': location.path,
-        'name': name,
-        'kind': kind.name,
-        'line': location.line,
-      };
+    'file': location.path,
+    'name': name,
+    'kind': kind.name,
+    'line': location.line,
+  };
 }

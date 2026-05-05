@@ -16,23 +16,26 @@ import 'config/config_loader.dart';
 /// - `UsageException` (bad CLI)   → `64 EX_USAGE`
 /// - any other uncaught error     → `70 EX_SOFTWARE`
 Future<void> runApp(List<String> arguments) async {
-  await runZonedGuarded(() async {
-    _setupLogging();
-    try {
-      final runner = buildCommandRunner();
-      final code = await runner.run(arguments) ?? 0;
-      exitCode = code;
-    } on ConfigException catch (e) {
-      stderr.writeln(e.toString());
-      exitCode = ExitCode.config.code;
-    } on UsageException catch (e) {
-      stderr.writeln(e.toString());
-      exitCode = ExitCode.usage.code;
-    }
-  }, (error, stack) {
-    stderr.writeln('Unhandled error: $error\n$stack');
-    exitCode = ExitCode.software.code;
-  });
+  await runZonedGuarded(
+    () async {
+      _setupLogging();
+      try {
+        final runner = buildCommandRunner();
+        final code = await runner.run(arguments) ?? 0;
+        exitCode = code;
+      } on ConfigException catch (e) {
+        stderr.writeln(e.toString());
+        exitCode = ExitCode.config.code;
+      } on UsageException catch (e) {
+        stderr.writeln(e.toString());
+        exitCode = ExitCode.usage.code;
+      }
+    },
+    (error, stack) {
+      stderr.writeln('Unhandled error: $error\n$stack');
+      exitCode = ExitCode.software.code;
+    },
+  );
 }
 
 void _setupLogging() {

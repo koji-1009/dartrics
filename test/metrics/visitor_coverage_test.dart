@@ -188,8 +188,10 @@ int f(int x) {
     });
 
     test('ternary adds 1 + nesting', () {
-      final input = inputFor('int f(int x) { return x > 0 ? 1 : -1; }',
-          name: 'f');
+      final input = inputFor(
+        'int f(int x) { return x > 0 ? 1 : -1; }',
+        name: 'f',
+      );
       expect(cog.compute(input), 1);
     });
   });

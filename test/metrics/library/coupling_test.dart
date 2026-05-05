@@ -28,41 +28,47 @@ LibraryIndex _index() {
 void main() {
   test('Ce counts distinct internal imports', () {
     expect(
-      const EfferentCoupling()
-          .compute(LibraryMetricInput(path: '/p/lib/a.dart', index: _index())),
+      const EfferentCoupling().compute(
+        LibraryMetricInput(path: '/p/lib/a.dart', index: _index()),
+      ),
       2,
     );
     expect(
-      const EfferentCoupling()
-          .compute(LibraryMetricInput(path: '/p/lib/c.dart', index: _index())),
+      const EfferentCoupling().compute(
+        LibraryMetricInput(path: '/p/lib/c.dart', index: _index()),
+      ),
       0,
     );
   });
 
   test('Ca counts incoming internal imports', () {
     expect(
-      const AfferentCoupling()
-          .compute(LibraryMetricInput(path: '/p/lib/c.dart', index: _index())),
+      const AfferentCoupling().compute(
+        LibraryMetricInput(path: '/p/lib/c.dart', index: _index()),
+      ),
       2,
     );
     expect(
-      const AfferentCoupling()
-          .compute(LibraryMetricInput(path: '/p/lib/a.dart', index: _index())),
+      const AfferentCoupling().compute(
+        LibraryMetricInput(path: '/p/lib/a.dart', index: _index()),
+      ),
       0,
     );
   });
 
   test('Instability = Ce / (Ca + Ce)', () {
-    final i = const Instability()
-        .compute(LibraryMetricInput(path: '/p/lib/b.dart', index: _index()));
+    final i = const Instability().compute(
+      LibraryMetricInput(path: '/p/lib/b.dart', index: _index()),
+    );
     // Ce(b) = 1 (imports c), Ca(b) = 1 (a imports b) → 0.5
     expect(i, 0.5);
   });
 
   test('Abstractness = abstract / total', () {
     expect(
-      const Abstractness()
-          .compute(LibraryMetricInput(path: '/p/lib/a.dart', index: _index())),
+      const Abstractness().compute(
+        LibraryMetricInput(path: '/p/lib/a.dart', index: _index()),
+      ),
       0.5,
     );
   });

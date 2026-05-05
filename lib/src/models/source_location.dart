@@ -11,8 +11,8 @@ class SourceLocation {
   final int column;
 
   Map<String, Object?> toJson() => {
-        'path': path,
-        'line': line,
-        'column': column,
-      };
+    'path': path,
+    'line': line,
+    'column': column,
+  };
 }

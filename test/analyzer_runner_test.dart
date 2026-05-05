@@ -32,11 +32,14 @@ void main() {
     expect(files.first, endsWith('a.dart'));
   });
 
-  test('collectDartFiles skips paths that do not exist or are non-Dart', () async {
-    final runner = AnalyzerRunner(roots: ['${dir.path}/missing.txt']);
-    final files = await runner.collectDartFiles();
-    expect(files, isEmpty);
-  });
+  test(
+    'collectDartFiles skips paths that do not exist or are non-Dart',
+    () async {
+      final runner = AnalyzerRunner(roots: ['${dir.path}/missing.txt']);
+      final files = await runner.collectDartFiles();
+      expect(files, isEmpty);
+    },
+  );
 
   test('exclude globs filter relative paths', () async {
     final runner = AnalyzerRunner(

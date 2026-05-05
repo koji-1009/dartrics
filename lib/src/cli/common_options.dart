@@ -21,11 +21,7 @@ void addCommonOptions(ArgParser parser) {
       help: 'Output destination. Use "-" for stdout.',
       defaultsTo: '-',
     )
-    ..addOption(
-      'root',
-      help: 'Analysis root directory.',
-      defaultsTo: '.',
-    )
+    ..addOption('root', help: 'Analysis root directory.', defaultsTo: '.')
     ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',

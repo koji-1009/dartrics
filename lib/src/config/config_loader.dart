@@ -74,7 +74,10 @@ UnusedConfig _parseUnused(Object? node) {
   );
 }
 
-List<String> _parseStringList(Object? node, {List<String> fallback = const []}) {
+List<String> _parseStringList(
+  Object? node, {
+  List<String> fallback = const [],
+}) {
   if (node is YamlList) {
     return node.map((e) => e.toString()).toList(growable: false);
   }

@@ -43,8 +43,8 @@ void main() {
     expect(scopeJson['type'], 'method');
     expect(scopeJson['name'], 'A.b');
 
-    final violationsJson =
-        (metricsJson.first['violations']! as List).cast<Map<String, Object?>>();
+    final violationsJson = (metricsJson.first['violations']! as List)
+        .cast<Map<String, Object?>>();
     expect(violationsJson.first['metric'], 'cyclomatic-complexity');
     expect(violationsJson.first['level'], 'warning');
 
@@ -54,8 +54,7 @@ void main() {
     expect(unusedJson.first['line'], 2);
   });
 
-  test('hasSeverityAtLeast returns true at the worst encountered severity',
-      () {
+  test('hasSeverityAtLeast returns true at the worst encountered severity', () {
     final report = AnalysisReport(
       version: '1.0',
       metrics: const [
@@ -89,7 +88,11 @@ void main() {
   });
 
   test('hasSeverityAtLeast returns false when no violations exist', () {
-    final report = AnalysisReport(version: '1.0', metrics: const [], unused: const []);
+    final report = AnalysisReport(
+      version: '1.0',
+      metrics: const [],
+      unused: const [],
+    );
     expect(report.hasSeverityAtLeast(Severity.info), isFalse);
   });
 

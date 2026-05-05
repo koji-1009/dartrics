@@ -21,10 +21,10 @@ class MetricEngine {
     List<ClassMetric>? classMetrics,
     List<LibraryMetric>? libraryMetrics,
     Map<String, MetricThresholds>? thresholds,
-  })  : functionMetrics = functionMetrics ?? defaultFunctionMetrics,
-        classMetrics = classMetrics ?? defaultClassMetrics,
-        libraryMetrics = libraryMetrics ?? defaultLibraryMetrics,
-        thresholds = thresholds ?? const {};
+  }) : functionMetrics = functionMetrics ?? defaultFunctionMetrics,
+       classMetrics = classMetrics ?? defaultClassMetrics,
+       libraryMetrics = libraryMetrics ?? defaultLibraryMetrics,
+       thresholds = thresholds ?? const {};
 
   final List<FunctionMetric> functionMetrics;
   final List<ClassMetric> classMetrics;
@@ -48,16 +48,18 @@ class MetricEngine {
       final classCollector = _ClassCollector();
       entry.unit.unit.accept(classCollector);
       allClasses.addAll(classCollector.classes);
-      resolved.add(_ResolvedFile(
-        path: entry.path,
-        unit: entry.unit,
-        classes: classCollector.classes,
-      ));
+      resolved.add(
+        _ResolvedFile(
+          path: entry.path,
+          unit: entry.unit,
+          classes: classCollector.classes,
+        ),
+      );
     }
     final classIndex = ClassIndex.build(allClasses);
-    final libraryIndex = LibraryIndex.build(
-      [for (final f in resolved) (path: f.path, unit: f.unit)],
-    );
+    final libraryIndex = LibraryIndex.build([
+      for (final f in resolved) (path: f.path, unit: f.unit),
+    ]);
 
     final records = <MetricRecord>[];
     for (final file in resolved) {
@@ -109,7 +111,10 @@ class MetricEngine {
     }
   }
 
-  Iterable<MetricRecord> _classRecordsFor(_ResolvedFile file, ClassIndex index) sync* {
+  Iterable<MetricRecord> _classRecordsFor(
+    _ResolvedFile file,
+    ClassIndex index,
+  ) sync* {
     for (final cls in file.classes) {
       final input = ClassMetricInput(
         declaration: cls,
@@ -160,17 +165,21 @@ class MetricEngine {
       final t = thresholds[entry.key];
       if (t == null) continue;
       if (t.error != null && entry.value >= t.error!) {
-        violations.add(MetricViolation(
-          metricId: entry.key,
-          severity: Severity.error,
-          threshold: t.error!,
-        ));
+        violations.add(
+          MetricViolation(
+            metricId: entry.key,
+            severity: Severity.error,
+            threshold: t.error!,
+          ),
+        );
       } else if (t.warning != null && entry.value >= t.warning!) {
-        violations.add(MetricViolation(
-          metricId: entry.key,
-          severity: Severity.warning,
-          threshold: t.warning!,
-        ));
+        violations.add(
+          MetricViolation(
+            metricId: entry.key,
+            severity: Severity.warning,
+            threshold: t.warning!,
+          ),
+        );
       }
     }
     return violations;
@@ -178,7 +187,11 @@ class MetricEngine {
 }
 
 class _ResolvedFile {
-  _ResolvedFile({required this.path, required this.unit, required this.classes});
+  _ResolvedFile({
+    required this.path,
+    required this.unit,
+    required this.classes,
+  });
   final String path;
   final ResolvedUnitResult unit;
   final List<ClassDeclaration> classes;

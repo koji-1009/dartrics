@@ -96,28 +96,32 @@ enum Color {
     expect(byKind[ScopeKind.klass], greaterThan(0));
     expect(byKind[ScopeKind.library], greaterThan(0));
 
-    final hasErrorViolation = records.any((r) =>
-        r.violations.any((v) => v.severity == Severity.error));
+    final hasErrorViolation = records.any(
+      (r) => r.violations.any((v) => v.severity == Severity.error),
+    );
     expect(hasErrorViolation, isTrue);
-    final hasWarningViolation = records.any((r) =>
-        r.violations.any((v) => v.severity == Severity.warning));
+    final hasWarningViolation = records.any(
+      (r) => r.violations.any((v) => v.severity == Severity.warning),
+    );
     expect(hasWarningViolation, isTrue);
   });
 
-  test('AnalysisReport.hasSeverityAtLeast reports the worst per-record level',
-      () {
-    final engine = MetricEngine(
-      thresholds: const {
-        'cyclomatic-complexity': MetricThresholds(warning: 1, error: 2),
-      },
-    );
-    final report = AnalysisReport(
-      version: '1.0',
-      metrics: engine.analyzeResolved(const []),
-      unused: const [],
-    );
-    expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
-  });
+  test(
+    'AnalysisReport.hasSeverityAtLeast reports the worst per-record level',
+    () {
+      final engine = MetricEngine(
+        thresholds: const {
+          'cyclomatic-complexity': MetricThresholds(warning: 1, error: 2),
+        },
+      );
+      final report = AnalysisReport(
+        version: '1.0',
+        metrics: engine.analyzeResolved(const []),
+        unused: const [],
+      );
+      expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
+    },
+  );
 
   test('analyze (legacy entrypoint) wraps resolveAll', () async {
     final runner = AnalyzerRunner(roots: [tempDir.path]);

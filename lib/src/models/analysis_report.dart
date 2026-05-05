@@ -28,10 +28,10 @@ class ScopeRef {
   final SourceLocation location;
 
   Map<String, Object?> toJson() => {
-        'type': kind.name,
-        'name': name,
-        'line': location.line,
-      };
+    'type': kind.name,
+    'name': name,
+    'line': location.line,
+  };
 }
 
 class MetricViolation {
@@ -46,10 +46,10 @@ class MetricViolation {
   final num threshold;
 
   Map<String, Object?> toJson() => {
-        'metric': metricId,
-        'level': severity.name,
-        'threshold': threshold,
-      };
+    'metric': metricId,
+    'level': severity.name,
+    'threshold': threshold,
+  };
 }
 
 /// Per-scope bundle of metric values and violations.
@@ -75,11 +75,11 @@ class MetricRecord {
   }
 
   Map<String, Object?> toJson() => {
-        'file': file,
-        'scope': scope.toJson(),
-        'values': values,
-        'violations': violations.map((v) => v.toJson()).toList(),
-      };
+    'file': file,
+    'scope': scope.toJson(),
+    'values': values,
+    'violations': violations.map((v) => v.toJson()).toList(),
+  };
 }
 
 /// Top-level result returned by the analyzer.
@@ -107,8 +107,8 @@ class AnalysisReport {
   }
 
   Map<String, Object?> toJson() => {
-        'version': version,
-        'metrics': metrics.map((m) => m.toJson()).toList(),
-        'unused': unused.map((u) => u.toJson()).toList(),
-      };
+    'version': version,
+    'metrics': metrics.map((m) => m.toJson()).toList(),
+    'unused': unused.map((u) => u.toJson()).toList(),
+  };
 }

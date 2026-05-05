@@ -54,7 +54,8 @@ class _CognitiveVisitor extends RecursiveAstVisitor<void> {
   @override
   void visitIfStatement(IfStatement node) {
     final isElseIf =
-        node.parent is IfStatement && (node.parent as IfStatement).elseStatement == node;
+        node.parent is IfStatement &&
+        (node.parent as IfStatement).elseStatement == node;
     if (isElseIf) {
       _structuralFlat();
     } else {

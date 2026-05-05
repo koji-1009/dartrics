@@ -12,7 +12,7 @@ import 'reporter.dart';
 /// stays predictable for downstream agents.
 class AiReporter implements Reporter {
   AiReporter({Map<String, String> Function(String path)? sourceLoader})
-      : _sourceLoader = sourceLoader ?? _defaultSourceLoader;
+    : _sourceLoader = sourceLoader ?? _defaultSourceLoader;
 
   final Map<String, String> Function(String path) _sourceLoader;
 

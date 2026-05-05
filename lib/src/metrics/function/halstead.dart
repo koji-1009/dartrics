@@ -60,7 +60,8 @@ class HalsteadCounts {
     final end = body.endToken;
     while (token != null) {
       final type = token.type;
-      final isOperand = type == TokenType.IDENTIFIER ||
+      final isOperand =
+          type == TokenType.IDENTIFIER ||
           type == TokenType.STRING ||
           type == TokenType.INT ||
           type == TokenType.DOUBLE ||

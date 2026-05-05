@@ -10,7 +10,9 @@ class ClassLength implements ClassMetric {
 
   @override
   num compute(ClassMetricInput input) {
-    final start = input.lineInfo.getLocation(input.declaration.offset).lineNumber;
+    final start = input.lineInfo
+        .getLocation(input.declaration.offset)
+        .lineNumber;
     final end = input.lineInfo.getLocation(input.declaration.end).lineNumber;
     return end - start + 1;
   }

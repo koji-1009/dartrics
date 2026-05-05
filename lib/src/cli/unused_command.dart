@@ -26,13 +26,15 @@ class UnusedCommand extends Command<int> {
   Future<int> run() async {
     final options = CommonOptions.from(this);
     final config = await loadConfig(options.configPath);
-    final paths = options.rest.isNotEmpty ? options.rest : <String>[options.root];
+    final paths = options.rest.isNotEmpty
+        ? options.rest
+        : <String>[options.root];
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
-    final unused = await const UnusedDetector().detect(
-      [for (final u in units) (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo)],
-      config.unused,
-    );
+    final unused = await const UnusedDetector().detect([
+      for (final u in units)
+        (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
+    ], config.unused);
     final report = AnalysisReport(
       version: '1.0',
       metrics: const [],

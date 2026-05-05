@@ -9,9 +9,10 @@ ClassMetricInput inputFor(String source, {required String className}) {
   final result = parseString(content: source);
   final visitor = _ClassFinder();
   result.unit.accept(visitor);
-  final target = visitor.classes
-      .firstWhere((c) => c.namePart.typeName.lexeme == className,
-          orElse: () => throw StateError('class $className not found'));
+  final target = visitor.classes.firstWhere(
+    (c) => c.namePart.typeName.lexeme == className,
+    orElse: () => throw StateError('class $className not found'),
+  );
   final index = ClassIndex.build(visitor.classes);
   return ClassMetricInput(
     declaration: target,
