@@ -1,0 +1,85 @@
+import 'package:args/args.dart';
+import 'package:args/command_runner.dart';
+import 'package:logging/logging.dart';
+
+/// Adds the option set shared by every dartrics subcommand.
+void addCommonOptions(ArgParser parser) {
+  parser
+    ..addOption(
+      'config',
+      help: 'Path to the configuration file.',
+      defaultsTo: 'analysis_options.yaml',
+    )
+    ..addOption(
+      'reporter',
+      help: 'Output format.',
+      allowed: ['console', 'json', 'md', 'ai', 'sarif'],
+      defaultsTo: 'console',
+    )
+    ..addOption(
+      'output',
+      help: 'Output destination. Use "-" for stdout.',
+      defaultsTo: '-',
+    )
+    ..addOption(
+      'root',
+      help: 'Analysis root directory.',
+      defaultsTo: '.',
+    )
+    ..addFlag(
+      'fatal-warnings',
+      help: 'Exit non-zero if any warning is reported.',
+      negatable: false,
+    )
+    ..addFlag(
+      'fatal-style',
+      help: 'Exit non-zero if any style violation is reported.',
+      negatable: false,
+    )
+    ..addFlag(
+      'verbose',
+      abbr: 'v',
+      help: 'Enable verbose (FINE level) logging.',
+      negatable: false,
+    );
+}
+
+/// Captures the common option values resolved from a subcommand invocation.
+class CommonOptions {
+  CommonOptions({
+    required this.configPath,
+    required this.reporter,
+    required this.output,
+    required this.root,
+    required this.fatalWarnings,
+    required this.fatalStyle,
+    required this.verbose,
+    required this.rest,
+  });
+
+  factory CommonOptions.from(Command<int> command) {
+    final results = command.argResults!;
+    if (results['verbose'] as bool) {
+      Logger.root.level = Level.FINE;
+    }
+    return CommonOptions(
+      configPath: results['config'] as String,
+      reporter: results['reporter'] as String,
+      output: results['output'] as String,
+      root: results['root'] as String,
+      fatalWarnings: results['fatal-warnings'] as bool,
+      fatalStyle: results['fatal-style'] as bool,
+      verbose: results['verbose'] as bool,
+      rest: results.rest,
+    );
+  }
+
+  final String configPath;
+  final String reporter;
+  final String output;
+  final String root;
+  final bool fatalWarnings;
+  final bool fatalStyle;
+  final bool verbose;
+  final List<String> rest;
+}

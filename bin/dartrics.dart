@@ -1,5 +1,5 @@
-import 'package:dartrics/dartrics.dart' as dartrics;
+import 'package:dartrics/src/entry_point.dart';
 
-void main(List<String> arguments) {
-  print('Hello world: ${dartrics.calculate()}!');
+Future<void> main(List<String> arguments) async {
+  await runApp(arguments);
 }

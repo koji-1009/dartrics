@@ -1,14 +1,23 @@
 name: dartrics
-description: A sample command-line application.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+description: Dart code-quality metrics and unused public-API detection.
+version: 0.0.1
+# repository: https://github.com/koji-1009/dartrics
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.10.0
 
-# Add regular dependencies here.
+executables:
+  dartrics:
+
 dependencies:
+  analyzer: ^13.0.0
+  args: ^2.5.0
+  glob: ^2.1.0
+  io: ^1.0.0
+  logging: ^1.2.0
+  meta: ^1.18.0
   path: ^1.9.0
+  yaml: ^3.1.0
 
 dev_dependencies:
   lints: ^6.0.0
