@@ -1,0 +1,15 @@
+# `.pubignore` replaces `.gitignore` for `dart pub publish`. Re-list the
+# gitignored paths plus everything that should not ship to consumers.
+
+# From `.gitignore`:
+.dart_tool/
+tmp/
+coverage/
+
+# Dev artefacts and AI/contributor docs (not part of the published API).
+.claude/
+test/
+AGENTS.md
+
+# Lockfile is local to the maintainer; library consumers resolve their own.
+pubspec.lock

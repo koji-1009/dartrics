@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 ### Added
 
@@ -34,14 +34,8 @@
   `package:dapper`'s `formatMarkdown`), `ai` (LLM-optimised YAML-ish
   with snippet windows, finalised through `formatYaml`), and `sarif`
   (SARIF 2.1.0 envelope ingestable by GitHub Code Scanning / GitLab).
-- New `packages/dartrics_lint/` analyzer-plugin package — exposes the
-  lightweight function-level diagnostics (cyclomatic, cognitive,
-  max-nesting, parameter count) as a `diagnose()` library that the
-  forthcoming analyzer-plugin entrypoint will call. Heavy metrics
-  remain CLI-only.
-- `lib/dartrics.dart` now exports the function-level metric calculator
-  classes alongside the existing report shapes; this is the supported
-  surface for `dartrics_lint` and any other embedder.
+- Working analyzer plugin via `analysis_server_plugin` (Dart 3.10+): `lib/main.dart` is the entrypoint discovered by the analysis-server, `DartricsPlugin` registers four lightweight `AnalysisRule`s (cyclomatic complexity / cognitive complexity / maximum nesting level / number of parameters) as default-on warnings. Users opt in by adding `plugins: dartrics` to their `analysis_options.yaml`. Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused detector remain CLI-only because they require a project-wide index.
+- `lib/dartrics.dart` exposes the function-level metric calculator classes alongside the existing report shapes for embedders.
 
 ### Changed
 

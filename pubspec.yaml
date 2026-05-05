@@ -1,7 +1,7 @@
 name: dartrics
 description: Dart code-quality metrics and unused public-API detection.
-version: 0.0.1
-# repository: https://github.com/koji-1009/dartrics
+version: 0.1.0
+repository: https://github.com/koji-1009/dartrics
 
 environment:
   sdk: ^3.10.0
