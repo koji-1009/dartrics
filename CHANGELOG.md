@@ -42,3 +42,19 @@
 - `lib/dartrics.dart` now exports the function-level metric calculator
   classes alongside the existing report shapes; this is the supported
   surface for `dartrics_lint` and any other embedder.
+
+### Changed
+
+- Stricter `analysis_options.yaml` for both packages
+  (`strict-casts: true`, `strict-inference: true`, `strict-raw-types:
+  true`, `prefer_relative_imports`, `require_trailing_commas`, etc.).
+- Refactored `Lcom4.compute` (split into `_ClassView` + `_Accesses`
+  + `_UnionFind` extension), `LibraryIndex.build` (split per-directive
+  / per-class counter helpers), and the unused-detector entry-point
+  collector for lower cyclomatic + cognitive complexity.
+
+### Fixed
+
+- `ConfigException` now exits with `78 EX_CONFIG` and `UsageException`
+  with `64 EX_USAGE` instead of being swallowed by the
+  `runZonedGuarded` `EX_SOFTWARE` fall-through.

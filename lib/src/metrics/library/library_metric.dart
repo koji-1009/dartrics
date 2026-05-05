@@ -59,52 +59,64 @@ class LibraryIndex {
     final importers = <String, Set<String>>{};
 
     for (final entry in files) {
-      final path = entry.path;
-      final dir = p.dirname(path);
-      final imports = <String>{};
-      var totalClasses = 0;
-      var abstractClasses = 0;
-
-      for (final directive in entry.unit.unit.directives) {
-        if (directive is! ImportDirective) continue;
-        final uri = directive.uri.stringValue;
-        if (uri == null) continue;
-        if (uri.startsWith('dart:')) continue;
-        if (uri.startsWith('package:')) {
-          // Cross-package: only counted toward Ce, never resolvable to a
-          // project-internal path here.
-          imports.add(uri);
-          continue;
-        }
-        // Relative import within the project.
-        final candidate = p.normalize(p.join(dir, uri));
-        if (pathSet.contains(candidate)) {
-          imports.add(candidate);
-          importers.putIfAbsent(candidate, () => <String>{}).add(path);
-        } else {
-          imports.add(uri);
-        }
-      }
-
-      for (final decl in entry.unit.unit.declarations) {
-        if (decl is ClassDeclaration) {
-          totalClasses++;
-          if (decl.abstractKeyword != null) abstractClasses++;
-        } else if (decl is MixinDeclaration) {
-          totalClasses++;
-          abstractClasses++;
-        }
-      }
-
-      stats[path] = LibraryStats(
-        path: path,
+      final imports = _resolveImports(
+        path: entry.path,
+        unit: entry.unit.unit,
+        pathSet: pathSet,
+        importers: importers,
+      );
+      final classCounts = _countClasses(entry.unit.unit);
+      stats[entry.path] = LibraryStats(
+        path: entry.path,
         internalImports: imports,
-        totalClasses: totalClasses,
-        abstractClasses: abstractClasses,
+        totalClasses: classCounts.total,
+        abstractClasses: classCounts.abstractCount,
       );
     }
 
     return LibraryIndex._(stats: stats, importers: importers);
+  }
+
+  static Set<String> _resolveImports({
+    required String path,
+    required CompilationUnit unit,
+    required Set<String> pathSet,
+    required Map<String, Set<String>> importers,
+  }) {
+    final dir = p.dirname(path);
+    final imports = <String>{};
+    for (final directive in unit.directives) {
+      if (directive is! ImportDirective) continue;
+      final uri = directive.uri.stringValue;
+      if (uri == null || uri.startsWith('dart:')) continue;
+      if (uri.startsWith('package:')) {
+        imports.add(uri);
+        continue;
+      }
+      final candidate = p.normalize(p.join(dir, uri));
+      if (pathSet.contains(candidate)) {
+        imports.add(candidate);
+        importers.putIfAbsent(candidate, () => <String>{}).add(path);
+      } else {
+        imports.add(uri);
+      }
+    }
+    return imports;
+  }
+
+  static ({int total, int abstractCount}) _countClasses(CompilationUnit unit) {
+    var total = 0;
+    var abstractCount = 0;
+    for (final decl in unit.declarations) {
+      if (decl is ClassDeclaration) {
+        total++;
+        if (decl.abstractKeyword != null) abstractCount++;
+      } else if (decl is MixinDeclaration) {
+        total++;
+        abstractCount++;
+      }
+    }
+    return (total: total, abstractCount: abstractCount);
   }
 }
 

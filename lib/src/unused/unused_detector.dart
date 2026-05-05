@@ -80,83 +80,62 @@ void _collectFromUnit(
   LineInfo lineInfo,
   List<DeclarationRecord> out,
 ) {
-  for (final decl in unit.declarations) {
-    SourceLocation locOf(int offset) {
-      final loc = lineInfo.getLocation(offset);
-      return SourceLocation(path: path, line: loc.lineNumber, column: loc.columnNumber);
-    }
+  SourceLocation locOf(int offset) {
+    final loc = lineInfo.getLocation(offset);
+    return SourceLocation(path: path, line: loc.lineNumber, column: loc.columnNumber);
+  }
 
-    if (decl is FunctionDeclaration) {
+  for (final decl in unit.declarations) {
+    final entries = _entriesFor(decl);
+    for (final entry in entries) {
       out.add(_record(
-        name: decl.name.lexeme,
-        kind: UnusedKind.function,
-        location: locOf(decl.offset),
-        bodyNode: decl,
-        metadata: decl.metadata,
-      ));
-    } else if (decl is ClassDeclaration) {
-      out.add(_record(
-        name: decl.namePart.typeName.lexeme,
-        kind: UnusedKind.klass,
-        location: locOf(decl.offset),
-        bodyNode: decl,
-        metadata: decl.metadata,
-      ));
-    } else if (decl is ExtensionDeclaration) {
-      final name = decl.name?.lexeme;
-      if (name != null) {
-        out.add(_record(
-          name: name,
-          kind: UnusedKind.extension,
-          location: locOf(decl.offset),
-          bodyNode: decl,
-          metadata: decl.metadata,
-        ));
-      }
-    } else if (decl is EnumDeclaration) {
-      out.add(_record(
-        name: decl.namePart.typeName.lexeme,
-        kind: UnusedKind.enumValue,
-        location: locOf(decl.offset),
-        bodyNode: decl,
-        metadata: decl.metadata,
-      ));
-    } else if (decl is FunctionTypeAlias) {
-      out.add(_record(
-        name: decl.name.lexeme,
-        kind: UnusedKind.typedef,
-        location: locOf(decl.offset),
-        bodyNode: decl,
-        metadata: decl.metadata,
-      ));
-    } else if (decl is GenericTypeAlias) {
-      out.add(_record(
-        name: decl.name.lexeme,
-        kind: UnusedKind.typedef,
-        location: locOf(decl.offset),
-        bodyNode: decl,
-        metadata: decl.metadata,
-      ));
-    } else if (decl is TopLevelVariableDeclaration) {
-      for (final v in decl.variables.variables) {
-        out.add(_record(
-          name: v.name.lexeme,
-          kind: UnusedKind.field,
-          location: locOf(v.offset),
-          bodyNode: decl,
-          metadata: decl.metadata,
-        ));
-      }
-    } else if (decl is MixinDeclaration) {
-      out.add(_record(
-        name: decl.name.lexeme,
-        kind: UnusedKind.klass,
-        location: locOf(decl.offset),
+        name: entry.name,
+        kind: entry.kind,
+        location: locOf(entry.offset),
         bodyNode: decl,
         metadata: decl.metadata,
       ));
     }
   }
+}
+
+class _Entry {
+  _Entry(this.name, this.kind, this.offset);
+  final String name;
+  final UnusedKind kind;
+  final int offset;
+}
+
+List<_Entry> _entriesFor(CompilationUnitMember decl) {
+  if (decl is FunctionDeclaration) {
+    return [_Entry(decl.name.lexeme, UnusedKind.function, decl.offset)];
+  }
+  if (decl is ClassDeclaration) {
+    return [_Entry(decl.namePart.typeName.lexeme, UnusedKind.klass, decl.offset)];
+  }
+  if (decl is MixinDeclaration) {
+    return [_Entry(decl.name.lexeme, UnusedKind.klass, decl.offset)];
+  }
+  if (decl is ExtensionDeclaration) {
+    final n = decl.name?.lexeme;
+    return n == null ? const [] : [_Entry(n, UnusedKind.extension, decl.offset)];
+  }
+  if (decl is EnumDeclaration) {
+    return [_Entry(decl.namePart.typeName.lexeme, UnusedKind.enumValue, decl.offset)];
+  }
+  if (decl is FunctionTypeAlias) {
+    return [_Entry(decl.name.lexeme, UnusedKind.typedef, decl.offset)];
+  }
+  if (decl is GenericTypeAlias) {
+    return [_Entry(decl.name.lexeme, UnusedKind.typedef, decl.offset)];
+  }
+  if (decl is TopLevelVariableDeclaration) {
+    return [
+      for (final v in decl.variables.variables)
+        _Entry(v.name.lexeme, UnusedKind.field, v.offset),
+    ];
+  }
+  return const [];
 }
 
 DeclarationRecord _record({

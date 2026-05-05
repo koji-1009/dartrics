@@ -6,22 +6,22 @@ import 'package:dartrics/src/models/unused_declaration.dart';
 /// warning violation and one unused declaration. Useful as a shared fixture
 /// for reporter tests.
 AnalysisReport buildSampleReport() {
-  final metricRecord = MetricRecord(
+  const metricRecord = MetricRecord(
     file: '/proj/lib/foo.dart',
     scope: ScopeRef(
       kind: ScopeKind.method,
       name: 'Foo.bar',
-      location: const SourceLocation(
+      location: SourceLocation(
         path: '/proj/lib/foo.dart',
         line: 42,
         column: 3,
       ),
     ),
-    values: const {
+    values: {
       'cyclomatic-complexity': 12,
       'cognitive-complexity': 18,
     },
-    violations: const [
+    violations: [
       MetricViolation(
         metricId: 'cyclomatic-complexity',
         severity: Severity.warning,
@@ -29,10 +29,10 @@ AnalysisReport buildSampleReport() {
       ),
     ],
   );
-  final unused = UnusedDeclaration(
+  const unused = UnusedDeclaration(
     kind: UnusedKind.function,
     name: '_legacyFormatter',
-    location: const SourceLocation(
+    location: SourceLocation(
       path: '/proj/lib/util.dart',
       line: 88,
       column: 1,

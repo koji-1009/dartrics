@@ -25,67 +25,37 @@ class Lcom4 implements ClassMetric {
 
   @override
   num compute(ClassMetricInput input) {
-    final cls = input.declaration;
+    final view = _ClassView.of(input.declaration);
+    if (view.methods.length <= 1) return view.methods.length;
 
-    final fieldNames = <String>{};
-    final methodNodes = <Declaration>[];
-    final methodNameToIndex = <String, int>{};
+    final accesses = _collectAccesses(view);
+    final uf = _UnionFind(view.methods.length)
+      ..unionBySharedField(accesses.byField)
+      ..unionByDirectCall(accesses.calls);
+    return uf.componentCount();
+  }
 
-    for (final member in cls.body.members) {
-      if (member is FieldDeclaration) {
-        for (final v in member.fields.variables) {
-          fieldNames.add(v.name.lexeme);
-        }
-      } else if (member is MethodDeclaration &&
-          member.body is! EmptyFunctionBody) {
-        methodNameToIndex[member.name.lexeme] = methodNodes.length;
-        methodNodes.add(member);
-      } else if (member is ConstructorDeclaration &&
-          member.body is! EmptyFunctionBody) {
-        final n = member.name?.lexeme ?? cls.namePart.typeName.lexeme;
-        methodNameToIndex[n] = methodNodes.length;
-        methodNodes.add(member);
-      }
-    }
-
-    if (methodNodes.length <= 1) return methodNodes.length;
-
-    final accessedFields = List.generate(methodNodes.length, (_) => <String>{});
-    final calledMethods = List.generate(methodNodes.length, (_) => <int>{});
-
-    for (var i = 0; i < methodNodes.length; i++) {
-      final body = _bodyOf(methodNodes[i]);
+  _Accesses _collectAccesses(_ClassView view) {
+    final accessedFields = List.generate(view.methods.length, (_) => <String>{});
+    final calledMethods = List.generate(view.methods.length, (_) => <int>{});
+    for (var i = 0; i < view.methods.length; i++) {
+      final body = _bodyOf(view.methods[i]);
       if (body == null) continue;
       final visitor = _AccessVisitor(
-        fields: fieldNames,
-        methodIndex: methodNameToIndex,
+        fields: view.fieldNames,
+        methodIndex: view.methodNameToIndex,
       );
       body.accept(visitor);
       accessedFields[i] = visitor.fieldsAccessed;
-      calledMethods[i] = visitor.methodsCalled..remove(i); // ignore self-edges
+      calledMethods[i] = visitor.methodsCalled..remove(i);
     }
-
-    final uf = _UnionFind(methodNodes.length);
-
-    final fieldToMethods = <String, List<int>>{};
-    for (var i = 0; i < methodNodes.length; i++) {
+    final byField = <String, List<int>>{};
+    for (var i = 0; i < accessedFields.length; i++) {
       for (final f in accessedFields[i]) {
-        fieldToMethods.putIfAbsent(f, () => []).add(i);
+        byField.putIfAbsent(f, () => <int>[]).add(i);
       }
     }
-    for (final group in fieldToMethods.values) {
-      for (var i = 1; i < group.length; i++) {
-        uf.union(group[0], group[i]);
-      }
-    }
-
-    for (var i = 0; i < methodNodes.length; i++) {
-      for (final j in calledMethods[i]) {
-        uf.union(i, j);
-      }
-    }
-
-    return uf.componentCount();
+    return _Accesses(byField: byField, calls: calledMethods);
   }
 
   FunctionBody? _bodyOf(Declaration decl) {
@@ -93,6 +63,49 @@ class Lcom4 implements ClassMetric {
     if (decl is ConstructorDeclaration) return decl.body;
     return null;
   }
+}
+
+class _ClassView {
+  _ClassView({
+    required this.fieldNames,
+    required this.methods,
+    required this.methodNameToIndex,
+  });
+
+  final Set<String> fieldNames;
+  final List<Declaration> methods;
+  final Map<String, int> methodNameToIndex;
+
+  static _ClassView of(ClassDeclaration cls) {
+    final fieldNames = <String>{};
+    final methods = <Declaration>[];
+    final methodIndex = <String, int>{};
+    for (final member in cls.body.members) {
+      if (member is FieldDeclaration) {
+        for (final v in member.fields.variables) {
+          fieldNames.add(v.name.lexeme);
+        }
+      } else if (member is MethodDeclaration && member.body is! EmptyFunctionBody) {
+        methodIndex[member.name.lexeme] = methods.length;
+        methods.add(member);
+      } else if (member is ConstructorDeclaration && member.body is! EmptyFunctionBody) {
+        final n = member.name?.lexeme ?? cls.namePart.typeName.lexeme;
+        methodIndex[n] = methods.length;
+        methods.add(member);
+      }
+    }
+    return _ClassView(
+      fieldNames: fieldNames,
+      methods: methods,
+      methodNameToIndex: methodIndex,
+    );
+  }
+}
+
+class _Accesses {
+  _Accesses({required this.byField, required this.calls});
+  final Map<String, List<int>> byField;
+  final List<Set<int>> calls;
 }
 
 class _AccessVisitor extends RecursiveAstVisitor<void> {
@@ -148,5 +161,23 @@ class _UnionFind {
       roots.add(find(i));
     }
     return roots.length;
+  }
+}
+
+extension on _UnionFind {
+  void unionBySharedField(Map<String, List<int>> byField) {
+    for (final group in byField.values) {
+      for (var i = 1; i < group.length; i++) {
+        union(group[0], group[i]);
+      }
+    }
+  }
+
+  void unionByDirectCall(List<Set<int>> calls) {
+    for (var i = 0; i < calls.length; i++) {
+      for (final j in calls[i]) {
+        union(i, j);
+      }
+    }
   }
 }
