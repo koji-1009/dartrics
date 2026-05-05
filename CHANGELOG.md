@@ -22,3 +22,11 @@
   Abstractness / Distance from main sequence at library scope (Martin
   1994). The engine builds a `LibraryIndex` of project-internal import
   edges to drive Ca/Ce, and counts abstract classes + mixins for `A`.
+- Public-API unused-code detection: BFS reachability over a name-based
+  reference graph rooted at `main`, `@pragma('vm:entry-point')`, and
+  `lib/` exports (when `excludeExported` is enabled, the detector also
+  follows `export ... show ...` clauses so re-exported `lib/src/`
+  declarations stay reachable). Reports unused public functions,
+  classes, mixins, extensions, typedefs, enums, and top-level fields.
+  `dartrics analyze` emits both metrics and unused; `dartrics unused`
+  is the unused-only fast path.

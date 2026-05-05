@@ -32,19 +32,27 @@ class MetricEngine {
   final Map<String, MetricThresholds> thresholds;
 
   Future<List<MetricRecord>> analyze(AnalyzerRunner runner) async {
-    final files = await runner.collectDartFiles();
+    final units = await runner.resolveAll();
+    return analyzeResolved(units);
+  }
 
-    // First pass: resolve every compilation unit and collect class
-    // declarations across the project so DIT/NOC have a global view.
+  /// Variant of [analyze] that operates on already-resolved compilation
+  /// units. Lets callers (e.g. the CLI flow that also runs the unused
+  /// detector) share resolution work.
+  List<MetricRecord> analyzeResolved(
+    List<({String path, ResolvedUnitResult unit})> units,
+  ) {
     final resolved = <_ResolvedFile>[];
     final allClasses = <ClassDeclaration>[];
-    for (final path in files) {
-      final unit = await runner.resolve(path);
-      if (unit == null) continue;
+    for (final entry in units) {
       final classCollector = _ClassCollector();
-      unit.unit.accept(classCollector);
+      entry.unit.unit.accept(classCollector);
       allClasses.addAll(classCollector.classes);
-      resolved.add(_ResolvedFile(path: path, unit: unit, classes: classCollector.classes));
+      resolved.add(_ResolvedFile(
+        path: entry.path,
+        unit: entry.unit,
+        classes: classCollector.classes,
+      ));
     }
     final classIndex = ClassIndex.build(allClasses);
     final libraryIndex = LibraryIndex.build(

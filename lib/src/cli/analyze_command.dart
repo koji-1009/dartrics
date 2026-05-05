@@ -9,10 +9,11 @@ import '../config/config_loader.dart';
 import '../metrics/metric_engine.dart';
 import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
+import '../unused/unused_detector.dart';
 import 'common_options.dart';
 
-/// `dartrics analyze` — runs every metric calculator over the analysis root
-/// and emits a report.
+/// `dartrics analyze` — runs every metric calculator and the unused
+/// detector over the analysis root and emits a combined report.
 class AnalyzeCommand extends Command<int> {
   AnalyzeCommand() {
     addCommonOptions(argParser);
@@ -35,14 +36,18 @@ class AnalyzeCommand extends Command<int> {
 
   Future<AnalysisReport> _analyze(List<String> paths, Config config) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
-    final files = await runner.collectDartFiles();
+    final units = await runner.resolveAll();
     final engine = MetricEngine(thresholds: config.metricThresholds);
-    final records = await engine.analyze(runner);
+    final records = engine.analyzeResolved(units);
+    final unused = await const UnusedDetector().detect(
+      [for (final u in units) (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo)],
+      config.unused,
+    );
     return AnalysisReport(
       version: '1.0',
       metrics: records,
-      unused: const [],
-    )..attachAnalyzedFileCount(files.length);
+      unused: unused,
+    )..attachAnalyzedFileCount(units.length);
   }
 
   Future<int> _emit(AnalysisReport report, CommonOptions options) async {

@@ -1,9 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/source/line_info.dart';
 
-/// What scope of program element a metric describes.
-enum MetricLevel { function, klass, library }
-
 /// Bundle of inputs every function-level metric receives.
 ///
 /// Decoupled from `ResolvedUnitResult` so that tests can run metrics over a

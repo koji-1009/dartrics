@@ -67,4 +67,16 @@ class AnalyzerRunner {
     final result = await context.currentSession.getResolvedUnit(absolutePath);
     return result is ResolvedUnitResult ? result : null;
   }
+
+  /// Resolves every Dart file under [roots], skipping paths that the
+  /// analyzer can't fully resolve.
+  Future<List<({String path, ResolvedUnitResult unit})>> resolveAll() async {
+    final files = await collectDartFiles();
+    final out = <({String path, ResolvedUnitResult unit})>[];
+    for (final path in files) {
+      final unit = await resolve(path);
+      if (unit != null) out.add((path: path, unit: unit));
+    }
+    return out;
+  }
 }
