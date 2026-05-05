@@ -34,3 +34,11 @@
   `package:dapper`'s `formatMarkdown`), `ai` (LLM-optimised YAML-ish
   with snippet windows, finalised through `formatYaml`), and `sarif`
   (SARIF 2.1.0 envelope ingestable by GitHub Code Scanning / GitLab).
+- New `packages/dartrics_lint/` analyzer-plugin package — exposes the
+  lightweight function-level diagnostics (cyclomatic, cognitive,
+  max-nesting, parameter count) as a `diagnose()` library that the
+  forthcoming analyzer-plugin entrypoint will call. Heavy metrics
+  remain CLI-only.
+- `lib/dartrics.dart` now exports the function-level metric calculator
+  classes alongside the existing report shapes; this is the supported
+  surface for `dartrics_lint` and any other embedder.
