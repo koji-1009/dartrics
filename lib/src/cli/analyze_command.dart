@@ -6,6 +6,7 @@ import 'package:io/io.dart';
 import '../analyzer_runner.dart';
 import '../config/config.dart';
 import '../config/config_loader.dart';
+import '../metrics/metric_engine.dart';
 import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
 import 'common_options.dart';
@@ -34,11 +35,14 @@ class AnalyzeCommand extends Command<int> {
 
   Future<AnalysisReport> _analyze(List<String> paths, Config config) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
-    // Phase 0: walk files but produce no metric values yet. Subsequent phases
-    // plug their calculators into the loop in `lib/src/metrics/`.
     final files = await runner.collectDartFiles();
-    return AnalysisReport(version: '1.0', metrics: const [], unused: const [])
-      ..attachAnalyzedFileCount(files.length);
+    final engine = MetricEngine(thresholds: config.metricThresholds);
+    final records = await engine.analyze(runner);
+    return AnalysisReport(
+      version: '1.0',
+      metrics: records,
+      unused: const [],
+    )..attachAnalyzedFileCount(files.length);
   }
 
   Future<int> _emit(AnalysisReport report, CommonOptions options) async {

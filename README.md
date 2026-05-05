@@ -9,7 +9,8 @@ public-API reachability pass.
 
 ## Status
 
-Pre-alpha. Phases land sequentially per `tmp/project_plan.md`.
+Pre-alpha — landing the metric suite phase by phase ahead of the first
+pub.dev release.
 
 ## Quickstart
 
