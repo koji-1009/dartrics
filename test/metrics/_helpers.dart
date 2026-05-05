@@ -14,10 +14,8 @@ FunctionMetricInput inputFor(String source, {String? name}) {
   if (found == null) {
     throw StateError('No function named "$name" found in source.');
   }
-  return FunctionMetricInput.fromDeclaration(
-    unit: result.unit,
-    source: source,
-    lineInfo: result.lineInfo,
+  return FunctionMetricInput(
+    context: (unit: result.unit, source: source, lineInfo: result.lineInfo),
     declaration: found,
   );
 }

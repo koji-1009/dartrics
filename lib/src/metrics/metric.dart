@@ -1,60 +1,42 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/source/line_info.dart';
 
+/// Bundle of unit-scoped inputs every function-level metric needs.
+///
+/// Kept as a record so `parseString` results, full `ResolvedUnitResult`
+/// instances, and tests can all build one inline without an adapter type.
+typedef UnitContext = ({
+  CompilationUnit unit,
+  String source,
+  LineInfo lineInfo,
+});
+
 /// Bundle of inputs every function-level metric receives.
 ///
 /// Decoupled from `ResolvedUnitResult` so that tests can run metrics over a
 /// `parseString`-only result, which is significantly cheaper than full
 /// resolution.
 class FunctionMetricInput {
-  FunctionMetricInput({
-    required this.unit,
-    required this.source,
-    required this.lineInfo,
-    required this.declaration,
-    required this.body,
-    required this.parameters,
-    required this.scopeName,
-  });
+  FunctionMetricInput({required this.context, required this.declaration});
 
-  /// Constructs the input from a [FunctionDeclaration],
-  /// [MethodDeclaration], or [ConstructorDeclaration]. Other declaration
-  /// kinds are rejected at the type system level by the engine, which
-  /// only ever calls this factory.
-  factory FunctionMetricInput.fromDeclaration({
-    required CompilationUnit unit,
-    required String source,
-    required LineInfo lineInfo,
-    required Declaration declaration,
-  }) {
-    final body = _bodyOf(declaration);
-    final parameters = _parametersOf(declaration);
-    final scopeName = _scopeNameOf(declaration);
-    return FunctionMetricInput(
-      unit: unit,
-      source: source,
-      lineInfo: lineInfo,
-      declaration: declaration,
-      body: body,
-      parameters: parameters,
-      scopeName: scopeName,
-    );
-  }
-
-  final CompilationUnit unit;
-  final String source;
-  final LineInfo lineInfo;
+  final UnitContext context;
 
   /// One of [FunctionDeclaration], [MethodDeclaration], or
-  /// [ConstructorDeclaration].
+  /// [ConstructorDeclaration]; engines that build this input filter
+  /// declaration kinds at collection time.
   final Declaration declaration;
 
-  final FunctionBody body;
-  final FormalParameterList? parameters;
+  // `context.unit` is exposed via the record itself when needed; only the
+  // two helpers below have call sites today.
+  String get source => context.source;
+  LineInfo get lineInfo => context.lineInfo;
+
+  late final FunctionBody body = _bodyOf(declaration);
+  late final FormalParameterList? parameters = _parametersOf(declaration);
 
   /// Human-readable scope name. For top-level functions, the function name.
   /// For methods/constructors, `Class.name` (named-constructor name preserved).
-  final String scopeName;
+  late final String scopeName = _scopeNameOf(declaration);
 }
 
 /// Function/method-level metric.

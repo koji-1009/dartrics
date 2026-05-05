@@ -80,31 +80,46 @@ class _ClassView {
   final Map<String, int> methodNameToIndex;
 
   static _ClassView of(ClassDeclaration cls) {
-    final fieldNames = <String>{};
-    final methods = <Declaration>[];
-    final methodIndex = <String, int>{};
+    final builder = _ClassViewBuilder(cls);
     for (final member in cls.body.members) {
-      if (member is FieldDeclaration) {
-        for (final v in member.fields.variables) {
-          fieldNames.add(v.name.lexeme);
-        }
-      } else if (member is MethodDeclaration &&
-          member.body is! EmptyFunctionBody) {
-        methodIndex[member.name.lexeme] = methods.length;
-        methods.add(member);
-      } else if (member is ConstructorDeclaration &&
-          member.body is! EmptyFunctionBody) {
-        final n = member.name?.lexeme ?? cls.namePart.typeName.lexeme;
-        methodIndex[n] = methods.length;
-        methods.add(member);
-      }
+      builder.ingest(member);
     }
-    return _ClassView(
-      fieldNames: fieldNames,
-      methods: methods,
-      methodNameToIndex: methodIndex,
-    );
+    return builder.build();
   }
+}
+
+class _ClassViewBuilder {
+  _ClassViewBuilder(this.owner);
+
+  final ClassDeclaration owner;
+  final Set<String> fieldNames = {};
+  final List<Declaration> methods = [];
+  final Map<String, int> methodIndex = {};
+
+  void ingest(ClassMember member) {
+    if (member is FieldDeclaration) {
+      for (final v in member.fields.variables) {
+        fieldNames.add(v.name.lexeme);
+      }
+      return;
+    }
+    if (member is MethodDeclaration && member.body is! EmptyFunctionBody) {
+      methodIndex[member.name.lexeme] = methods.length;
+      methods.add(member);
+      return;
+    }
+    if (member is ConstructorDeclaration && member.body is! EmptyFunctionBody) {
+      final n = member.name?.lexeme ?? owner.namePart.typeName.lexeme;
+      methodIndex[n] = methods.length;
+      methods.add(member);
+    }
+  }
+
+  _ClassView build() => _ClassView(
+    fieldNames: fieldNames,
+    methods: methods,
+    methodNameToIndex: methodIndex,
+  );
 }
 
 class _Accesses {

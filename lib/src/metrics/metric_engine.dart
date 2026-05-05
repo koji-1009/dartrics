@@ -91,13 +91,13 @@ class MetricEngine {
   Iterable<MetricRecord> _functionRecordsFor(_ResolvedFile file) sync* {
     final collector = _FunctionCollector();
     file.unit.unit.accept(collector);
+    final ctx = (
+      unit: file.unit.unit,
+      source: file.unit.content,
+      lineInfo: file.unit.lineInfo,
+    );
     for (final decl in collector.declarations) {
-      final input = FunctionMetricInput.fromDeclaration(
-        unit: file.unit.unit,
-        source: file.unit.content,
-        lineInfo: file.unit.lineInfo,
-        declaration: decl,
-      );
+      final input = FunctionMetricInput(context: ctx, declaration: decl);
       final values = <String, num>{};
       for (final calc in functionMetrics) {
         values[calc.id] = calc.compute(input);

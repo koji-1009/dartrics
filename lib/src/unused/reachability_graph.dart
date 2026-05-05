@@ -14,12 +14,23 @@ Set<DeclarationRecord> reachableFrom(
   Iterable<DeclarationRecord> entryPoints,
   Map<String, List<DeclarationRecord>> byName,
 ) {
-  final visited = <DeclarationRecord>{};
-  final queue = Queue<DeclarationRecord>.from(entryPoints);
-  while (queue.isNotEmpty) {
-    final d = queue.removeFirst();
-    if (!visited.add(d)) continue;
-    for (final name in d.outgoingNames) {
+  final state = _BfsState(byName);
+  state.queue.addAll(entryPoints);
+  while (state.queue.isNotEmpty) {
+    final current = state.queue.removeFirst();
+    if (state.visited.add(current)) state.enqueueNeighborsOf(current);
+  }
+  return state.visited;
+}
+
+class _BfsState {
+  _BfsState(this.byName);
+  final Map<String, List<DeclarationRecord>> byName;
+  final Set<DeclarationRecord> visited = {};
+  final Queue<DeclarationRecord> queue = Queue<DeclarationRecord>();
+
+  void enqueueNeighborsOf(DeclarationRecord current) {
+    for (final name in current.outgoingNames) {
       final candidates = byName[name];
       if (candidates == null) continue;
       for (final next in candidates) {
@@ -27,5 +38,4 @@ Set<DeclarationRecord> reachableFrom(
       }
     }
   }
-  return visited;
 }

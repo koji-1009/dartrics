@@ -14,6 +14,13 @@ import 'reachability_graph.dart';
 /// detector with cheap parse-only fixtures.
 typedef UnusedSource = ({String path, CompilationUnit unit, LineInfo lineInfo});
 
+typedef _RootResolutionInputs = ({
+  List<DeclarationRecord> declarations,
+  Map<String, List<DeclarationRecord>> byName,
+  List<UnusedSource> sources,
+  UnusedConfig config,
+});
+
 /// Detects unreachable public declarations across the analyzed project
 /// using a Periphery-style name-based reachability graph.
 ///
@@ -32,36 +39,66 @@ class UnusedDetector {
     List<UnusedSource> sources,
     UnusedConfig config,
   ) async {
-    final declarations = <DeclarationRecord>[];
-    for (final f in sources) {
-      _collectFromUnit(f.path, f.unit, f.lineInfo, declarations);
-    }
+    final declarations = _collectAll(sources);
+    final byName = _indexByName(declarations);
+    final roots = _resolveRoots((
+      declarations: declarations,
+      byName: byName,
+      sources: sources,
+      config: config,
+    ));
+    final reachable = reachableFrom(roots, byName);
+    return _selectUnused(declarations, reachable);
+  }
 
+  List<DeclarationRecord> _collectAll(List<UnusedSource> sources) {
+    final out = <DeclarationRecord>[];
+    for (final f in sources) {
+      _collectFromUnit(f, out);
+    }
+    return out;
+  }
+
+  Map<String, List<DeclarationRecord>> _indexByName(
+    List<DeclarationRecord> declarations,
+  ) {
     final byName = <String, List<DeclarationRecord>>{};
     for (final d in declarations) {
       byName.putIfAbsent(d.name, () => <DeclarationRecord>[]).add(d);
     }
+    return byName;
+  }
 
+  Set<DeclarationRecord> _resolveRoots(_RootResolutionInputs i) {
     final roots = <DeclarationRecord>{
-      ...resolveEntryPoints(declarations, config),
+      ...resolveEntryPoints(i.declarations, i.config),
     };
-    if (config.excludeExported) {
+    if (i.config.excludeExported) {
       // Names referenced anywhere inside a "public" lib file (incl. its
-      // export-directive `show` clauses) are treated as additional roots.
-      // This lets `export 'src/foo.dart' show Foo;` keep `Foo` alive even
-      // though no AST in the public file calls `Foo` directly.
-      final referenced = <String>{};
-      for (final f in sources) {
-        if (!_isLibraryPublic(f.path)) continue;
-        f.unit.accept(_AmbientNameCollector(referenced));
-      }
-      for (final name in referenced) {
-        final hits = byName[name];
+      // export-directive `show` clauses) become additional roots so that
+      // `export 'src/foo.dart' show Foo;` keeps `Foo` alive even though
+      // no AST in the public file directly calls `Foo`.
+      for (final name in _collectAmbientNames(i.sources)) {
+        final hits = i.byName[name];
         if (hits != null) roots.addAll(hits);
       }
     }
-    final reachable = reachableFrom(roots, byName);
+    return roots;
+  }
 
+  Set<String> _collectAmbientNames(List<UnusedSource> sources) {
+    final referenced = <String>{};
+    for (final f in sources) {
+      if (!_isLibraryPublic(f.path)) continue;
+      f.unit.accept(_AmbientNameCollector(referenced));
+    }
+    return referenced;
+  }
+
+  List<UnusedDeclaration> _selectUnused(
+    List<DeclarationRecord> declarations,
+    Set<DeclarationRecord> reachable,
+  ) {
     final unused = <UnusedDeclaration>[];
     for (final d in declarations) {
       if (d.name.startsWith('_')) continue; // analyzer's dead_code covers this
@@ -74,32 +111,20 @@ class UnusedDetector {
   }
 }
 
-void _collectFromUnit(
-  String path,
-  CompilationUnit unit,
-  LineInfo lineInfo,
-  List<DeclarationRecord> out,
-) {
+void _collectFromUnit(UnusedSource source, List<DeclarationRecord> out) {
   SourceLocation locOf(int offset) {
-    final loc = lineInfo.getLocation(offset);
+    final loc = source.lineInfo.getLocation(offset);
     return SourceLocation(
-      path: path,
+      path: source.path,
       line: loc.lineNumber,
       column: loc.columnNumber,
     );
   }
 
-  for (final decl in unit.declarations) {
-    final entries = _entriesFor(decl);
-    for (final entry in entries) {
+  for (final decl in source.unit.declarations) {
+    for (final entry in _entriesFor(decl)) {
       out.add(
-        _record(
-          name: entry.name,
-          kind: entry.kind,
-          location: locOf(entry.offset),
-          bodyNode: decl,
-          metadata: decl.metadata,
-        ),
+        _buildRecord(entry: entry, location: locOf(entry.offset), decl: decl),
       );
     }
   }
@@ -113,78 +138,73 @@ class _Entry {
 }
 
 List<_Entry> _entriesFor(CompilationUnitMember decl) {
-  if (decl is FunctionDeclaration) {
-    return [_Entry(decl.name.lexeme, UnusedKind.function, decl.offset)];
-  }
-  if (decl is ClassDeclaration) {
-    return [
-      _Entry(decl.namePart.typeName.lexeme, UnusedKind.klass, decl.offset),
-    ];
-  }
-  if (decl is MixinDeclaration) {
-    return [_Entry(decl.name.lexeme, UnusedKind.klass, decl.offset)];
-  }
-  if (decl is ExtensionDeclaration) {
-    final n = decl.name?.lexeme;
-    return n == null
-        ? const []
-        : [_Entry(n, UnusedKind.extension, decl.offset)];
-  }
-  if (decl is EnumDeclaration) {
-    return [
-      _Entry(decl.namePart.typeName.lexeme, UnusedKind.enumValue, decl.offset),
-    ];
-  }
-  if (decl is FunctionTypeAlias) {
-    return [_Entry(decl.name.lexeme, UnusedKind.typedef, decl.offset)];
-  }
-  if (decl is GenericTypeAlias) {
-    return [_Entry(decl.name.lexeme, UnusedKind.typedef, decl.offset)];
-  }
-  if (decl is TopLevelVariableDeclaration) {
-    return [
-      for (final v in decl.variables.variables)
-        _Entry(v.name.lexeme, UnusedKind.field, v.offset),
-    ];
+  switch (decl) {
+    case FunctionDeclaration():
+      return [_Entry(decl.name.lexeme, UnusedKind.function, decl.offset)];
+    case ClassDeclaration():
+      return [
+        _Entry(decl.namePart.typeName.lexeme, UnusedKind.klass, decl.offset),
+      ];
+    case MixinDeclaration():
+      return [_Entry(decl.name.lexeme, UnusedKind.klass, decl.offset)];
+    case ExtensionDeclaration():
+      return _entriesForExtension(decl);
+    case EnumDeclaration():
+      return [
+        _Entry(
+          decl.namePart.typeName.lexeme,
+          UnusedKind.enumValue,
+          decl.offset,
+        ),
+      ];
+    case FunctionTypeAlias():
+      return [_Entry(decl.name.lexeme, UnusedKind.typedef, decl.offset)];
+    case GenericTypeAlias():
+      return [_Entry(decl.name.lexeme, UnusedKind.typedef, decl.offset)];
+    case TopLevelVariableDeclaration():
+      return [
+        for (final v in decl.variables.variables)
+          _Entry(v.name.lexeme, UnusedKind.field, v.offset),
+      ];
   }
   return const [];
 }
 
-DeclarationRecord _record({
-  required String name,
-  required UnusedKind kind,
+List<_Entry> _entriesForExtension(ExtensionDeclaration decl) {
+  final name = decl.name?.lexeme;
+  if (name == null) return const [];
+  return [_Entry(name, UnusedKind.extension, decl.offset)];
+}
+
+DeclarationRecord _buildRecord({
+  required _Entry entry,
   required SourceLocation location,
-  required AstNode bodyNode,
-  required NodeList<Annotation> metadata,
+  required CompilationUnitMember decl,
 }) {
   final outgoing = <String>{};
-  final ref = _ReferenceCollector(declarationOwnName: name)..walk(bodyNode);
-  outgoing.addAll(ref.names);
-
-  final annotations = <String>[];
-  var hasVmEntryPoint = false;
-  for (final ann in metadata) {
-    final aname = ann.name.name;
-    annotations.add(aname);
-    if (aname == 'pragma') {
-      final args = ann.arguments?.arguments ?? const [];
-      if (args.isNotEmpty) {
-        final first = args.first;
-        if (first is StringLiteral && first.stringValue == 'vm:entry-point') {
-          hasVmEntryPoint = true;
-        }
-      }
-    }
-  }
-
+  outgoing.addAll(_collectOutgoingNames(decl, ownName: entry.name));
+  final annotations = decl.metadata.map((a) => a.name.name).toList();
   return DeclarationRecord(
-    name: name,
-    kind: kind,
+    name: entry.name,
+    kind: entry.kind,
     location: location,
     outgoingNames: outgoing,
     annotations: annotations,
-    hasVmEntryPointPragma: hasVmEntryPoint,
+    hasVmEntryPointPragma: decl.metadata.any(_isVmEntryPointPragma),
   );
+}
+
+Set<String> _collectOutgoingNames(AstNode node, {required String ownName}) {
+  final ref = _ReferenceCollector(declarationOwnName: ownName)..walk(node);
+  return ref.names;
+}
+
+bool _isVmEntryPointPragma(Annotation ann) {
+  if (ann.name.name != 'pragma') return false;
+  final args = ann.arguments?.arguments ?? const [];
+  if (args.isEmpty) return false;
+  final first = args.first;
+  return first is StringLiteral && first.stringValue == 'vm:entry-point';
 }
 
 /// Collects every simple-name identifier and named-type reference inside an

@@ -36,10 +36,9 @@ class LibraryIndex {
   ) {
     final reverse = <String, Set<String>>{};
     for (final entry in stats.entries) {
-      for (final imported in entry.value.internalImports) {
-        if (stats.containsKey(imported)) {
-          reverse.putIfAbsent(imported, () => <String>{}).add(entry.key);
-        }
+      final internal = entry.value.internalImports.where(stats.containsKey);
+      for (final imported in internal) {
+        reverse.putIfAbsent(imported, () => <String>{}).add(entry.key);
       }
     }
     return reverse;
@@ -51,35 +50,36 @@ class LibraryIndex {
   static LibraryIndex build(
     List<({String path, ResolvedUnitResult unit})> files,
   ) {
-    final pathSet = files.map((f) => f.path).toSet();
+    final ctx = _ImportResolutionContext(
+      pathSet: files.map((f) => f.path).toSet(),
+    );
     final stats = <String, LibraryStats>{};
-    final importers = <String, Set<String>>{};
-
     for (final entry in files) {
-      final imports = _resolveImports(
-        path: entry.path,
-        unit: entry.unit.unit,
-        pathSet: pathSet,
-        importers: importers,
-      );
-      final classCounts = _countClasses(entry.unit.unit);
-      stats[entry.path] = LibraryStats(
-        path: entry.path,
-        internalImports: imports,
-        totalClasses: classCounts.total,
-        abstractClasses: classCounts.abstractCount,
-      );
+      stats[entry.path] = _statsFor(entry.path, entry.unit.unit, ctx);
     }
-
-    return LibraryIndex._(stats: stats, importers: importers);
+    return LibraryIndex._(stats: stats, importers: ctx.importers);
   }
 
-  static Set<String> _resolveImports({
-    required String path,
-    required CompilationUnit unit,
-    required Set<String> pathSet,
-    required Map<String, Set<String>> importers,
-  }) {
+  static LibraryStats _statsFor(
+    String path,
+    CompilationUnit unit,
+    _ImportResolutionContext ctx,
+  ) {
+    final imports = _resolveImports(path, unit, ctx);
+    final classCounts = _countClasses(unit);
+    return LibraryStats(
+      path: path,
+      internalImports: imports,
+      totalClasses: classCounts.total,
+      abstractClasses: classCounts.abstractCount,
+    );
+  }
+
+  static Set<String> _resolveImports(
+    String path,
+    CompilationUnit unit,
+    _ImportResolutionContext ctx,
+  ) {
     final dir = p.dirname(path);
     final imports = <String>{};
     for (final directive in unit.directives) {
@@ -91,9 +91,9 @@ class LibraryIndex {
         continue;
       }
       final candidate = p.normalize(p.join(dir, uri));
-      if (pathSet.contains(candidate)) {
+      if (ctx.pathSet.contains(candidate)) {
         imports.add(candidate);
-        importers.putIfAbsent(candidate, () => <String>{}).add(path);
+        ctx.importers.putIfAbsent(candidate, () => <String>{}).add(path);
       } else {
         imports.add(uri);
       }
@@ -128,4 +128,13 @@ class LibraryMetricInput {
 abstract class LibraryMetric {
   String get id;
   num compute(LibraryMetricInput input);
+}
+
+/// Mutable bookkeeping shared across `_resolveImports` calls during a
+/// single `LibraryIndex.build` pass.
+class _ImportResolutionContext {
+  _ImportResolutionContext({required this.pathSet});
+
+  final Set<String> pathSet;
+  final Map<String, Set<String>> importers = {};
 }

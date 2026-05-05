@@ -32,31 +32,43 @@ class AnalyzerRunner {
   Future<List<String>> collectDartFiles() async {
     final excluders = exclude.map((g) => Glob(g)).toList(growable: false);
     final results = <String>[];
-
     for (final root in roots) {
-      final dir = Directory(root);
-      if (!dir.existsSync()) {
-        if (FileSystemEntity.isFileSync(root) && root.endsWith('.dart')) {
-          results.add(p.normalize(p.absolute(root)));
-        }
-        continue;
-      }
-      await for (final entity in dir.list(
-        recursive: true,
-        followLinks: false,
-      )) {
-        if (entity is! File) continue;
-        final path = entity.path;
-        if (!path.endsWith('.dart')) continue;
-        if (path.contains('${p.separator}.dart_tool${p.separator}')) continue;
-        final relative = p.relative(path, from: root);
-        if (excluders.any((g) => g.matches(relative))) continue;
-        results.add(p.normalize(p.absolute(path)));
-      }
+      await _collectFromRoot(root, excluders, results);
     }
-
     results.sort();
     return results;
+  }
+
+  Future<void> _collectFromRoot(
+    String root,
+    List<Glob> excluders,
+    List<String> out,
+  ) async {
+    final dir = Directory(root);
+    if (!dir.existsSync()) {
+      if (FileSystemEntity.isFileSync(root) && root.endsWith('.dart')) {
+        out.add(p.normalize(p.absolute(root)));
+      }
+      return;
+    }
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      if (_isCollectableDart(entity, root, excluders)) {
+        out.add(p.normalize(p.absolute(entity.path)));
+      }
+    }
+  }
+
+  bool _isCollectableDart(
+    FileSystemEntity entity,
+    String root,
+    List<Glob> excluders,
+  ) {
+    if (entity is! File) return false;
+    final path = entity.path;
+    if (!path.endsWith('.dart')) return false;
+    if (path.contains('${p.separator}.dart_tool${p.separator}')) return false;
+    final relative = p.relative(path, from: root);
+    return !excluders.any((g) => g.matches(relative));
   }
 
   /// Resolves a single Dart file to a [ResolvedUnitResult]. Returns `null`

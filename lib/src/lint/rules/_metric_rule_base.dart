@@ -53,10 +53,12 @@ class _Visitor extends SimpleAstVisitor<void> {
   void _check(Declaration node) {
     final unit = context.currentUnit;
     if (unit == null) return;
-    final input = FunctionMetricInput.fromDeclaration(
-      unit: unit.unit,
-      source: unit.content,
-      lineInfo: unit.unit.lineInfo,
+    final input = FunctionMetricInput(
+      context: (
+        unit: unit.unit,
+        source: unit.content,
+        lineInfo: unit.unit.lineInfo,
+      ),
       declaration: node,
     );
     final value = rule.metric.compute(input);

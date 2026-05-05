@@ -55,29 +55,14 @@ class HalsteadCounts {
   static HalsteadCounts fromBody(FunctionBody body) {
     final operators = <String, int>{};
     final operands = <String, int>{};
-
     Token? token = body.beginToken;
     final end = body.endToken;
     while (token != null) {
-      final type = token.type;
-      final isOperand =
-          type == TokenType.IDENTIFIER ||
-          type == TokenType.STRING ||
-          type == TokenType.INT ||
-          type == TokenType.DOUBLE ||
-          type == TokenType.HEXADECIMAL ||
-          token.lexeme == 'true' ||
-          token.lexeme == 'false' ||
-          token.lexeme == 'null';
-      if (isOperand) {
-        operands.update(token.lexeme, (v) => v + 1, ifAbsent: () => 1);
-      } else {
-        operators.update(token.lexeme, (v) => v + 1, ifAbsent: () => 1);
-      }
+      final bucket = _isOperand(token) ? operands : operators;
+      bucket.update(token.lexeme, (v) => v + 1, ifAbsent: () => 1);
       if (token == end) break;
       token = token.next;
     }
-
     return HalsteadCounts(
       uniqueOperators: operators.length,
       uniqueOperands: operands.length,
@@ -86,6 +71,19 @@ class HalsteadCounts {
     );
   }
 }
+
+const _operandTokenTypes = <TokenType>{
+  TokenType.IDENTIFIER,
+  TokenType.STRING,
+  TokenType.INT,
+  TokenType.DOUBLE,
+  TokenType.HEXADECIMAL,
+};
+const _operandLiteralLexemes = <String>{'true', 'false', 'null'};
+
+bool _isOperand(Token token) =>
+    _operandTokenTypes.contains(token.type) ||
+    _operandLiteralLexemes.contains(token.lexeme);
 
 /// Halstead Volume — `N · log2(η)`. (Halstead, 1977.)
 class HalsteadVolume implements FunctionMetric {

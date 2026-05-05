@@ -31,13 +31,11 @@ class WeightedMethodsPerClass implements ClassMetric {
   }
 
   FunctionMetricInput _inputFor(CompilationUnit unit, Declaration decl) {
-    return FunctionMetricInput.fromDeclaration(
-      unit: unit,
-      // Halstead/SLOC are not needed for CC; pass an empty source so any
-      // accidental token-level usage will fail loudly rather than silently
-      // produce wrong values.
-      source: '',
-      lineInfo: unit.lineInfo,
+    return FunctionMetricInput(
+      // Halstead/SLOC need `source`, but CC doesn't; passing an empty
+      // string makes any accidental token-level use fail loudly rather
+      // than silently produce wrong values.
+      context: (unit: unit, source: '', lineInfo: unit.lineInfo),
       declaration: decl,
     );
   }
