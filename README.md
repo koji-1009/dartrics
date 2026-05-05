@@ -88,7 +88,7 @@ plugins:
   dartrics: ^0.1.0
 ```
 
-After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin reports four rules as default-on warnings:
+After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin enables four rules by default:
 
 | Rule | Threshold (v0.1) |
 |---|---|
@@ -96,6 +96,8 @@ After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis S
 | `dartrics_cognitive_complexity` | 15 |
 | `dartrics_maximum_nesting_level` | 4 |
 | `dartrics_number_of_parameters` | 4 |
+
+Diagnostics surface at `info` severity in `dart analyze`. The current analyzer pipeline (`analysis_server_plugin 0.3.x` + `analyzer 13`) crashes the plugin isolate when a `LintCode` is constructed with anything other than `DiagnosticSeverity.INFO`, so the rules are pinned to INFO until that upstream constraint relaxes. The rules are still always-on; only the column prefix is fixed.
 
 Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused detector intentionally stay CLI-only because they require a project-wide index that an analysis-server plugin can't maintain efficiently per file.
 
