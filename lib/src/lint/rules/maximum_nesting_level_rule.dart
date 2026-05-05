@@ -4,11 +4,12 @@ import '../../metrics/function/max_nesting_level.dart';
 import '../../metrics/metric.dart';
 import '_metric_rule_base.dart';
 
-/// Reports a warning when a function or method's maximum nesting level
-/// (deepest depth of `if`/`for`/`while`/`do`/`switch`/`try`/closure blocks)
-/// reaches the configured threshold.
+/// Reports when a function or method's maximum nesting level (deepest
+/// depth of `if`/`for`/`while`/`do`/`switch`/`try`/closure blocks) reaches
+/// the configured threshold.
 ///
-/// v0.1 behaviour: threshold baked at 4.
+/// Default threshold is 4; override in `analysis_options.yaml`'s
+/// `dartrics: { metrics: { maximum-nesting-level: { warning: <n> } } }`.
 class MaximumNestingLevelRule extends FunctionMetricRule {
   MaximumNestingLevelRule()
     : super(
@@ -30,5 +31,5 @@ class MaximumNestingLevelRule extends FunctionMetricRule {
   FunctionMetric get metric => const MaxNestingLevel();
 
   @override
-  num get threshold => 4;
+  num get defaultThreshold => 4;
 }

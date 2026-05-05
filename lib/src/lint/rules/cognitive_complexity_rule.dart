@@ -4,10 +4,11 @@ import '../../metrics/function/cognitive_complexity.dart';
 import '../../metrics/metric.dart';
 import '_metric_rule_base.dart';
 
-/// Reports a warning when a function or method's cognitive complexity
-/// (G. Ann Campbell, SonarSource 2018) reaches the configured threshold.
+/// Reports when a function or method's cognitive complexity (G. Ann
+/// Campbell, SonarSource 2018) reaches the configured threshold.
 ///
-/// v0.1 behaviour: threshold baked at 15.
+/// Default threshold is 15; override in `analysis_options.yaml`'s
+/// `dartrics: { metrics: { cognitive-complexity: { warning: <n> } } }`.
 class CognitiveComplexityRule extends FunctionMetricRule {
   CognitiveComplexityRule()
     : super(
@@ -30,5 +31,5 @@ class CognitiveComplexityRule extends FunctionMetricRule {
   FunctionMetric get metric => const CognitiveComplexity();
 
   @override
-  num get threshold => 15;
+  num get defaultThreshold => 15;
 }

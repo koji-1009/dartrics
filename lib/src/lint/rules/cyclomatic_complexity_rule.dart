@@ -4,11 +4,11 @@ import '../../metrics/function/cyclomatic_complexity.dart';
 import '../../metrics/metric.dart';
 import '_metric_rule_base.dart';
 
-/// Reports a warning when a function or method's cyclomatic complexity
-/// (McCabe 1976) reaches the configured threshold.
+/// Reports when a function or method's cyclomatic complexity (McCabe 1976)
+/// reaches the configured threshold.
 ///
-/// v0.1 behaviour: threshold baked at 10. User-configurable thresholds are
-/// future work.
+/// Default threshold is 10; override in `analysis_options.yaml`'s
+/// `dartrics: { metrics: { cyclomatic-complexity: { warning: <n> } } }`.
 class CyclomaticComplexityRule extends FunctionMetricRule {
   CyclomaticComplexityRule()
     : super(
@@ -31,5 +31,5 @@ class CyclomaticComplexityRule extends FunctionMetricRule {
   FunctionMetric get metric => const CyclomaticComplexity();
 
   @override
-  num get threshold => 10;
+  num get defaultThreshold => 10;
 }

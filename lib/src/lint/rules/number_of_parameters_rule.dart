@@ -4,10 +4,11 @@ import '../../metrics/function/number_of_parameters.dart';
 import '../../metrics/metric.dart';
 import '_metric_rule_base.dart';
 
-/// Reports a warning when a function, method, or constructor declares
-/// too many formal parameters.
+/// Reports when a function, method, or constructor declares too many
+/// formal parameters.
 ///
-/// v0.1 behaviour: threshold baked at 4.
+/// Default threshold is 4; override in `analysis_options.yaml`'s
+/// `dartrics: { metrics: { number-of-parameters: { warning: <n> } } }`.
 class NumberOfParametersRule extends FunctionMetricRule {
   NumberOfParametersRule()
     : super(
@@ -30,5 +31,5 @@ class NumberOfParametersRule extends FunctionMetricRule {
   FunctionMetric get metric => const NumberOfParameters();
 
   @override
-  num get threshold => 4;
+  num get defaultThreshold => 4;
 }

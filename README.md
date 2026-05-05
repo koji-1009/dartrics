@@ -101,7 +101,26 @@ Diagnostics surface at `info` severity in `dart analyze`. The current analyzer p
 
 Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused detector intentionally stay CLI-only because they require a project-wide index that an analysis-server plugin can't maintain efficiently per file.
 
-User-configurable thresholds via `analysis_options.yaml`'s `dartrics:` section is on the roadmap; `0.1` ships with the defaults above baked into each rule.
+### Customizing plugin thresholds
+
+The plugin reads the same `dartrics:` section the CLI uses. Override any rule's threshold by setting its metric `id` under `metrics:`:
+
+```yaml
+plugins:
+  dartrics: ^0.1.0
+
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      warning: 5            # default 10
+    cognitive-complexity:
+      warning: 8            # default 15
+    maximum-nesting-level:
+      warning: 3            # default 4
+    number-of-parameters: 6 # default 4 — bare integer is treated as `warning:`
+```
+
+The CLI's `error:` field is also accepted and used by `dartrics analyze`; the plugin only consumes `warning:` because it emits a single severity (see the INFO-only note above). Restart the analysis server after changing thresholds.
 
 ## Configuration (CLI)
 

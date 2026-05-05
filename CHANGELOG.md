@@ -35,6 +35,7 @@
   with snippet windows, finalised through `formatYaml`), and `sarif`
   (SARIF 2.1.0 envelope ingestable by GitHub Code Scanning / GitLab).
 - Working analyzer plugin via `analysis_server_plugin` (Dart 3.10+): `lib/main.dart` is the entrypoint discovered by the analysis-server, `DartricsPlugin` registers four lightweight `AnalysisRule`s (cyclomatic complexity / cognitive complexity / maximum nesting level / number of parameters) as default-on warnings. Users opt in by adding `plugins: dartrics` to their `analysis_options.yaml`. Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused detector remain CLI-only because they require a project-wide index.
+- Plugin reads the same `dartrics:` section as the CLI. Each rule's threshold can be overridden via `dartrics: { metrics: { <metric-id>: { warning: <n> } } }` (or the bare-integer short form). Defaults apply when the section is missing or malformed. Plugin diagnostics surface at INFO severity in the current analyzer pipeline; non-INFO `LintCode` severities crash the analysis-server isolate (documented as a known upstream constraint).
 - `lib/dartrics.dart` exposes the function-level metric calculator classes alongside the existing report shapes for embedders.
 
 ### Changed
