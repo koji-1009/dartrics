@@ -1,3 +1,4 @@
+import '../dismiss/dismissal.dart';
 import 'source_location.dart';
 import 'unused_declaration.dart';
 
@@ -42,6 +43,12 @@ class MetricViolation {
     this.scopeCoverage,
     this.scopeBranchCoverage,
     this.complexityJustified = false,
+    this.dismissed = false,
+    this.dismissReason,
+    this.dismissedBy,
+    this.dismissedAt,
+    this.dismissedFrom,
+    this.dismissalRejected,
   });
 
   final String metricId;
@@ -64,6 +71,35 @@ class MetricViolation {
   /// deprioritise refactoring these.
   final bool complexityJustified;
 
+  /// True when a `dartrics:dismiss` entry — comment or YAML — matched
+  /// this violation and passed the configured validation rules. The
+  /// violation still appears in the report (so audits can review what
+  /// was suppressed); it is just deprioritised by the AI reporter and
+  /// tagged in the human-facing reporters.
+  final bool dismissed;
+
+  /// Rationale carried in from the matched dismissal. Empty string when
+  /// the project disabled `requireReason` and the entry omitted one.
+  /// `null` when [dismissed] is false.
+  final String? dismissReason;
+
+  /// Author tag from a YAML dismissal's `by:`. Only ever populated
+  /// when [dismissedFrom] is [DismissalSource.yaml].
+  final String? dismissedBy;
+
+  /// Timestamp from a YAML dismissal's `at:`. Only ever populated
+  /// when [dismissedFrom] is [DismissalSource.yaml].
+  final DateTime? dismissedAt;
+
+  /// Which channel the accepted dismissal was sourced from.
+  final DismissalSource? dismissedFrom;
+
+  /// Set when a dismissal entry matched this violation but failed
+  /// validation (e.g. reason too short). The violation stays live;
+  /// AI loops should read this and amend the dismissal. Mutually
+  /// exclusive with [dismissed].
+  final String? dismissalRejected;
+
   Map<String, Object?> toJson() => {
     'metric': metricId,
     'level': severity.name,
@@ -71,6 +107,12 @@ class MetricViolation {
     if (scopeCoverage != null) 'scopeCoverage': scopeCoverage,
     if (scopeBranchCoverage != null) 'scopeBranchCoverage': scopeBranchCoverage,
     if (complexityJustified) 'complexityJustified': true,
+    if (dismissed) 'dismissed': true,
+    if (dismissReason != null) 'dismissReason': dismissReason,
+    if (dismissedBy != null) 'dismissedBy': dismissedBy,
+    if (dismissedAt != null) 'dismissedAt': dismissedAt!.toIso8601String(),
+    if (dismissedFrom != null) 'dismissedFrom': dismissedFrom!.name,
+    if (dismissalRejected != null) 'dismissalRejected': dismissalRejected,
   };
 }
 
