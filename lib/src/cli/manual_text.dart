@@ -304,6 +304,7 @@ There is no third option of "ignore it again."
 | Inject metric catalogue once | `dartrics rules --reporter ai` | Feed once into a system prompt |
 | Verify a refactor | `dartrics regression` | Runs `git worktree` for the historical side |
 | Audit your config | `dartrics doctor` | Flags unknown metric ids, unknown presets, threshold mis-ordering. Read-only |
+| Reverse-lookup a violation | `dartrics explain <id>` | Pipe a JSON report in or use `--input <path>`. Returns rationale + refactor hints for one violation |
 
 ## Exit codes
 
