@@ -12,6 +12,7 @@ import '../reporters/reporters.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
+import 'rules_command.dart';
 
 /// `dartrics analyze` — runs every metric calculator and the unused
 /// detector over the analysis root and emits a combined report.
@@ -40,7 +41,7 @@ class AnalyzeCommand extends Command<int> {
       stderr.writeln(e);
       return ExitCode.data.code;
     }
-    final report = await _analyze(paths, config, changed);
+    final report = await _analyze(paths, config, changed, options.explain);
     return _emit(report, options);
   }
 
@@ -53,6 +54,7 @@ class AnalyzeCommand extends Command<int> {
     List<String> paths,
     Config config,
     Set<String>? changed,
+    List<String> explainIds,
   ) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
@@ -72,6 +74,7 @@ class AnalyzeCommand extends Command<int> {
       version: '1.0',
       metrics: filteredRecords,
       unused: filteredUnused,
+      explanations: buildExplanations(explainIds),
     )..attachAnalyzedFileCount(units.length);
   }
 

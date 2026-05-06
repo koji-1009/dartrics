@@ -11,6 +11,24 @@ class SourceLinesOfCode extends FunctionMetric {
   String get id => 'source-lines-of-code';
 
   @override
+  String get rationale =>
+      'Source lines of code (SLOC) counts non-blank, non-comment-only '
+      'lines inside the function body. Comment-only lines and blank '
+      'lines are stripped so the count tracks the actual code volume. '
+      'SLOC is among the oldest size metrics (Boehm, *Software '
+      'Engineering Economics*, 1981) and remains a useful first-pass '
+      '"is this method too big" indicator. A starting threshold of '
+      '50 lines is conservative; teams often drop it to 30.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Extract sequential blocks of work into helper methods named after their purpose (Fowler\'s "Extract Method").',
+    'Move setup / teardown into the caller or a builder.',
+    'Replace inline ad-hoc loops with collection combinators when the transformation is simple.',
+    'Drop accidental duplication by introducing a shared helper.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final text = input.source.substring(input.body.offset, input.body.end);
     final cursor = _CommentCursor();

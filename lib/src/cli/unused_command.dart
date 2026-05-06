@@ -11,6 +11,7 @@ import '../reporters/reporters.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
+import 'rules_command.dart';
 
 /// `dartrics unused` — runs only the public-API reachability analysis.
 class UnusedCommand extends Command<int> {
@@ -57,6 +58,7 @@ class UnusedCommand extends Command<int> {
       version: '1.0',
       metrics: const [],
       unused: filtered,
+      explanations: buildExplanations(options.explain),
     )..attachAnalyzedFileCount(units.length);
 
     final reporter = pickReporter(options.reporter);

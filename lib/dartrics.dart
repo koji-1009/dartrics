@@ -22,6 +22,7 @@ export 'src/metrics/metric.dart' show FunctionMetric, FunctionMetricInput;
 export 'src/models/analysis_report.dart'
     show
         AnalysisReport,
+        ExplainEntry,
         MetricRecord,
         MetricViolation,
         ScopeRef,

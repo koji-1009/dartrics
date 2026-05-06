@@ -5,7 +5,7 @@ import 'package:dartrics/src/models/unused_declaration.dart';
 /// Builds a small [AnalysisReport] containing one metric record with a
 /// warning violation and one unused declaration. Useful as a shared fixture
 /// for reporter tests.
-AnalysisReport buildSampleReport() {
+AnalysisReport buildSampleReport({List<ExplainEntry> explanations = const []}) {
   const metricRecord = MetricRecord(
     file: '/proj/lib/foo.dart',
     scope: ScopeRef(
@@ -31,5 +31,6 @@ AnalysisReport buildSampleReport() {
     version: '1.0',
     metrics: [metricRecord],
     unused: [unused],
+    explanations: explanations,
   )..attachAnalyzedFileCount(2);
 }

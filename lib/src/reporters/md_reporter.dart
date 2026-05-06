@@ -19,9 +19,30 @@ class MdReporter implements Reporter {
       ..writeln('# dartrics report')
       ..writeln();
     _writeSummary(buffer, report);
+    _writeExplanations(buffer, report);
     _writeViolations(buffer, report);
     _writeUnused(buffer, report);
     sink.write(formatMarkdown(buffer.toString()));
+  }
+
+  void _writeExplanations(StringBuffer buf, AnalysisReport report) {
+    if (report.explanations.isEmpty) return;
+    buf
+      ..writeln('## Explanations')
+      ..writeln();
+    for (final e in report.explanations) {
+      buf
+        ..writeln('### `${e.metricId}`')
+        ..writeln()
+        ..writeln(e.rationale)
+        ..writeln()
+        ..writeln('**Refactor hints:**')
+        ..writeln();
+      for (final hint in e.refactorHints) {
+        buf.writeln('- $hint');
+      }
+      buf.writeln();
+    }
   }
 
   void _writeSummary(StringBuffer buf, AnalysisReport report) {

@@ -18,6 +18,22 @@ class ResponseForClass extends ClassMetric {
   String get id => 'response-for-class';
 
   @override
+  String get rationale =>
+      'Response For a Class (RFC, Chidamber & Kemerer 1994) is the '
+      'union of methods declared by the class and method names invoked '
+      'from inside them. CK introduce it as a measure of the response '
+      'set — the set of methods that can run in response to a message '
+      'received by an object — and report it correlates with debugging '
+      'and testing effort. SonarQube uses ~50 as a default alarm.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Push helper logic into collaborators and call them through a narrow public method to shrink the response set visible from outside.',
+    'Replace duplicated invocation patterns with a single private helper.',
+    'Split the class along its natural responsibilities so each piece has a smaller response set.',
+  ];
+
+  @override
   num compute(ClassMetricInput input) {
     final cls = input.declaration;
     final declared = <String>{};

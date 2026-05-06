@@ -19,6 +19,26 @@ class CyclomaticComplexity extends FunctionMetric {
   String get id => 'cyclomatic-complexity';
 
   @override
+  String get rationale =>
+      'McCabe (1976) defines cyclomatic complexity as the number of '
+      'linearly independent paths through a function. It is computed as '
+      '`1 + d`, where `d` is the count of decision points (`if`, `for`, '
+      '`while`, `do`, `case` arm, `catch`, ternary, `&&`, `||`). The '
+      'value is also a lower bound on the number of test cases needed to '
+      'cover every branch, which is why teams use it as a structural-cost '
+      'signal. The default warning threshold of 10 follows McCabe\'s '
+      'original recommendation that "10 seems like a reasonable, but not '
+      'magical, upper limit".';
+
+  @override
+  List<String> get refactorHints => const [
+    'Extract long branches into helper functions named after their intent.',
+    'Replace nested `if` chains with early-return guard clauses.',
+    'Replace large `switch`/`if-else` ladders with a lookup table or polymorphic dispatch.',
+    'Split the function along its independent responsibilities — high CC is often a hint that one body is doing two jobs.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final visitor = _CyclomaticVisitor();
     input.body.accept(visitor);

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:dartrics/src/reporters/md_reporter.dart';
 import 'package:test/test.dart';
 
@@ -23,4 +24,31 @@ void main() {
     expect(body, contains('## Unused Declarations'));
     expect(body, contains('_legacyFormatter'));
   });
+
+  test(
+    'renders an Explanations section when explanations are attached',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      MdReporter().report(
+        buildSampleReport(
+          explanations: const [
+            ExplainEntry(
+              metricId: 'cyclomatic-complexity',
+              rationale: 'Why CC matters.',
+              refactorHints: ['Extract helpers.'],
+            ),
+          ],
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, contains('## Explanations'));
+      expect(body, contains('Why CC matters.'));
+      expect(body, contains('Extract helpers.'));
+    },
+  );
 }

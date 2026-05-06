@@ -51,6 +51,16 @@ abstract class FunctionMetric {
   /// `analysis_options.yaml`'s `dartrics: { metrics: { <id>: { enabled: true } } }`.
   bool get defaultEnabled => true;
 
+  /// One-paragraph explanation of what the metric measures, the source it
+  /// is taken from, and the reasoning behind the default threshold. Surfaced
+  /// by `dartrics rules` and the `--explain` flag so AI loops can learn the
+  /// metric's intent without re-deriving it from training data.
+  String get rationale;
+
+  /// Concrete refactor moves a developer (or AI agent) can take when the
+  /// metric trips. Each entry is a single short imperative sentence.
+  List<String> get refactorHints;
+
   /// Computes the metric. Implementations must be deterministic.
   num compute(FunctionMetricInput input);
 }

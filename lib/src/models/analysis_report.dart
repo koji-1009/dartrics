@@ -82,17 +82,36 @@ class MetricRecord {
   };
 }
 
+/// Catalogue entry for a metric whose rationale should accompany the
+/// emitted report (`--explain <metric-id>`).
+class ExplainEntry {
+  const ExplainEntry({
+    required this.metricId,
+    required this.rationale,
+    required this.refactorHints,
+  });
+
+  final String metricId;
+  final String rationale;
+  final List<String> refactorHints;
+}
+
 /// Top-level result returned by the analyzer.
 class AnalysisReport {
   AnalysisReport({
     required this.version,
     required this.metrics,
     required this.unused,
+    this.explanations = const [],
   });
 
   final String version;
   final List<MetricRecord> metrics;
   final List<UnusedDeclaration> unused;
+
+  /// Optional list of rationale + hint blurbs to render alongside the
+  /// per-violation output.
+  final List<ExplainEntry> explanations;
 
   int _analyzedFileCount = 0;
   int get analyzedFileCount => _analyzedFileCount;

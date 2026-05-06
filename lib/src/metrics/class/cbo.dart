@@ -19,6 +19,22 @@ class CouplingBetweenObjects extends ClassMetric {
   String get id => 'coupling-between-objects';
 
   @override
+  String get rationale =>
+      'Coupling Between Objects (CBO, Chidamber & Kemerer 1994) counts '
+      'the distinct other types this class references via member '
+      'signatures (field/parameter/return types) and method bodies. '
+      'CK call out high CBO as a signal of brittleness: every '
+      'collaborator is a class whose change can break this one. A '
+      'typical warning threshold is around 14.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Hide collaborators behind a small, focused facade rather than exposing each one as a parameter.',
+    'Introduce a shared abstract type so the class depends on the role rather than on every concrete collaborator.',
+    'Move methods that reach into another type out to that type ("Move Method").',
+  ];
+
+  @override
   num compute(ClassMetricInput input) {
     final visitor = _NamedTypeCollector();
     input.declaration.accept(visitor);

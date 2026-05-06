@@ -29,6 +29,14 @@ void addCommonOptions(ArgParser parser) {
           '(e.g. "main", "HEAD~1", "origin/main"). Resolution still uses '
           'the full project so cross-file analysis stays accurate.',
     )
+    ..addMultiOption(
+      'explain',
+      help:
+          'Inject the metric\'s rationale and refactor hints into the '
+          'report. Repeat the flag (or use a comma-separated list) to '
+          'include several metrics at once.',
+      splitCommas: true,
+    )
     ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',
@@ -55,6 +63,7 @@ class CommonOptions {
     required this.output,
     required this.root,
     required this.since,
+    required this.explain,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -72,6 +81,7 @@ class CommonOptions {
       output: results['output'] as String,
       root: results['root'] as String,
       since: results['since'] as String?,
+      explain: List<String>.from(results['explain'] as List<String>),
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -84,6 +94,7 @@ class CommonOptions {
   final String output;
   final String root;
   final String? since;
+  final List<String> explain;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

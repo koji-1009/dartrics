@@ -2,6 +2,7 @@ import 'package:args/command_runner.dart';
 
 import 'analyze_command.dart';
 import 'report_command.dart';
+import 'rules_command.dart';
 import 'unused_command.dart';
 
 CommandRunner<int> buildCommandRunner() {
@@ -12,6 +13,7 @@ CommandRunner<int> buildCommandRunner() {
         )
         ..addCommand(AnalyzeCommand())
         ..addCommand(UnusedCommand())
-        ..addCommand(ReportCommand());
+        ..addCommand(ReportCommand())
+        ..addCommand(RulesCommand());
   return runner;
 }

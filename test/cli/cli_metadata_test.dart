@@ -7,5 +7,6 @@ void main() {
     expect(runner.commands['analyze']!.description, isNotEmpty);
     expect(runner.commands['unused']!.description, isNotEmpty);
     expect(runner.commands['report']!.description, isNotEmpty);
+    expect(runner.commands['rules']!.description, isNotEmpty);
   });
 }

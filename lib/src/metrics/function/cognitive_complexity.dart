@@ -29,6 +29,26 @@ class CognitiveComplexity extends FunctionMetric {
   String get id => 'cognitive-complexity';
 
   @override
+  String get rationale =>
+      'Campbell (SonarSource, 2018) introduces cognitive complexity to '
+      'reflect "how hard the control flow is to understand" rather than '
+      '"how hard it is to test". Three rule families add to the score: '
+      '(B1) every break in linear flow adds 1, (B2) nesting-aware '
+      'constructs additionally add the current nesting depth, and (B3) '
+      'each chain of like logical operators adds 1. Unlike cyclomatic '
+      'complexity, deeply-nested code is penalized more than flat code '
+      'with the same number of branches, which is closer to a human '
+      'reviewer\'s experience. A common starting threshold is 15.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Flatten nesting by inverting conditions and returning early.',
+    'Hoist nested loops or conditionals into well-named helpers; the name carries the cognitive load.',
+    'Combine `&&` / `||` chains into a single boolean variable with an explanatory name.',
+    'Replace recursive nested branches with table-driven dispatch when the structure is regular.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final visitor = _CognitiveVisitor();
     input.body.accept(visitor);

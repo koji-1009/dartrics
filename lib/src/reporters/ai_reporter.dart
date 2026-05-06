@@ -22,9 +22,32 @@ class AiReporter implements Reporter {
   @override
   void report(AnalysisReport report, IOSink sink) {
     final buf = StringBuffer()..writeln('# dartrics ai-report v1');
+    _writeExplanations(buf, report);
     _writeViolations(buf, report);
     _writeUnused(buf, report);
     sink.write(formatYaml(buf.toString()));
+  }
+
+  void _writeExplanations(StringBuffer buf, AnalysisReport report) {
+    if (report.explanations.isEmpty) return;
+    buf.writeln('explain:');
+    for (final e in report.explanations) {
+      buf
+        ..writeln('  - metric: ${e.metricId}')
+        ..writeln('    rationale: |')
+        ..writeln('      ${e.rationale.replaceAll('\n', '\n      ')}')
+        ..writeln('    refactorHints:');
+      for (final hint in e.refactorHints) {
+        buf.writeln('      - ${_escape(hint)}');
+      }
+    }
+  }
+
+  String _escape(String value) {
+    if (value.contains(':') || value.contains('#')) {
+      return '"${value.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"';
+    }
+    return value;
   }
 
   void _writeViolations(StringBuffer buf, AnalysisReport report) {

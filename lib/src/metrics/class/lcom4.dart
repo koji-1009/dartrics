@@ -24,6 +24,25 @@ class Lcom4 extends ClassMetric {
   String get id => 'lcom4';
 
   @override
+  String get rationale =>
+      'LCOM4 (Hitz & Montazeri, *Measuring Coupling and Cohesion in '
+      'Object-Oriented Systems*, 1995) builds an undirected graph '
+      'where each method is a vertex and an edge exists when two '
+      'methods share a field or one calls the other. The metric is '
+      'the number of connected components: 1 means a perfectly '
+      'cohesive class, anything higher hints that unrelated '
+      'responsibilities are coexisting in one type. Hitz and Montazeri '
+      'argue this connected-components reading is closer to a '
+      'designer\'s intuition than the original LCOM1 score.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Extract each connected component into its own class — that drops LCOM4 to 1 for both halves.',
+    'Promote shared fields into a value object that both groups of methods accept as a parameter.',
+    'Delete vestigial methods that don\'t touch any field — they usually belong on a static utility instead.',
+  ];
+
+  @override
   num compute(ClassMetricInput input) {
     final view = _ClassView.of(input.declaration);
     if (view.methods.length <= 1) return view.methods.length;

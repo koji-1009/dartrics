@@ -130,6 +130,14 @@ abstract class LibraryMetric {
 
   String get id;
   bool get defaultEnabled => true;
+
+  /// One-paragraph explanation of what the metric measures, surfaced by
+  /// `dartrics rules` and the `--explain` flag.
+  String get rationale;
+
+  /// Concrete refactor moves to take when the metric trips.
+  List<String> get refactorHints;
+
   num compute(LibraryMetricInput input);
 }
 

@@ -11,6 +11,23 @@ class MethodLength extends FunctionMetric {
   String get id => 'method-length';
 
   @override
+  String get rationale =>
+      'Method length is the total number of source lines spanned by '
+      'the function body, including blanks and comments. Unlike '
+      '`source-lines-of-code`, it answers "how big is this thing on '
+      'screen" — a coarse readability signal that pairs with SLOC. '
+      'Beck (*Smalltalk Best Practice Patterns*, 1996) advocates for '
+      'methods short enough to fit on a screen, often interpreted as '
+      '50–80 lines.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Extract sub-steps into named helpers — each helper documents the step\'s intent for free.',
+    'Collapse stretches of doc/banner comments into a single dartdoc block above the method.',
+    'Split functions that handle multiple concerns (validation, computation, formatting) into one function per concern.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final start = input.lineInfo.getLocation(input.body.offset).lineNumber;
     final end = input.lineInfo.getLocation(input.body.end).lineNumber;

@@ -13,6 +13,23 @@ class WeightedMethodsPerClass extends ClassMetric {
   String get id => 'weighted-methods-per-class';
 
   @override
+  String get rationale =>
+      'Weighted Methods per Class (WMC, Chidamber & Kemerer 1994) is '
+      'the sum of the cyclomatic complexity of every method-shaped '
+      'member of the class. It captures both the size and the '
+      'branchiness of the class in one number; high values predict '
+      'higher maintenance and testing cost. CK proposed it as one of '
+      'six object-oriented design metrics; SonarQube uses ~30–50 as a '
+      'typical alarm range.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Apply the cyclomatic-complexity refactor hints to the heaviest individual methods first.',
+    'Move high-CC methods that don\'t depend on this class\'s state onto the type that does.',
+    'Extract a strategy / state object so each branch lives on a small dedicated class.',
+  ];
+
+  @override
   num compute(ClassMetricInput input) {
     const cc = CyclomaticComplexity();
     final cls = input.declaration;

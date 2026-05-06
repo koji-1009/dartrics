@@ -17,6 +17,24 @@ class MaxNestingLevel extends FunctionMetric {
   String get id => 'maximum-nesting-level';
 
   @override
+  String get rationale =>
+      'Maximum nesting level counts the deepest depth of nested control '
+      'flow inside the function body (`if`, `for`, `while`, `do`, '
+      '`switch`, `try`/`catch`, plus closure bodies). Empirical work '
+      'such as NIST 500-235 §4 reports a strong correlation between '
+      'nesting depth and bug density, which is why PMD, Checkstyle, and '
+      'SonarLint all ship a variant of it. A typical warning threshold '
+      'is 4: code one level past that usually wants extracting.';
+
+  @override
+  List<String> get refactorHints => const [
+    'Invert the outer condition and return early to drop one level.',
+    'Extract the deepest block into a named helper.',
+    'Replace nested loops with iterator combinators (`map`/`where`/`fold`) when the body is small.',
+    'Move guard checks above the main work to flatten the happy path.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final visitor = _NestingVisitor();
     input.body.accept(visitor);
