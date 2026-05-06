@@ -208,6 +208,7 @@ Commands:
   unused         run only the public-API reachability detector
   report         re-emit a previously saved JSON report in another format
   rules          list every metric with its rationale and refactor hints
+  regression     compare metrics between two git states and surface the diff
 
 Top-level options:
   --version                print the dartrics version and exit
@@ -223,10 +224,41 @@ Common options:
                            into the report (repeatable)
   --snapshot <mode>        cache | baseline | none, or a custom path; overrides
                            the analysis_options.yaml setting
+  --coverage <path>        attach lcov.info coverage to every violation;
+                           defaults to coverage/lcov.info when present;
+                           `--coverage none` to disable
   --fatal-warnings         exit non-zero if any warning is reported
   --fatal-style            exit non-zero if any style violation is reported (reserved)
   -v, --verbose            FINE-level logging
 ```
+
+### Regression check (`dartrics regression`)
+
+The `regression` subcommand re-runs every metric against two git states and emits a per-scope, per-metric diff classified as `improved` / `regressed` / `unchanged` / `added` / `removed`. It's the closing brace on the AI refactor loop: after the agent applies a fix, run `dartrics regression --before HEAD~1 --after HEAD --reporter ai` and check whether the change actually moved the metrics in the right direction.
+
+```bash
+# Default: compare last commit to working tree
+dartrics regression
+
+# Two commits, AI-friendly format, only one metric
+dartrics regression --before main --after HEAD \
+                    --metric cyclomatic-complexity --reporter ai
+```
+
+Each metric exposes a `MetricPolarity` (`down`, `up`, `neutral`) so the diff knows which direction is "healthier". CC, SLOC, LCOM4, etc. are `down`; maintainability index is `up`; Halstead and Martin-coupling metrics are `neutral` (delta surfaced but not classified).
+
+A built-in heuristic flags refactors that look cosmetic — AI splitting one method into a swarm of one-line helpers without actually reducing complexity. When `tinyHelpersAdded ≥ 3 AND slocDelta > 4·helpers AND ccReduction < 2·helpers`, the AI / MD / console reporters surface a warning so the user notices.
+
+### Coverage-aware violations (`--coverage`)
+
+Pass `--coverage <path>` (or drop a `coverage/lcov.info` next to the package and dartrics will pick it up) to attach per-scope line and branch coverage to every emitted violation. The AI reporter then sorts by a priority key:
+
+- **low coverage** → top of the list (most actionable: complex AND under-tested)
+- **no coverage data** → middle (informational only)
+- **high coverage** → near the bottom
+- **`complexityJustified`** → last (see below)
+
+For CC / Cognitive Complexity, dartrics adds a `complexityJustified: true` tag when the scope's branch coverage is `≥ 0.8` (or line coverage `≥ 0.95` when no `BRDA:` records exist). The intent is *earned complexity*: a function that's complex but exhaustively tested is probably complex on purpose, and AI loops should leave it alone unless the user disagrees.
 
 ### Snapshot diff mode
 
