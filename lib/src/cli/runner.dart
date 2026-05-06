@@ -11,6 +11,11 @@ CommandRunner<int> buildCommandRunner() {
           'dartrics',
           'Dart code-quality metrics and unused public-API detection.',
         )
+        ..argParser.addFlag(
+          'version',
+          negatable: false,
+          help: 'Print the dartrics version and exit.',
+        )
         ..addCommand(AnalyzeCommand())
         ..addCommand(UnusedCommand())
         ..addCommand(ReportCommand())

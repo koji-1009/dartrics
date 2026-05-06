@@ -31,3 +31,4 @@ export 'src/models/analysis_report.dart'
         Severity;
 export 'src/models/source_location.dart' show SourceLocation;
 export 'src/models/unused_declaration.dart' show UnusedDeclaration, UnusedKind;
+export 'src/version.dart' show dartricsVersion;
