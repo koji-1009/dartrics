@@ -8,6 +8,7 @@ coverage/
 
 # Dev artefacts and AI/contributor docs (not part of the published API).
 .claude/
+.github/
 test/
 AGENTS.md
 

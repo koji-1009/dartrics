@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: dart-${{ matrix.dart }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        dart: [stable]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ matrix.dart }}
+      - run: dart pub get
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed lib test example
+      - name: Analyze
+        # Skip analyzer-plugin loading; the plugin runs in an isolate and
+        # is exercised by its own AnalysisRuleTest suite.
+        run: dart analyze lib test example
+      - name: Test
+        run: dart test
+      - name: Coverage
+        run: dart pub run coverage:test_with_coverage --fail-under=95
