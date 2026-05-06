@@ -20,6 +20,7 @@ import 'function/default_function_metrics.dart';
 import 'library/default_library_metrics.dart';
 import 'library/library_metric.dart';
 import 'metric.dart';
+import 'test_aware.dart';
 
 /// Runs the registered metric calculators against every resolved Dart
 /// compilation unit produced by [AnalyzerRunner].
@@ -29,7 +30,8 @@ class MetricEngine {
     List<ClassMetric>? classMetrics,
     List<LibraryMetric>? libraryMetrics,
     Map<String, MetricThresholds>? thresholds,
-    this.flutter = false,
+    this.flutter = true,
+    this.test = true,
     this.coverage,
     DismissalIndex? dismissals,
     this.dismissalConfig = const DismissalConfig(),
@@ -48,6 +50,10 @@ class MetricEngine {
   /// Mirror of [Config.flutter] — when `true`, [FlutterAware] skips
   /// metrics that produce noisy results on idiomatic Flutter widgets.
   final bool flutter;
+
+  /// Mirror of [Config.test] — when `true`, [TestAware] relaxes the
+  /// size-and-shape lenses on files under `test/` / `integration_test/`.
+  final bool test;
 
   /// Optional lcov coverage data. When supplied, every emitted
   /// [MetricViolation] is annotated with the scope's line / branch
@@ -159,9 +165,13 @@ class MetricEngine {
       source: file.unit.content,
       lineInfo: file.unit.lineInfo,
     );
+    final isTestFile = test && TestAware.isTestPath(file.path);
     for (final decl in collector.declarations) {
       final input = FunctionMetricInput(context: ctx, declaration: decl);
-      final skip = flutter ? FlutterAware.skipsFor(decl) : const <String>{};
+      final skip = <String>{
+        if (flutter) ...FlutterAware.skipsFor(decl),
+        if (isTestFile) ...TestAware.functionSkips,
+      };
       final values = <String, num>{};
       for (final calc in functionMetrics) {
         if (!_isMetricEnabled(calc.id, calc.defaultEnabled)) continue;
@@ -192,6 +202,7 @@ class MetricEngine {
     _ResolvedFile file,
     ClassIndex index,
   ) sync* {
+    final isTestFile = test && TestAware.isTestPath(file.path);
     for (final cls in file.classes) {
       final input = ClassMetricInput(
         declaration: cls,
@@ -201,6 +212,7 @@ class MetricEngine {
       final values = <String, num>{};
       for (final calc in classMetrics) {
         if (!_isMetricEnabled(calc.id, calc.defaultEnabled)) continue;
+        if (isTestFile && TestAware.classSkips.contains(calc.id)) continue;
         values[calc.id] = calc.compute(input);
       }
       final loc = file.unit.lineInfo.getLocation(cls.offset);

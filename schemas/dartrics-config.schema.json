@@ -25,9 +25,14 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "flutter": {
-          "description": "When true, dartrics relaxes a small set of metrics that fire noisily on idiomatic Flutter widgets — `maximum-nesting-level` / `method-length` on `Widget.build()` and `number-of-parameters` on widget constructors.",
+          "description": "When true, dartrics relaxes a small set of metrics that fire noisily on idiomatic Flutter widgets — `maximum-nesting-level` / `method-length` on `Widget.build()` and `number-of-parameters` on widget constructors. Default `true`; set `false` to force the lenses on widget code.",
           "type": "boolean",
-          "default": false
+          "default": true
+        },
+        "test": {
+          "description": "When true, dartrics relaxes the size-and-shape lenses on files under `test/` or `integration_test/` whose basename ends in `_test.dart` (`method-length` / `source-lines-of-code` / `maximum-nesting-level` at function level; `class-length` / `number-of-methods` at class level). Default `true`; set `false` to apply production-grade thresholds to test files too.",
+          "type": "boolean",
+          "default": true
         },
         "snapshot": {
           "description": "Snapshot mode — controls the per-file sha256 cache used to power diff-mode reports.",

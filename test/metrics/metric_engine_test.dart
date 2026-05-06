@@ -205,8 +205,10 @@ class Hello extends StatelessWidget {
     final runner = AnalyzerRunner(roots: [dir.path]);
     final units = await runner.resolveAll();
 
-    // Default mode includes everything for build() and the constructor.
-    final defaultRecords = MetricEngine().analyzeResolved(units);
+    // Disabling flutter mode includes everything for build() and the
+    // constructor (flutter is now default-on, so we must pin it off to
+    // exercise the un-relaxed path).
+    final defaultRecords = MetricEngine(flutter: false).analyzeResolved(units);
     final buildKeys = defaultRecords
         .firstWhere((r) => r.scope.name == 'Hello.build')
         .values
@@ -251,6 +253,87 @@ class Hello extends StatelessWidget {
         .keys
         .toSet();
     expect(fCtorKeys, isNot(contains('number-of-parameters')));
+  });
+
+  test('test mode relaxes size lenses on test/-resident files', () async {
+    final dir = await Directory.systemTemp.createTemp('test_aware_engine_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/test').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    // A test method that is intentionally tall: AAA blocks legitimately
+    // exceed `method-length`'s production-grade thresholds, and group/
+    // setUp scaffolding pushes `maximum-nesting-level` past 4.
+    await File('${dir.path}/test/sample_test.dart').writeAsString('''
+class SampleTest {
+  void test_arrange_act_assert() {
+    final x = 1;
+    final y = 2;
+    final z = 3;
+    final a = x + y;
+    final b = a + z;
+    final c = b * 2;
+    if (c > 0) {
+      if (c > 5) {
+        if (c > 10) {
+          if (c > 15) {
+            print(c);
+          }
+        }
+      }
+    }
+  }
+  void m1() {}
+  void m2() {}
+}
+''');
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
+
+    // Default mode (test:true) skips method-length / SLOC / max-nesting
+    // on the test method; class-length and number-of-methods are
+    // skipped on the whole class.
+    final defaultRecords = MetricEngine().analyzeResolved(units);
+    final fnKeys = defaultRecords
+        .firstWhere((r) => r.scope.name == 'SampleTest.test_arrange_act_assert')
+        .values
+        .keys
+        .toSet();
+    expect(fnKeys, isNot(contains('method-length')));
+    expect(fnKeys, isNot(contains('source-lines-of-code')));
+    expect(fnKeys, isNot(contains('maximum-nesting-level')));
+    // Branchy tests are still hard to read, so CC stays measured.
+    expect(fnKeys, contains('cyclomatic-complexity'));
+    final clsKeys = defaultRecords
+        .firstWhere(
+          (r) => r.scope.name == 'SampleTest' && r.values.containsKey('lcom4'),
+        )
+        .values
+        .keys
+        .toSet();
+    expect(clsKeys, isNot(contains('class-length')));
+    expect(clsKeys, isNot(contains('number-of-methods')));
+
+    // Pinning test:false re-enables the full battery on test files.
+    final strictRecords = MetricEngine(test: false).analyzeResolved(units);
+    final fnStrict = strictRecords
+        .firstWhere((r) => r.scope.name == 'SampleTest.test_arrange_act_assert')
+        .values
+        .keys
+        .toSet();
+    expect(fnStrict, contains('method-length'));
+    expect(fnStrict, contains('source-lines-of-code'));
+    expect(fnStrict, contains('maximum-nesting-level'));
+    final clsStrict = strictRecords
+        .firstWhere(
+          (r) => r.scope.name == 'SampleTest' && r.values.containsKey('lcom4'),
+        )
+        .values
+        .keys
+        .toSet();
+    expect(clsStrict, contains('class-length'));
+    expect(clsStrict, contains('number-of-methods'));
   });
 
   group('coverage-aware violations', () {

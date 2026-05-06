@@ -21,7 +21,8 @@ import 'package:yaml/yaml.dart';
 class LintOptions {
   const LintOptions({
     this.warningThresholdById = const {},
-    this.flutter = false,
+    this.flutter = true,
+    this.test = true,
   });
 
   /// Defaults — every rule falls back to its compiled-in threshold.
@@ -30,9 +31,17 @@ class LintOptions {
   final Map<String, num> warningThresholdById;
 
   /// Mirrors `dartrics: { flutter: true }` from `analysis_options.yaml`.
-  /// When true, the rules skip noisy widget-specific patterns (deeply
-  /// nested `build()`, parameter-heavy widget constructors).
+  /// Default `true`. The relaxations only trigger on classes that
+  /// actually extend a known widget superclass, so non-Flutter packages
+  /// are unaffected. Set to `false` to force the lenses on widget code.
   final bool flutter;
+
+  /// Mirrors `dartrics: { test: true }` from `analysis_options.yaml`.
+  /// Default `true`. When the file being analysed sits under `test/` or
+  /// `integration_test/`, the size-and-shape rules step aside so AAA
+  /// blocks and nested `group`/`setUp`/`test` scaffolding don't
+  /// dominate the diagnostic stream.
+  final bool test;
 
   /// Returns the user-configured threshold for [metricId], or [fallback].
   num thresholdFor(String metricId, num fallback) {
@@ -69,7 +78,8 @@ class LintOptions {
     if (root is! YamlMap) return defaults;
     final dartrics = root['dartrics'];
     if (dartrics is! YamlMap) return defaults;
-    final flutter = dartrics['flutter'] as bool? ?? false;
+    final flutter = dartrics['flutter'] as bool? ?? true;
+    final test = dartrics['test'] as bool? ?? true;
     final metrics = dartrics['metrics'];
     final result = <String, num>{};
     if (metrics is YamlMap) {
@@ -84,6 +94,10 @@ class LintOptions {
         }
       }
     }
-    return LintOptions(warningThresholdById: result, flutter: flutter);
+    return LintOptions(
+      warningThresholdById: result,
+      flutter: flutter,
+      test: test,
+    );
   }
 }

@@ -132,6 +132,7 @@ class RegressionCommand extends Command<int> {
     final engine = MetricEngine(
       thresholds: config.metricThresholds,
       flutter: config.flutter,
+      test: config.test,
     );
     return engine.analyzeResolved(units);
   }

@@ -116,6 +116,7 @@ class AnalyzeCommand extends Command<int> {
     final engine = MetricEngine(
       thresholds: config.metricThresholds,
       flutter: config.flutter,
+      test: config.test,
       coverage: coverage,
       dismissals: dismissals,
       dismissalConfig: config.dismissals,

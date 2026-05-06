@@ -307,7 +307,7 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 
 ## Flutter-aware mode
 
-Setting `dartrics: { flutter: true }` relaxes a small set of metrics on idiomatic Flutter widgets so AI refactor loops don't churn on healthy `build()` trees:
+`dartrics: { flutter: true }` is the default — out of the box, the lenses know how to step aside on idiomatic Flutter widgets so AI refactor loops don't churn on healthy `build()` trees. Set `flutter: false` in `analysis_options.yaml` to force the size-and-shape lenses on widget code anyway.
 
 | Target                           | Effect                                                  |
 | -------------------------------- | ------------------------------------------------------- |
@@ -315,7 +315,18 @@ Setting `dartrics: { flutter: true }` relaxes a small set of metrics on idiomati
 | Widget constructor               | `number-of-parameters` is skipped                       |
 | Other methods on the same widget | Measured normally                                       |
 
-Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Cyclomatic / cognitive complexity, SLOC, and the class- and library-level metrics still apply, because deep branching inside `build()` is still hard to read.
+Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Non-Flutter packages are unaffected because no class will match. Cyclomatic / cognitive complexity, SLOC, and the class- and library-level metrics still apply, because deep branching inside `build()` is still hard to read.
+
+## Test-aware mode
+
+`dartrics: { test: true }` is also the default. When the file under analysis sits under `test/` or `integration_test/` and its basename ends in `_test.dart`, the size-and-shape lenses step aside — arrange/act/assert blocks legitimately exceed `method-length` thresholds calibrated for production code, and nested `group(...)` / `setUp(...)` / `test(...)` scaffolding pushes `maximum-nesting-level` past 4 before any user logic begins. Set `test: false` to apply the production-grade thresholds to test files too.
+
+| Scope             | Skipped on test files                                                |
+| ----------------- | -------------------------------------------------------------------- |
+| Function / method | `method-length`, `source-lines-of-code`, `maximum-nesting-level`     |
+| Class             | `class-length`, `number-of-methods`                                  |
+
+Cyclomatic complexity, cognitive complexity, number-of-parameters, boolean-trap, LCOM4 / CBO / RFC, and the library-level lenses still apply — branchy or tangled tests are still hard to read. Helpers in `test/` that don't end in `_test.dart` (e.g. `test/helpers.dart`) stay under the strict thresholds, since they're imported by tests rather than being tests themselves.
 
 ## AI report schema (v1)
 

@@ -58,8 +58,13 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Flutter-aware mode
 
-- `dartrics: { flutter: true }` (or the plugin's section) skips `maximum-nesting-level` and `method-length` on `Widget.build()` and `number-of-parameters` on widget constructors — five-to-seven-deep `Container` trees and key/callback parameter lists are normal in idiomatic Flutter and shouldn't churn AI refactor loops.
+- `dartrics: { flutter: true }` is the default. Skips `maximum-nesting-level` and `method-length` on `Widget.build()` and `number-of-parameters` on widget constructors — five-to-seven-deep `Container` trees and key/callback parameter lists are normal in idiomatic Flutter and shouldn't churn AI refactor loops. Non-Flutter packages are unaffected because no class extends a known widget superclass. Set `flutter: false` to force the lenses on widget code anyway.
 - Detection is AST-only across `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`. Cyclomatic / cognitive complexity, SLOC, and class- / library-level metrics still apply, including on widget helpers.
+
+### Test-aware mode
+
+- `dartrics: { test: true }` is the default. When the file under analysis sits under `test/` or `integration_test/` and its basename ends in `_test.dart` (the conventional `dart test` discovery marker), `method-length` / `source-lines-of-code` / `maximum-nesting-level` are skipped at function level and `class-length` / `number-of-methods` are skipped at class level. AAA blocks and nested `group`/`setUp`/`test` scaffolding don't dominate the diagnostic stream that way. Helpers under `test/` whose basename does not end in `_test.dart` (e.g. `test/helpers.dart`) stay under the strict thresholds. Set `test: false` to apply the production-grade thresholds to test files too.
+- Cyclomatic complexity, cognitive complexity, number-of-parameters, boolean-trap, LCOM4 / CBO / RFC, and the library-level lenses still apply — branchy or tangled tests are still hard to read.
 
 ### CLI surface
 

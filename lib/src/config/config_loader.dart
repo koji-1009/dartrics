@@ -38,7 +38,8 @@ Future<Config> loadConfig(String path) async {
     metricThresholds: _parseMetrics(dartrics['metrics']),
     unused: _parseUnused(dartrics['unused']),
     exclude: _parseStringList(dartrics['exclude']),
-    flutter: dartrics['flutter'] as bool? ?? false,
+    flutter: dartrics['flutter'] as bool? ?? true,
+    test: dartrics['test'] as bool? ?? true,
     snapshot: _parseSnapshot(dartrics['snapshot']),
     dismissals: _parseDismissals(dartrics['dismissals']),
   );

@@ -122,6 +122,21 @@ dartrics:
     expect(config.flutter, isTrue);
   });
 
+  test('flutter and test default to true when omitted', () async {
+    final f = File('${dir.path}/empty.yaml');
+    await f.writeAsString('dartrics:\n  metrics: {}\n');
+    final config = await loadConfig(f.path);
+    expect(config.flutter, isTrue);
+    expect(config.test, isTrue);
+  });
+
+  test('parses the test flag', () async {
+    final f = File('${dir.path}/test.yaml');
+    await f.writeAsString('dartrics:\n  test: false\n');
+    final config = await loadConfig(f.path);
+    expect(config.test, isFalse);
+  });
+
   test('parses snapshot section with mode + path', () async {
     final f = File('${dir.path}/snap.yaml');
     await f.writeAsString('''

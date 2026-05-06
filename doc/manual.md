@@ -144,6 +144,15 @@ The validator will reject reasons shorter than `minReasonLength` (default 20 cha
 
 The lens reads it but you genuinely don't know whether the structure is load-bearing without project context the harness hasn't given you (domain rules, performance constraints, historical bug fixes baked into a function shape). Surface a specific question to the user instead of guessing.
 
+## Default relaxations — Flutter and test files
+
+Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:
+
+- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`): `Widget.build()` skips `maximum-nesting-level` and `method-length`; the constructor skips `number-of-parameters`. CC / Cognitive / SLOC and the class- / library-level lenses still measure. Non-Flutter packages are unaffected because no class matches.
+- **`test: true`** (default). On files under `test/` or `integration_test/` whose basename ends in `_test.dart`: function-level `method-length` / `source-lines-of-code` / `maximum-nesting-level` step aside (AAA blocks and nested `group`/`setUp`/`test` scaffolding are normal); class-level `class-length` / `number-of-methods` step aside (test classes legitimately hold many `@Test` methods). Helpers like `test/helpers.dart` stay under strict thresholds because they're imported by tests rather than being tests.
+
+Both default to on because the failure mode of "the lens fires on a healthy Flutter widget / test method" is far more common than the failure mode of "the lens didn't fire when it should have." Flip either to `false` in `analysis_options.yaml` if you want the strict thresholds applied uniformly.
+
 ## High-coverage signal — `complexityJustified`
 
 If `--coverage <path>` is engaged (auto-detected from `coverage/lcov.info`) the report annotates each violation with `coverage` (line) and `branchCoverage` when the lcov has `BRDA:` records. CC and Cognitive violations whose scope is well-tested (branch ≥ 0.8, or line ≥ 0.95 when no branch data) get `complexityJustified: true`.
@@ -180,7 +189,9 @@ Inside an AI loop, run this sequence. Each step has a clear contract.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/koji-1009/dartrics/main/schemas/dartrics-config.schema.json
 
 dartrics:
-  flutter: true                  # only if shipping Flutter
+  # flutter: true and test: true are the defaults. Listed here for
+  # discoverability — flip either to `false` to force the size-and-shape
+  # lenses on widget code or test files respectively.
   metrics:
     cyclomatic-complexity: { warning: 10, error: 20 }
     cognitive-complexity:  { warning: 15, error: 25 }
@@ -296,7 +307,7 @@ Knowing what `dartrics` deliberately doesn't measure is part of the contract:
 - **No cross-PR memory.** The tool doesn't remember "this dismiss was rejected last iteration." Stay session-local.
 - **No DIT / NOC.** Dart inheritance chains are too shallow for the metric to produce signal.
 - **No test-quality lenses.** Coverage is read in only as a complexity-justification signal. Mutation score, assertion density, etc. are out of scope.
-- **No build-tree depth lens for Flutter.** `Widget.build()` is opted *out* of the depth-based lenses (`flutter: true`); a hypothetical `widget-tree-depth` metric is not yet shipped.
+- **No build-tree depth lens for Flutter.** `Widget.build()` is opted *out* of the depth-based lenses (`flutter: true` by default); a hypothetical `widget-tree-depth` metric is not yet shipped.
 
 ## Pointers
 
