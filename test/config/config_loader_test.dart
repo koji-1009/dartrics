@@ -113,4 +113,11 @@ dartrics:
     await f.writeAsString('dartrics:\n  metrics:\n    {broken\n');
     await expectLater(loadConfig(f.path), throwsA(isA<ConfigException>()));
   });
+
+  test('parses the flutter flag', () async {
+    final f = File('${dir.path}/flutter.yaml');
+    await f.writeAsString('dartrics:\n  flutter: true\n');
+    final config = await loadConfig(f.path);
+    expect(config.flutter, isTrue);
+  });
 }

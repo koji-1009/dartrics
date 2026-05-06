@@ -8,6 +8,7 @@ import '../models/analysis_report.dart';
 import '../models/source_location.dart';
 import 'class/class_metric.dart';
 import 'class/default_class_metrics.dart';
+import 'flutter_aware.dart';
 import 'function/default_function_metrics.dart';
 import 'library/default_library_metrics.dart';
 import 'library/library_metric.dart';
@@ -21,6 +22,7 @@ class MetricEngine {
     List<ClassMetric>? classMetrics,
     List<LibraryMetric>? libraryMetrics,
     Map<String, MetricThresholds>? thresholds,
+    this.flutter = false,
   }) : functionMetrics = functionMetrics ?? defaultFunctionMetrics,
        classMetrics = classMetrics ?? defaultClassMetrics,
        libraryMetrics = libraryMetrics ?? defaultLibraryMetrics,
@@ -30,6 +32,10 @@ class MetricEngine {
   final List<ClassMetric> classMetrics;
   final List<LibraryMetric> libraryMetrics;
   final Map<String, MetricThresholds> thresholds;
+
+  /// Mirror of [Config.flutter] — when `true`, [FlutterAware] skips
+  /// metrics that produce noisy results on idiomatic Flutter widgets.
+  final bool flutter;
 
   Future<List<MetricRecord>> analyze(AnalyzerRunner runner) async {
     final units = await runner.resolveAll();
@@ -99,9 +105,11 @@ class MetricEngine {
     );
     for (final decl in collector.declarations) {
       final input = FunctionMetricInput(context: ctx, declaration: decl);
+      final skip = flutter ? FlutterAware.skipsFor(decl) : const <String>{};
       final values = <String, num>{};
       for (final calc in functionMetrics) {
         if (!_isMetricEnabled(calc.id, calc.defaultEnabled)) continue;
+        if (skip.contains(calc.id)) continue;
         values[calc.id] = calc.compute(input);
       }
       yield MetricRecord(

@@ -19,12 +19,20 @@ import 'package:yaml/yaml.dart';
 ///     number-of-parameters: 6   # short form: bare integer is treated as warning
 /// ```
 class LintOptions {
-  const LintOptions({this.warningThresholdById = const {}});
+  const LintOptions({
+    this.warningThresholdById = const {},
+    this.flutter = false,
+  });
 
   /// Defaults — every rule falls back to its compiled-in threshold.
   static const LintOptions defaults = LintOptions();
 
   final Map<String, num> warningThresholdById;
+
+  /// Mirrors `dartrics: { flutter: true }` from `analysis_options.yaml`.
+  /// When true, the rules skip noisy widget-specific patterns (deeply
+  /// nested `build()`, parameter-heavy widget constructors).
+  final bool flutter;
 
   /// Returns the user-configured threshold for [metricId], or [fallback].
   num thresholdFor(String metricId, num fallback) {
@@ -61,19 +69,21 @@ class LintOptions {
     if (root is! YamlMap) return defaults;
     final dartrics = root['dartrics'];
     if (dartrics is! YamlMap) return defaults;
+    final flutter = dartrics['flutter'] as bool? ?? false;
     final metrics = dartrics['metrics'];
-    if (metrics is! YamlMap) return defaults;
     final result = <String, num>{};
-    for (final entry in metrics.entries) {
-      final key = entry.key.toString();
-      final value = entry.value;
-      if (value is YamlMap) {
-        final warning = value['warning'];
-        if (warning is num) result[key] = warning;
-      } else if (value is num) {
-        result[key] = value;
+    if (metrics is YamlMap) {
+      for (final entry in metrics.entries) {
+        final key = entry.key.toString();
+        final value = entry.value;
+        if (value is YamlMap) {
+          final warning = value['warning'];
+          if (warning is num) result[key] = warning;
+        } else if (value is num) {
+          result[key] = value;
+        }
       }
     }
-    return LintOptions(warningThresholdById: result);
+    return LintOptions(warningThresholdById: result, flutter: flutter);
   }
 }

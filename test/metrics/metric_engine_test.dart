@@ -168,4 +168,85 @@ enum Color {
     final keys = records.expand((r) => r.values.keys).toSet();
     expect(keys, isNot(contains('cyclomatic-complexity')));
   });
+
+  test('flutter mode skips Widget.build() length + nesting', () async {
+    final dir = await Directory.systemTemp.createTemp('flutter_engine_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/lib').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/lib/widget.dart').writeAsString('''
+class StatelessWidget {}
+class Container { Container({this.child}); final Container? child; }
+
+class Hello extends StatelessWidget {
+  Hello(this.a, this.b, this.c, this.d, this.e) {
+    print(a);
+  }
+  final int a, b, c, d, e;
+  Container build(Object? ctx) {
+    return Container(
+      child: Container(
+        child: Container(
+          child: Container(),
+        ),
+      ),
+    );
+  }
+  Container _helper() {
+    return Container();
+  }
+}
+''');
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
+
+    // Default mode includes everything for build() and the constructor.
+    final defaultRecords = MetricEngine().analyzeResolved(units);
+    final buildKeys = defaultRecords
+        .firstWhere((r) => r.scope.name == 'Hello.build')
+        .values
+        .keys
+        .toSet();
+    expect(buildKeys, contains('maximum-nesting-level'));
+    expect(buildKeys, contains('method-length'));
+    final ctorKeys = defaultRecords
+        .firstWhere(
+          (r) =>
+              r.scope.name == 'Hello' &&
+              r.values.containsKey('number-of-parameters'),
+        )
+        .values
+        .keys
+        .toSet();
+    expect(ctorKeys, contains('number-of-parameters'));
+
+    // Flutter mode skips them on build()/ctor but keeps helper methods.
+    final flutterRecords = MetricEngine(flutter: true).analyzeResolved(units);
+    final fBuildKeys = flutterRecords
+        .firstWhere((r) => r.scope.name == 'Hello.build')
+        .values
+        .keys
+        .toSet();
+    expect(fBuildKeys, isNot(contains('maximum-nesting-level')));
+    expect(fBuildKeys, isNot(contains('method-length')));
+    expect(fBuildKeys, contains('cyclomatic-complexity'));
+    final fHelperKeys = flutterRecords
+        .firstWhere((r) => r.scope.name == 'Hello._helper')
+        .values
+        .keys
+        .toSet();
+    expect(fHelperKeys, contains('maximum-nesting-level'));
+    final fCtorKeys = flutterRecords
+        .firstWhere(
+          (r) =>
+              r.scope.name == 'Hello' &&
+              r.values.containsKey('cyclomatic-complexity'),
+        )
+        .values
+        .keys
+        .toSet();
+    expect(fCtorKeys, isNot(contains('number-of-parameters')));
+  });
 }

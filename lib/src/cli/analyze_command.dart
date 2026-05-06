@@ -58,7 +58,10 @@ class AnalyzeCommand extends Command<int> {
   ) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
-    final engine = MetricEngine(thresholds: config.metricThresholds);
+    final engine = MetricEngine(
+      thresholds: config.metricThresholds,
+      flutter: config.flutter,
+    );
     final records = engine.analyzeResolved(units);
     final unused = await const UnusedDetector().detect([
       for (final u in units)

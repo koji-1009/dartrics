@@ -4,6 +4,7 @@ import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
+import '../../metrics/flutter_aware.dart';
 import '../../metrics/metric.dart';
 import '../lint_options.dart';
 
@@ -32,10 +33,9 @@ abstract class FunctionMetricRule extends AnalysisRule {
     RuleVisitorRegistry registry,
     RuleContext context,
   ) {
-    final effective = LintOptions.load(
-      context,
-    ).thresholdFor(metric.id, defaultThreshold);
-    final visitor = _Visitor(this, context, effective);
+    final options = LintOptions.load(context);
+    final effective = options.thresholdFor(metric.id, defaultThreshold);
+    final visitor = _Visitor(this, context, effective, options.flutter);
     registry
       ..addFunctionDeclaration(this, visitor)
       ..addMethodDeclaration(this, visitor)
@@ -44,15 +44,19 @@ abstract class FunctionMetricRule extends AnalysisRule {
 }
 
 class _Visitor extends SimpleAstVisitor<void> {
-  _Visitor(this.rule, this.context, this.threshold);
+  _Visitor(this.rule, this.context, this.threshold, this.flutter);
 
   final FunctionMetricRule rule;
   final RuleContext context;
   final num threshold;
+  final bool flutter;
 
   void _check(Declaration node) {
     final unit = context.currentUnit;
     if (unit == null) return;
+    if (flutter && FlutterAware.skipsFor(node).contains(rule.metric.id)) {
+      return;
+    }
     final input = FunctionMetricInput(
       context: (
         unit: unit.unit,

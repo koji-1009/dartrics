@@ -5,6 +5,7 @@ class Config {
     this.metricThresholds = const {},
     this.unused = const UnusedConfig(),
     this.exclude = const [],
+    this.flutter = false,
   });
 
   /// Map of `metric-id` → severity thresholds.
@@ -15,6 +16,12 @@ class Config {
 
   /// Glob patterns excluded from analysis.
   final List<String> exclude;
+
+  /// When `true`, dartrics relaxes a small set of metrics that fire
+  /// noisily on idiomatic Flutter widgets (deeply-nested `build()` and
+  /// constructors with many key/callback parameters). Off by default
+  /// for non-Flutter packages.
+  final bool flutter;
 }
 
 class MetricThresholds {
