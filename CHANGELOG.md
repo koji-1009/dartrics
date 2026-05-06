@@ -19,6 +19,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 - `dartrics rules` catalogues every metric with its rationale + refactor hints in `--reporter ai|md|json|console`.
 - `dartrics regression [--before <ref>] [--after <ref>]` compares metrics between two git states (default: `HEAD~1` vs the working tree). Uses git worktrees for the historical side. Diff entries are classified as `improved` / `regressed` / `unchanged` / `added` / `removed` per `MetricPolarity`. A built-in cosmetic-split heuristic flags refactors that look like AI just shuffled complexity into one-line helpers without actually reducing it.
 - `dartrics manual` prints the AI-facing operator's manual to stdout. The content is a mirror of [`doc/manual.md`](doc/manual.md) embedded as a const string in the executable, so it travels with `dart pub global activate dartrics` and is reachable from any agent loop without a separate doc download. A parity test enforces byte-equality with the markdown source so the two cannot drift.
+- `dartrics doctor` validates the `dartrics:` block in `analysis_options.yaml`. Surfaces unknown metric ids (with did-you-mean suggestions via Levenshtein distance ≤ 2), unknown unused presets, and threshold orderings inconsistent with each metric's polarity (e.g. `cyclomatic-complexity: { warning: 20, error: 10 }` is flagged because lower-is-better metrics need `error ≥ warning`). Read-only — never edits the config. Exit codes: 0 clean, 1 warnings, 78 invalid YAML / `ConfigException`.
 
 ### AI integration (`--reporter ai`)
 

@@ -42,6 +42,7 @@ dartrics analyze lib/ --since origin/main --fatal-warnings
 | `rules` | Catalogue every metric with its rationale and refactor hints. |
 | `regression` | Compare metrics between two git states; classify each delta as improved / regressed / unchanged / added / removed. |
 | `manual` | Print the AI-facing operator's manual (mirror of [`doc/manual.md`](doc/manual.md)). |
+| `doctor` | Validate the `dartrics:` block in `analysis_options.yaml` — flags unknown metric ids, unknown presets, and threshold orderings inconsistent with the metric's polarity. |
 
 ```
 Top-level options:

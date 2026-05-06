@@ -14,6 +14,7 @@ class RuleDescription {
     required this.defaultThreshold,
     required this.rationale,
     required this.refactorHints,
+    this.polarity = 'down',
   });
 
   /// Stable metric id (e.g. `cyclomatic-complexity`).
@@ -34,11 +35,19 @@ class RuleDescription {
   /// List from the metric's `refactorHints` getter.
   final List<String> refactorHints;
 
+  /// Direction in which the metric value moves when the code gets
+  /// healthier. `'down'`, `'up'`, or `'neutral'` — mirrors
+  /// `MetricPolarity` as a string so the JSON / AI / SARIF surfaces stay
+  /// stable across changes to the enum. Default `'down'` matches
+  /// `MetricPolarity.down`, the engine's own default.
+  final String polarity;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'scope': scope,
     'defaultEnabled': defaultEnabled,
     if (defaultThreshold != null) 'defaultThreshold': defaultThreshold,
+    'polarity': polarity,
     'rationale': rationale,
     'refactorHints': refactorHints,
   };

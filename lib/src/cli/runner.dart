@@ -1,6 +1,7 @@
 import 'package:args/command_runner.dart';
 
 import 'analyze_command.dart';
+import 'doctor_command.dart';
 import 'manual_command.dart';
 import 'regression_command.dart';
 import 'report_command.dart';
@@ -23,6 +24,7 @@ CommandRunner<int> buildCommandRunner() {
         ..addCommand(ReportCommand())
         ..addCommand(RulesCommand())
         ..addCommand(RegressionCommand())
-        ..addCommand(ManualCommand());
+        ..addCommand(ManualCommand())
+        ..addCommand(DoctorCommand());
   return runner;
 }
