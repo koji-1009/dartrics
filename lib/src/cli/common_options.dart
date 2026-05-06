@@ -52,6 +52,14 @@ void addCommonOptions(ArgParser parser) {
           'coverage/lcov.info when it exists; pass `none` to disable.',
     )
     ..addFlag(
+      'strict-dismiss',
+      help:
+          'Ignore every dartrics:dismiss directive (comment + YAML) for '
+          'this run. Intended for CI / final review where the operator '
+          'wants to see what was triaged out.',
+      negatable: false,
+    )
+    ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',
       negatable: false,
@@ -80,6 +88,7 @@ class CommonOptions {
     required this.explain,
     required this.snapshot,
     required this.coverage,
+    required this.strictDismiss,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -100,6 +109,7 @@ class CommonOptions {
       explain: List<String>.from(results['explain'] as List<String>),
       snapshot: results['snapshot'] as String?,
       coverage: results['coverage'] as String?,
+      strictDismiss: results['strict-dismiss'] as bool,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -115,6 +125,7 @@ class CommonOptions {
   final List<String> explain;
   final String? snapshot;
   final String? coverage;
+  final bool strictDismiss;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

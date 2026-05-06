@@ -1,13 +1,19 @@
 import 'dart:io';
 
+import 'package:analyzer/dart/analysis/results.dart';
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
+import 'package:path/path.dart' as p;
 
 import '../analyzer_runner.dart';
 import '../config/config.dart';
 import '../config/config_loader.dart';
 import '../coverage/coverage_loader.dart';
 import '../coverage/lcov_reader.dart';
+import '../dismiss/comment_parser.dart';
+import '../dismiss/dismissal.dart';
+import '../dismiss/dismissal_index.dart';
+import '../dismiss/yaml_loader.dart';
 import '../metrics/metric_engine.dart';
 import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
@@ -70,6 +76,7 @@ class AnalyzeCommand extends Command<int> {
       options.root,
       options.since != null,
       coverage,
+      options.strictDismiss,
     );
     return _emit(report, options);
   }
@@ -88,13 +95,23 @@ class AnalyzeCommand extends Command<int> {
     String root,
     bool sinceActive,
     CoverageIndex? coverage,
+    bool strictDismiss,
   ) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
+    final dismissals = _buildDismissalIndex(
+      strictDismiss: strictDismiss,
+      config: config.dismissals,
+      root: root,
+      units: units,
+    );
     final engine = MetricEngine(
       thresholds: config.metricThresholds,
       flutter: config.flutter,
       coverage: coverage,
+      dismissals: dismissals,
+      dismissalConfig: config.dismissals,
+      onDismissalRejection: _logDismissalRejection,
     );
     final records = engine.analyzeResolved(units);
     final unused = await const UnusedDetector().detect([
@@ -159,5 +176,47 @@ class AnalyzeCommand extends Command<int> {
       return 1;
     }
     return ExitCode.success.code;
+  }
+
+  /// Combines the comment scanner and the YAML sidecar into a single
+  /// lookup table the engine can hit per violation. Returns an empty
+  /// index when [strictDismiss] is on or when neither source is
+  /// enabled in [DismissalConfig].
+  DismissalIndex _buildDismissalIndex({
+    required bool strictDismiss,
+    required DismissalConfig config,
+    required String root,
+    required List<({String path, ResolvedUnitResult unit})> units,
+  }) {
+    if (strictDismiss || !config.enabled) return DismissalIndex.empty();
+    final comments = <Dismissal>[];
+    if (config.commentSource) {
+      for (final entry in units) {
+        comments.addAll(
+          scanCommentDismissals(
+            path: entry.path,
+            unit: entry.unit.unit,
+            lineInfo: entry.unit.lineInfo,
+          ),
+        );
+      }
+    }
+    final yaml = config.yamlSource
+        ? loadYamlDismissals(_resolveYamlPath(config, root))
+        : const <Dismissal>[];
+    return DismissalIndex.build(comments: comments, yaml: yaml);
+  }
+
+  String _resolveYamlPath(DismissalConfig config, String root) {
+    final base = config.yamlPath ?? defaultDismissalsYamlPath;
+    if (p.isAbsolute(base)) return base;
+    return p.join(root, base);
+  }
+
+  void _logDismissalRejection(Dismissal d, String reason) {
+    stderr.writeln(
+      'dartrics: dismissal rejected at ${d.file}::${d.scope} '
+      '[${d.metricId}]: $reason',
+    );
   }
 }
