@@ -76,7 +76,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Embedding
 
-- `lib/dartrics.dart` exposes the metric calculator classes (`CyclomaticComplexity`, `CognitiveComplexity`, `Lcom4`, …), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, …), the metadata enums (`MetricPolarity`, `ChangeDirection`, `Severity`, `ScopeKind`, `DismissalSource`), and the supporting types and helpers (`CoverageIndex`, `FileCoverage`, `AnalyzedFile`, `ExplainEntry`, `Dismissal`, `DismissalConfig`, `computeViolationId`, `dartricsVersion`).
+- `lib/dartrics.dart` exposes the function-level metric calculators (`CyclomaticComplexity`, `CognitiveComplexity`, `MaxNestingLevel`, `NumberOfParameters`, `BooleanTrap`, `MethodLength`, `SourceLinesOfCode`, the Halstead family, `MaintainabilityIndex`), the calculator interface (`FunctionMetric`, `FunctionMetricInput`, `MetricPolarity`), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, `RegressionSummary`, `CosmeticSignals`, `AnalyzedFile`, `ExplainEntry`), the metadata enums (`Severity`, `ScopeKind`, `ChangeDirection`, `DismissalSource`), and the supporting types and helpers (`CoverageIndex`, `FileCoverage`, `Dismissal`, `DismissalConfig`, `SourceLocation`, `UnusedDeclaration`, `UnusedKind`, `computeViolationId`, `dartricsVersion`). Class- and library-level metrics (LCOM4, CBO, RFC, weighted-methods-per-class, Martin coupling) are intentionally CLI-only — drive them through `dartrics analyze --reporter json` until embedder demand surfaces.
 - `example/main.dart` shows a 30-line standalone embedding.
 
 ### Performance

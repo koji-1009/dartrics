@@ -429,9 +429,20 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 
 ## Embedding
 
-`lib/dartrics.dart` exposes the metric calculator classes (`CyclomaticComplexity`, `CognitiveComplexity`, …), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, …), the metadata enums (`MetricPolarity`, `ChangeDirection`, `Severity`, `ScopeKind`, `DismissalSource`), and the supporting types and helpers (`CoverageIndex`, `FileCoverage`, `AnalyzedFile`, `ExplainEntry`, `Dismissal`, `DismissalConfig`, `computeViolationId`, `dartricsVersion`).
+`lib/dartrics.dart` exposes the function-level metric calculators and the report shapes. The analyzer plugin entrypoint lives in `lib/main.dart`; embedders don't need anything from there.
 
-`example/main.dart` shows a 30-line standalone embedding.
+| What you get | Names |
+| --- | --- |
+| Function-level metric calculators | `CyclomaticComplexity`, `CognitiveComplexity`, `MaxNestingLevel`, `NumberOfParameters`, `BooleanTrap`, `MethodLength`, `SourceLinesOfCode`, `HalsteadCounts` / `HalsteadVolume` / `HalsteadDifficulty` / `HalsteadEffort`, `MaintainabilityIndex` |
+| Calculator interface | `FunctionMetric`, `FunctionMetricInput`, `MetricPolarity` |
+| Report shapes | `AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, `RegressionSummary`, `CosmeticSignals`, `AnalyzedFile`, `ExplainEntry` |
+| Metadata enums | `Severity`, `ScopeKind`, `ChangeDirection`, `DismissalSource` |
+| Supporting types | `CoverageIndex`, `FileCoverage`, `Dismissal`, `DismissalConfig`, `SourceLocation`, `UnusedDeclaration`, `UnusedKind` |
+| Helpers / version | `computeViolationId`, `dartricsVersion` |
+
+**Class- and library-level metrics (LCOM4, CBO, RFC, weighted-methods-per-class, the Martin coupling family) are intentionally CLI-only in 0.1.0.** They need a project-wide index that's heavier to drive programmatically, and the supported integration point for them is the JSON reporter — `dartrics analyze --reporter json` plus your favourite JSON parser. If you have a use case that needs them as Dart classes, please file an issue.
+
+`example/main.dart` shows a 30-line standalone embedding against `CyclomaticComplexity`.
 
 ## Recommendation
 

@@ -1,14 +1,21 @@
 /// Programmatic entry for embedding dartrics.
 ///
-/// Exposes the metric calculator types and the analysis-report shapes used
-/// by the CLI and by embedders. The analyzer-plugin entrypoint lives in
-/// `lib/main.dart`; consumers of the plugin do not need anything from this
-/// library.
+/// Exposes the function-level metric calculator types and the
+/// analysis-report shapes used by the CLI and by embedders. The
+/// analyzer-plugin entrypoint lives in `lib/main.dart`; consumers of the
+/// plugin do not need anything from this library.
+///
+/// Class- and library-level metrics are intentionally CLI-only in 0.1.0
+/// — they depend on a project-wide index that's heavier to drive
+/// programmatically, and the embedder demand to do so hasn't surfaced
+/// yet. The CLI's `--reporter json` is the supported integration point
+/// for those scopes.
 library;
 
 export 'src/config/config.dart' show DismissalConfig;
 export 'src/coverage/lcov_reader.dart' show CoverageIndex, FileCoverage;
 export 'src/dismiss/dismissal.dart' show Dismissal, DismissalSource;
+export 'src/metrics/function/boolean_trap.dart' show BooleanTrap;
 export 'src/metrics/function/cognitive_complexity.dart'
     show CognitiveComplexity;
 export 'src/metrics/function/cyclomatic_complexity.dart'
@@ -31,8 +38,8 @@ export 'src/models/analysis_report.dart'
         ExplainEntry,
         MetricRecord,
         MetricViolation,
-        ScopeRef,
         ScopeKind,
+        ScopeRef,
         Severity;
 export 'src/models/regression_report.dart'
     show
