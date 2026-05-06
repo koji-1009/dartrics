@@ -1,7 +1,17 @@
 name: dartrics
-description: Dart code-quality metrics and unused public-API detection.
+description: >-
+  Academically-grounded Dart code-quality metrics (CK, Halstead, McCabe,
+  Martin, Cognitive) and Periphery-style public-API unused-code detection,
+  with an AI-shaped reporter for refactor loops.
 version: 0.1.0
 repository: https://github.com/koji-1009/dartrics
+issue_tracker: https://github.com/koji-1009/dartrics/issues
+topics:
+  - metrics
+  - lint
+  - analyzer
+  - ai
+  - quality
 
 environment:
   sdk: ^3.10.0
