@@ -14,8 +14,34 @@
       "additionalProperties": false,
       "properties": {
         "metrics": {
-          "description": "Per-metric thresholds and toggles. Each value may be a long-form map, a number (warning shorthand), or a boolean (enabled shorthand).",
+          "description": "Per-metric thresholds and toggles. Each value may be a long-form map, a number (warning shorthand), or a boolean (enabled shorthand). Property names must match a built-in metric id; typos surface in-editor through the yaml-language-server (and at run time through `dartrics doctor`).",
           "type": "object",
+          "propertyNames": {
+            "enum": [
+              "cyclomatic-complexity",
+              "cognitive-complexity",
+              "maximum-nesting-level",
+              "number-of-parameters",
+              "boolean-trap",
+              "source-lines-of-code",
+              "method-length",
+              "halstead-volume",
+              "halstead-difficulty",
+              "halstead-effort",
+              "maintainability-index",
+              "number-of-methods",
+              "weighted-methods-per-class",
+              "lcom4",
+              "coupling-between-objects",
+              "response-for-class",
+              "class-length",
+              "efferent-coupling",
+              "afferent-coupling",
+              "instability",
+              "abstractness",
+              "distance-from-main-sequence"
+            ]
+          },
           "additionalProperties": { "$ref": "#/$defs/MetricThresholds" }
         },
         "unused": { "$ref": "#/$defs/UnusedConfig" },
