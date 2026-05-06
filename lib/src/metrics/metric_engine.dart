@@ -6,10 +6,10 @@ import '../analyzer_runner.dart';
 import '../config/config.dart';
 import '../models/analysis_report.dart';
 import '../models/source_location.dart';
-import 'class/_default_class_metrics.dart';
 import 'class/class_metric.dart';
-import 'function/_default_function_metrics.dart';
-import 'library/_default_library_metrics.dart';
+import 'class/default_class_metrics.dart';
+import 'function/default_function_metrics.dart';
+import 'library/default_library_metrics.dart';
 import 'library/library_metric.dart';
 import 'metric.dart';
 

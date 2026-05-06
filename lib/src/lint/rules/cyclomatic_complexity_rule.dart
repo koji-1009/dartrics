@@ -2,7 +2,7 @@ import 'package:analyzer/error/error.dart';
 
 import '../../metrics/function/cyclomatic_complexity.dart';
 import '../../metrics/metric.dart';
-import '_metric_rule_base.dart';
+import 'metric_rule_base.dart';
 
 /// Reports when a function or method's cyclomatic complexity (McCabe 1976)
 /// reaches the configured threshold.

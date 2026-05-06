@@ -1,7 +1,7 @@
 import 'package:dartrics/src/metrics/function/max_nesting_level.dart';
 import 'package:test/test.dart';
 
-import '_helpers.dart';
+import 'helpers.dart';
 
 void main() {
   const m = MaxNestingLevel();

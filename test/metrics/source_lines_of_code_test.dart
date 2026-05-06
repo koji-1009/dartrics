@@ -1,7 +1,7 @@
 import 'package:dartrics/src/metrics/function/source_lines_of_code.dart';
 import 'package:test/test.dart';
 
-import '_helpers.dart';
+import 'helpers.dart';
 
 void main() {
   const m = SourceLinesOfCode();

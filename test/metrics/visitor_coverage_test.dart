@@ -3,7 +3,7 @@ import 'package:dartrics/src/metrics/function/cyclomatic_complexity.dart';
 import 'package:dartrics/src/metrics/function/max_nesting_level.dart';
 import 'package:test/test.dart';
 
-import '_helpers.dart';
+import 'helpers.dart';
 
 void main() {
   group('cyclomatic complexity rare AST cases', () {

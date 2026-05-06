@@ -2,7 +2,7 @@ import 'package:analyzer/error/error.dart';
 
 import '../../metrics/function/cognitive_complexity.dart';
 import '../../metrics/metric.dart';
-import '_metric_rule_base.dart';
+import 'metric_rule_base.dart';
 
 /// Reports when a function or method's cognitive complexity (G. Ann
 /// Campbell, SonarSource 2018) reaches the configured threshold.

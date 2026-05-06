@@ -1,7 +1,7 @@
 import 'package:dartrics/src/metrics/function/number_of_parameters.dart';
 import 'package:test/test.dart';
 
-import '_helpers.dart';
+import 'helpers.dart';
 
 void main() {
   const m = NumberOfParameters();

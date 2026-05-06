@@ -1,7 +1,7 @@
 import 'package:dartrics/src/metrics/function/cyclomatic_complexity.dart';
 import 'package:test/test.dart';
 
-import '_helpers.dart';
+import 'helpers.dart';
 
 void main() {
   const cc = CyclomaticComplexity();

@@ -2,7 +2,7 @@ import 'package:analyzer/error/error.dart';
 
 import '../../metrics/function/number_of_parameters.dart';
 import '../../metrics/metric.dart';
-import '_metric_rule_base.dart';
+import 'metric_rule_base.dart';
 
 /// Reports when a function, method, or constructor declares too many
 /// formal parameters.

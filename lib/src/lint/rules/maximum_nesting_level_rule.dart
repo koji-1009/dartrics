@@ -2,7 +2,7 @@ import 'package:analyzer/error/error.dart';
 
 import '../../metrics/function/max_nesting_level.dart';
 import '../../metrics/metric.dart';
-import '_metric_rule_base.dart';
+import 'metric_rule_base.dart';
 
 /// Reports when a function or method's maximum nesting level (deepest
 /// depth of `if`/`for`/`while`/`do`/`switch`/`try`/closure blocks) reaches

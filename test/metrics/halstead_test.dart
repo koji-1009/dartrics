@@ -1,7 +1,7 @@
 import 'package:dartrics/src/metrics/function/halstead.dart';
 import 'package:test/test.dart';
 
-import '_helpers.dart';
+import 'helpers.dart';
 
 void main() {
   test('volume increases monotonically with token vocabulary', () {

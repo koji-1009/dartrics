@@ -1,7 +1,7 @@
 import 'package:dartrics/src/metrics/class/noc.dart';
 import 'package:test/test.dart';
 
-import '_class_helpers.dart';
+import 'class_helpers.dart';
 
 void main() {
   const m = NumberOfChildren();

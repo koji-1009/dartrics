@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dartrics/src/reporters/ai_reporter.dart';
 import 'package:test/test.dart';
 
-import '_test_report.dart';
+import 'sample_report.dart';
 
 void main() {
   test('emits violations and unused with snippet placeholder', () async {
