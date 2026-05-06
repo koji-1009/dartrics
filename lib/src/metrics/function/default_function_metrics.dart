@@ -1,4 +1,5 @@
 import '../metric.dart';
+import 'boolean_trap.dart';
 import 'cognitive_complexity.dart';
 import 'cyclomatic_complexity.dart';
 import 'halstead.dart';
@@ -21,6 +22,7 @@ const List<FunctionMetric> defaultFunctionMetrics = [
   MaintainabilityIndex(),
   MaxNestingLevel(),
   NumberOfParameters(),
+  BooleanTrap(),
   SourceLinesOfCode(),
   MethodLength(),
 ];

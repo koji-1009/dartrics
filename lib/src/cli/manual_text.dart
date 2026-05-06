@@ -55,7 +55,7 @@ Decades of software-engineering research has converted those felt reactions into
 
 ## The lens battery
 
-Eleven lenses ship default-on. Four ship default-off because their predictive value over cyclomatic complexity has not held up empirically — they remain available but you must opt them in.
+Twelve lenses ship default-on. Four ship default-off because their predictive value over cyclomatic complexity has not held up empirically — they remain available but you must opt them in.
 
 Each entry below names: **the felt reaction** it captures, **what the lens computes**, the **default warning threshold**, and **when to refactor vs. dismiss**.
 
@@ -67,6 +67,7 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | `cognitive-complexity` | "It's not just branchy, it's *tangled*." | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (Sonar 2018) | 15 |
 | `maximum-nesting-level` | "I can't tell which scope I'm in." | Max depth of `if`, `for`, `while`, `do`, `switch`, `try`, closure blocks. | 4 |
 | `number-of-parameters` | "Too many knobs at the call site." | Positional + named + optional. | 4 |
+| `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of `bool`-typed parameters. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
 | `method-length` | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | — |
 | `halstead-volume` (off) | — | `(N1+N2) · log₂(n1+n2)`. Token-based historical metric. (Halstead 1977) | opt-in |
@@ -121,6 +122,7 @@ The metric points at a real readability problem and the structure is **decomposa
 | `cognitive-complexity` | Extract the deepest branch · Replace `if/else if` chain with typed dispatch · Collapse boolean spaghetti via early returns |
 | `maximum-nesting-level` | Early return / continue · Extract inner block · Invert the condition to flatten the happy path |
 | `number-of-parameters` | Introduce Parameter Object · Builder for optional config · Split into two functions if half the params are unused on each call |
+| `boolean-trap` | Split into intent-named methods (`show()` / `hide()`) · Replace bool flags with a typed enum · Promote an "options" record so the call site reads as named fields |
 | `method-length` | Extract Method along the comment seams · Move bookkeeping to a helper |
 | `lcom4` | Split the class along the connected components. The components are usually two responsibilities pretending to be one. |
 | `coupling-between-objects` | Hide concrete types behind an interface · Move the orchestration to a coordinator class |

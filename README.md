@@ -82,6 +82,7 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 | Cognitive Complexity                  | on      | SonarSource 2018 | B1 control-flow + B2 nesting penalty + B3 logical-op sequences              |
 | Maximum Nesting Level                 | on      | —                | depth of `if/for/while/do/switch/try/closure` blocks                        |
 | Number Of Parameters                  | on      | —                | positional + named + optional                                               |
+| Boolean Trap                          | on      | McConnell 2004; Bloch 2018 | count of `bool`-typed parameters; default warning 2                       |
 | Source Lines Of Code                  | on      | —                | non-blank, non-comment-only lines                                           |
 | Method Length                         | on      | —                | total source lines spanned by the body                                      |
 | Halstead Volume / Difficulty / Effort | **off** | Halstead 1977    | token-based n1/n2/N1/N2 classification — historical                         |

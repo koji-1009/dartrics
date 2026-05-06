@@ -6,7 +6,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Metrics
 
-- **Function / method**: cyclomatic complexity (McCabe 1976), cognitive complexity (Sonar 2018), maximum nesting level, number of parameters, source lines of code, method length. Halstead V/D/E (Halstead 1977) and the maintainability index (Oman 1992) ship off-by-default — opt in with `dartrics: { metrics: { <id>: { enabled: true } } }`.
+- **Function / method**: cyclomatic complexity (McCabe 1976), cognitive complexity (Sonar 2018), maximum nesting level, number of parameters, boolean-trap (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36 — count of `bool`-typed parameters, warning ≥ 2), source lines of code, method length. Halstead V/D/E (Halstead 1977) and the maintainability index (Oman 1992) ship off-by-default — opt in with `dartrics: { metrics: { <id>: { enabled: true } } }`.
 - **Class**: number of methods, weighted methods per class (CK 1994), LCOM4 (Hitz & Montazeri 1995, connected-component variant), CBO and RFC (CK 1994), class length. CK's DIT and NOC are intentionally not provided — Dart's mixin / composition-over-inheritance culture keeps inheritance chains shallow, so they rarely produce signal.
 - **Library / file**: efferent / afferent coupling, instability, abstractness, distance from main sequence (Martin 1994).
 - Each metric exposes `rationale` (one-paragraph explanation anchored to the original paper), `refactorHints` (concrete moves), and `polarity` (`down` / `up` / `neutral`) so AI loops know which direction is "healthier" for the regression diff.

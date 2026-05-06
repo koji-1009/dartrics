@@ -73,6 +73,7 @@ const Map<String, num> defaultMetricThresholds = {
   'cognitive-complexity': 15,
   'maximum-nesting-level': 4,
   'number-of-parameters': 4,
+  'boolean-trap': 2,
 };
 
 /// Aggregates every default metric calculator into a list of
