@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dartrics/src/analyzer_runner.dart';
 import 'package:dartrics/src/config/config.dart';
 import 'package:dartrics/src/coverage/lcov_reader.dart';
+import 'package:dartrics/src/dismiss/dismissal.dart';
+import 'package:dartrics/src/dismiss/dismissal_index.dart';
 import 'package:dartrics/src/metrics/metric_engine.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:test/test.dart';
@@ -394,6 +396,123 @@ end_of_record
       final v = fn.violations.firstWhere((v) => v.metricId == 'method-length');
       expect(v.scopeCoverage, isNotNull);
       expect(v.complexityJustified, isFalse);
+    });
+  });
+
+  group('dismissal attachment', () {
+    late Directory dir;
+    late String filePath;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('engine_dismiss_');
+      await Directory('${dir.path}/lib').create();
+      await File(
+        '${dir.path}/pubspec.yaml',
+      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      filePath = '${dir.path}/lib/foo.dart';
+      await File(filePath).writeAsString('''
+int branchy(int x) {
+  if (x > 0) return 1;
+  if (x < 0) return -1;
+  if (x == 0) return 0;
+  return 99;
+}
+''');
+    });
+
+    tearDown(() => dir.delete(recursive: true));
+
+    Future<List<MetricRecord>> runWith({
+      required DismissalIndex index,
+      DismissalConfig config = const DismissalConfig(
+        commentSource: true,
+        yamlSource: true,
+      ),
+      void Function(Dismissal, String)? onReject,
+    }) async {
+      final runner = AnalyzerRunner(roots: [dir.path]);
+      final units = await runner.resolveAll();
+      final engine = MetricEngine(
+        thresholds: const {
+          'cyclomatic-complexity': MetricThresholds(warning: 1),
+        },
+        dismissals: index,
+        dismissalConfig: config,
+        onDismissalRejection: onReject,
+      );
+      return engine.analyzeResolved(units);
+    }
+
+    test('attaches dismiss metadata when entry passes validation', () async {
+      final at = DateTime.utc(2026, 5, 6, 19, 14);
+      final index = DismissalIndex.build(
+        comments: const [],
+        yaml: [
+          Dismissal(
+            file: filePath,
+            scope: 'branchy',
+            metricId: 'cyclomatic-complexity',
+            reason: 'switching on int values keeps intent local',
+            source: DismissalSource.yaml,
+            by: 'claude',
+            at: at,
+          ),
+        ],
+      );
+      final records = await runWith(index: index);
+      final v = records
+          .firstWhere((r) => r.scope.name == 'branchy')
+          .violations
+          .firstWhere((v) => v.metricId == 'cyclomatic-complexity');
+      expect(v.dismissed, isTrue);
+      expect(v.dismissReason, 'switching on int values keeps intent local');
+      expect(v.dismissedBy, 'claude');
+      expect(v.dismissedAt, at);
+      expect(v.dismissedFrom, DismissalSource.yaml);
+      expect(v.dismissalRejected, isNull);
+    });
+
+    test('rejects too-short reason and surfaces dismissalRejected', () async {
+      Dismissal? rejectedDismissal;
+      String? rejectedReason;
+      final index = DismissalIndex.build(
+        comments: [
+          Dismissal(
+            file: filePath,
+            scope: 'branchy',
+            metricId: 'cyclomatic-complexity',
+            reason: 'short',
+            source: DismissalSource.comment,
+          ),
+        ],
+        yaml: const [],
+      );
+      final records = await runWith(
+        index: index,
+        onReject: (d, r) {
+          rejectedDismissal = d;
+          rejectedReason = r;
+        },
+      );
+      final v = records
+          .firstWhere((r) => r.scope.name == 'branchy')
+          .violations
+          .firstWhere((v) => v.metricId == 'cyclomatic-complexity');
+      expect(v.dismissed, isFalse);
+      expect(v.dismissalRejected, contains('reason too short'));
+      expect(rejectedDismissal?.scope, 'branchy');
+      expect(rejectedReason, contains('reason too short'));
+    });
+
+    test('empty index leaves violations untouched', () async {
+      final records = await runWith(index: DismissalIndex.empty());
+      final v = records
+          .firstWhere((r) => r.scope.name == 'branchy')
+          .violations
+          .firstWhere((v) => v.metricId == 'cyclomatic-complexity');
+      expect(v.dismissed, isFalse);
+      expect(v.dismissalRejected, isNull);
+      expect(v.dismissedFrom, isNull);
     });
   });
 }

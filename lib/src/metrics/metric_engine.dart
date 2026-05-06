@@ -5,6 +5,9 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import '../analyzer_runner.dart';
 import '../config/config.dart';
 import '../coverage/lcov_reader.dart';
+import '../dismiss/dismissal.dart';
+import '../dismiss/dismissal_index.dart';
+import '../dismiss/dismissal_validator.dart';
 import '../models/analysis_report.dart';
 import '../models/source_location.dart';
 import 'class/class_metric.dart';
@@ -25,10 +28,14 @@ class MetricEngine {
     Map<String, MetricThresholds>? thresholds,
     this.flutter = false,
     this.coverage,
+    DismissalIndex? dismissals,
+    this.dismissalConfig = const DismissalConfig(),
+    this.onDismissalRejection,
   }) : functionMetrics = functionMetrics ?? defaultFunctionMetrics,
        classMetrics = classMetrics ?? defaultClassMetrics,
        libraryMetrics = libraryMetrics ?? defaultLibraryMetrics,
-       thresholds = thresholds ?? const {};
+       thresholds = thresholds ?? const {},
+       dismissals = dismissals ?? DismissalIndex.empty();
 
   final List<FunctionMetric> functionMetrics;
   final List<ClassMetric> classMetrics;
@@ -44,6 +51,21 @@ class MetricEngine {
   /// coverage and a `complexityJustified` flag (see C2/C3 in
   /// `tmp/v0.1.0_round2_plan.md`).
   final CoverageIndex? coverage;
+
+  /// Pre-built lookup for `// dartrics:dismiss` comments + the YAML
+  /// sidecar. Defaults to an empty index — when no dismissals are
+  /// present (or the user passed `--strict-dismiss`) the engine
+  /// short-circuits the lookup with one map miss.
+  final DismissalIndex dismissals;
+
+  /// Validation knobs for matched dismissals. Mirrors the config and
+  /// is consulted only when [dismissals] actually returns a hit.
+  final DismissalConfig dismissalConfig;
+
+  /// Optional sink for `requireReason` / `requireAuthor` / etc.
+  /// rejections. The CLI wires this to a stderr writer so AI loops
+  /// notice that their dismissals didn't take effect.
+  final void Function(Dismissal dismissal, String reason)? onDismissalRejection;
 
   /// Metric ids whose `complexityJustified` tag is computed from
   /// coverage. Limited to CC and Cognitive because those are the
@@ -119,6 +141,7 @@ class MetricEngine {
       violations: _violationsFor(
         values: values,
         path: file.path,
+        scopeName: file.path,
         startLine: 1,
         endLine: lineCount,
       ),
@@ -151,6 +174,7 @@ class MetricEngine {
         violations: _violationsFor(
           values: values,
           path: file.path,
+          scopeName: input.scopeName,
           startLine: startLine,
           endLine: endLine,
         ),
@@ -193,6 +217,7 @@ class MetricEngine {
         violations: _violationsFor(
           values: values,
           path: file.path,
+          scopeName: input.className,
           startLine: loc.lineNumber,
           endLine: endLine,
         ),
@@ -219,6 +244,7 @@ class MetricEngine {
   List<MetricViolation> _violationsFor({
     required Map<String, num> values,
     required String path,
+    required String scopeName,
     required int startLine,
     required int endLine,
   }) {
@@ -232,31 +258,88 @@ class MetricEngine {
       final justified =
           _justifiableMetrics.contains(entry.key) &&
           _isJustified(branch: branchCoverage, line: lineCoverage);
+      Severity? sev;
+      num? thr;
       if (t.error != null && entry.value >= t.error!) {
-        violations.add(
-          MetricViolation(
-            metricId: entry.key,
-            severity: Severity.error,
-            threshold: t.error!,
-            scopeCoverage: lineCoverage,
-            scopeBranchCoverage: branchCoverage,
-            complexityJustified: justified,
-          ),
-        );
+        sev = Severity.error;
+        thr = t.error!;
       } else if (t.warning != null && entry.value >= t.warning!) {
-        violations.add(
-          MetricViolation(
-            metricId: entry.key,
-            severity: Severity.warning,
-            threshold: t.warning!,
-            scopeCoverage: lineCoverage,
-            scopeBranchCoverage: branchCoverage,
-            complexityJustified: justified,
-          ),
-        );
+        sev = Severity.warning;
+        thr = t.warning!;
       }
+      if (sev == null || thr == null) continue;
+      violations.add(
+        _buildViolation(
+          metricId: entry.key,
+          severity: sev,
+          threshold: thr,
+          path: path,
+          scopeName: scopeName,
+          lineCoverage: lineCoverage,
+          branchCoverage: branchCoverage,
+          justified: justified,
+        ),
+      );
     }
     return violations;
+  }
+
+  /// Builds a single violation, consulting [dismissals] for an entry
+  /// that targets this exact `(file, scope, metric)`. Hits flow
+  /// through [validateDismissal]; rejections become a
+  /// `dismissalRejected` tag plus an `onDismissalRejection` callback.
+  MetricViolation _buildViolation({
+    required String metricId,
+    required Severity severity,
+    required num threshold,
+    required String path,
+    required String scopeName,
+    required double? lineCoverage,
+    required double? branchCoverage,
+    required bool justified,
+  }) {
+    final hit = dismissals.lookup(
+      file: path,
+      scope: scopeName,
+      metricId: metricId,
+    );
+    if (hit == null) {
+      return MetricViolation(
+        metricId: metricId,
+        severity: severity,
+        threshold: threshold,
+        scopeCoverage: lineCoverage,
+        scopeBranchCoverage: branchCoverage,
+        complexityJustified: justified,
+      );
+    }
+    final check = validateDismissal(hit, dismissalConfig);
+    if (check is DismissalAccepted) {
+      return MetricViolation(
+        metricId: metricId,
+        severity: severity,
+        threshold: threshold,
+        scopeCoverage: lineCoverage,
+        scopeBranchCoverage: branchCoverage,
+        complexityJustified: justified,
+        dismissed: true,
+        dismissReason: hit.reason,
+        dismissedBy: hit.by,
+        dismissedAt: hit.at,
+        dismissedFrom: hit.source,
+      );
+    }
+    final rejected = check as DismissalRejected;
+    onDismissalRejection?.call(rejected.dismissal, rejected.reason);
+    return MetricViolation(
+      metricId: metricId,
+      severity: severity,
+      threshold: threshold,
+      scopeCoverage: lineCoverage,
+      scopeBranchCoverage: branchCoverage,
+      complexityJustified: justified,
+      dismissalRejected: rejected.reason,
+    );
   }
 
   /// True when the scope's coverage is high enough to mark a high CC /
