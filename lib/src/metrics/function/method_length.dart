@@ -4,7 +4,7 @@ import '../metric.dart';
 /// function body, *including* blank lines and comments. Useful as a coarse
 /// "how big is this method" indicator, complementing the more precise
 /// [SourceLinesOfCode] metric.
-class MethodLength implements FunctionMetric {
+class MethodLength extends FunctionMetric {
   const MethodLength();
 
   @override

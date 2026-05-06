@@ -22,7 +22,7 @@ import '../metric.dart';
 ///
 /// Reference: G. Ann Campbell, *Cognitive Complexity — A new way of measuring
 /// understandability*, SonarSource white paper, 2018.
-class CognitiveComplexity implements FunctionMetric {
+class CognitiveComplexity extends FunctionMetric {
   const CognitiveComplexity();
 
   @override

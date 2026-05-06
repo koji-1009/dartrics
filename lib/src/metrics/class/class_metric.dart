@@ -9,24 +9,16 @@ import 'package:analyzer/source/line_info.dart';
 /// element model, which is significantly slower and not needed for the
 /// typical mid-size project.
 class ClassIndex {
-  ClassIndex._({required this.byName, required this.directChildren});
+  ClassIndex._({required this.byName});
 
   final Map<String, ClassDeclaration> byName;
-  final Map<String, List<String>> directChildren;
 
   static ClassIndex build(Iterable<ClassDeclaration> classes) {
     final byName = <String, ClassDeclaration>{};
     for (final cls in classes) {
       byName[cls.namePart.typeName.lexeme] = cls;
     }
-    final children = <String, List<String>>{};
-    for (final entry in byName.entries) {
-      final ext = entry.value.extendsClause?.superclass.name.lexeme;
-      if (ext != null) {
-        children.putIfAbsent(ext, () => []).add(entry.key);
-      }
-    }
-    return ClassIndex._(byName: byName, directChildren: children);
+    return ClassIndex._(byName: byName);
   }
 }
 
@@ -45,6 +37,9 @@ class ClassMetricInput {
 }
 
 abstract class ClassMetric {
+  const ClassMetric();
+
   String get id;
+  bool get defaultEnabled => true;
   num compute(ClassMetricInput input);
 }

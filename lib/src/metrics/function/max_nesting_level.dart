@@ -10,7 +10,7 @@ import '../metric.dart';
 /// and lambda/closure bodies. Not part of any single canonical paper; deep
 /// nesting is well-correlated with bug density (e.g. NIST 500-235 §4) and is
 /// a common metric in PMD, Checkstyle, and SonarLint.
-class MaxNestingLevel implements FunctionMetric {
+class MaxNestingLevel extends FunctionMetric {
   const MaxNestingLevel();
 
   @override

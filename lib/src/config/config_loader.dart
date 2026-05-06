@@ -45,18 +45,23 @@ Map<String, MetricThresholds> _parseMetrics(Object? node) {
   if (node is! YamlMap) return const {};
   final map = <String, MetricThresholds>{};
   for (final entry in node.entries) {
-    final key = entry.key.toString();
-    final value = entry.value;
-    if (value is YamlMap) {
-      map[key] = MetricThresholds(
-        warning: _asNum(value['warning']),
-        error: _asNum(value['error']),
-      );
-    } else if (value is num) {
-      map[key] = MetricThresholds(warning: value);
-    }
+    final t = _thresholdsFromYaml(entry.value);
+    if (t != null) map[entry.key.toString()] = t;
   }
   return map;
+}
+
+MetricThresholds? _thresholdsFromYaml(Object? value) {
+  if (value is YamlMap) {
+    return MetricThresholds(
+      enabled: value['enabled'] as bool?,
+      warning: _asNum(value['warning']),
+      error: _asNum(value['error']),
+    );
+  }
+  if (value is num) return MetricThresholds(warning: value);
+  if (value is bool) return MetricThresholds(enabled: value);
+  return null;
 }
 
 UnusedConfig _parseUnused(Object? node) {

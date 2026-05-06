@@ -74,6 +74,7 @@ class MetricEngine {
     final input = LibraryMetricInput(path: file.path, index: index);
     final values = <String, num>{};
     for (final calc in libraryMetrics) {
+      if (!_isMetricEnabled(calc.id, calc.defaultEnabled)) continue;
       values[calc.id] = calc.compute(input);
     }
     return MetricRecord(
@@ -100,6 +101,7 @@ class MetricEngine {
       final input = FunctionMetricInput(context: ctx, declaration: decl);
       final values = <String, num>{};
       for (final calc in functionMetrics) {
+        if (!_isMetricEnabled(calc.id, calc.defaultEnabled)) continue;
         values[calc.id] = calc.compute(input);
       }
       yield MetricRecord(
@@ -110,6 +112,9 @@ class MetricEngine {
       );
     }
   }
+
+  bool _isMetricEnabled(String metricId, bool defaultEnabled) =>
+      thresholds[metricId]?.enabled ?? defaultEnabled;
 
   Iterable<MetricRecord> _classRecordsFor(
     _ResolvedFile file,
@@ -123,6 +128,7 @@ class MetricEngine {
       );
       final values = <String, num>{};
       for (final calc in classMetrics) {
+        if (!_isMetricEnabled(calc.id, calc.defaultEnabled)) continue;
         values[calc.id] = calc.compute(input);
       }
       final loc = file.unit.lineInfo.getLocation(cls.offset);

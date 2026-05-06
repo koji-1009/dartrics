@@ -18,8 +18,11 @@ class Config {
 }
 
 class MetricThresholds {
-  const MetricThresholds({this.warning, this.error});
+  const MetricThresholds({this.enabled, this.warning, this.error});
 
+  /// Override the metric's [FunctionMetric.defaultEnabled]. `null` means
+  /// "use the metric's own default."
+  final bool? enabled;
   final num? warning;
   final num? error;
 }

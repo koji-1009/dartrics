@@ -17,7 +17,7 @@ import 'class_metric.dart';
 /// Field/method matching is name-based on the AST. This trades a small risk
 /// of cross-shadow false-positives for not requiring full element resolution
 /// inside the class.
-class Lcom4 implements ClassMetric {
+class Lcom4 extends ClassMetric {
   const Lcom4();
 
   @override

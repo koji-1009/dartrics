@@ -6,7 +6,7 @@ import 'class_metric.dart';
 
 /// Weighted Methods per Class (WMC, Chidamber & Kemerer 1994) — sum of the
 /// cyclomatic complexity of every method-like member of the class.
-class WeightedMethodsPerClass implements ClassMetric {
+class WeightedMethodsPerClass extends ClassMetric {
   const WeightedMethodsPerClass();
 
   @override

@@ -67,6 +67,34 @@ dartrics:
     },
   );
 
+  test('metrics map accepts bool short-form to toggle `enabled`', () async {
+    final f = File('${dir.path}/enable.yaml');
+    await f.writeAsString('''
+dartrics:
+  metrics:
+    halstead-volume: true
+    cognitive-complexity: false
+''');
+    final config = await loadConfig(f.path);
+    expect(config.metricThresholds['halstead-volume']?.enabled, isTrue);
+    expect(config.metricThresholds['cognitive-complexity']?.enabled, isFalse);
+  });
+
+  test('metrics map accepts the long form with enabled + thresholds', () async {
+    final f = File('${dir.path}/long.yaml');
+    await f.writeAsString('''
+dartrics:
+  metrics:
+    halstead-volume:
+      enabled: true
+      warning: 1000
+''');
+    final config = await loadConfig(f.path);
+    final t = config.metricThresholds['halstead-volume'];
+    expect(t?.enabled, isTrue);
+    expect(t?.warning, 1000);
+  });
+
   test('parses unused.presets list', () async {
     final f = File('${dir.path}/presets.yaml');
     await f.writeAsString('''

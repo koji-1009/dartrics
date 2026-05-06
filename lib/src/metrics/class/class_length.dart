@@ -2,7 +2,7 @@ import 'class_metric.dart';
 
 /// Class Length (LOC) — total source lines spanned by the class declaration,
 /// including its body braces, member definitions, blank lines, and comments.
-class ClassLength implements ClassMetric {
+class ClassLength extends ClassMetric {
   const ClassLength();
 
   @override

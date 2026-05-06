@@ -11,7 +11,7 @@ import 'class_metric.dart';
 /// Detection is name-based on the AST (every `MethodInvocation` and
 /// constructor call), so cross-shadow false-positives are possible but rare
 /// for the order-of-magnitude purpose this metric serves.
-class ResponseForClass implements ClassMetric {
+class ResponseForClass extends ClassMetric {
   const ResponseForClass();
 
   @override

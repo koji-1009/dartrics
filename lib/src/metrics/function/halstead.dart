@@ -86,30 +86,42 @@ bool _isOperand(Token token) =>
     _operandLiteralLexemes.contains(token.lexeme);
 
 /// Halstead Volume — `N · log2(η)`. (Halstead, 1977.)
-class HalsteadVolume implements FunctionMetric {
+///
+/// Off by default: a half-century of empirical research has not shown a
+/// predictive advantage over cyclomatic complexity. Opt in via
+/// `dartrics: { metrics: { halstead-volume: { enabled: true } } }`.
+class HalsteadVolume extends FunctionMetric {
   const HalsteadVolume();
   @override
   String get id => 'halstead-volume';
+  @override
+  bool get defaultEnabled => false;
   @override
   num compute(FunctionMetricInput input) =>
       HalsteadCounts.fromBody(input.body).volume;
 }
 
-/// Halstead Difficulty — `(n1/2) · (N2/n2)`. (Halstead, 1977.)
-class HalsteadDifficulty implements FunctionMetric {
+/// Halstead Difficulty — `(n1/2) · (N2/n2)`. (Halstead, 1977.) Off by
+/// default; see [HalsteadVolume].
+class HalsteadDifficulty extends FunctionMetric {
   const HalsteadDifficulty();
   @override
   String get id => 'halstead-difficulty';
+  @override
+  bool get defaultEnabled => false;
   @override
   num compute(FunctionMetricInput input) =>
       HalsteadCounts.fromBody(input.body).difficulty;
 }
 
-/// Halstead Effort — `D · V`. (Halstead, 1977.)
-class HalsteadEffort implements FunctionMetric {
+/// Halstead Effort — `D · V`. (Halstead, 1977.) Off by default; see
+/// [HalsteadVolume].
+class HalsteadEffort extends FunctionMetric {
   const HalsteadEffort();
   @override
   String get id => 'halstead-effort';
+  @override
+  bool get defaultEnabled => false;
   @override
   num compute(FunctionMetricInput input) =>
       HalsteadCounts.fromBody(input.body).effort;

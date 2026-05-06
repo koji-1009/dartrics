@@ -41,8 +41,15 @@ class FunctionMetricInput {
 
 /// Function/method-level metric.
 abstract class FunctionMetric {
+  const FunctionMetric();
+
   /// Stable identifier (used as JSON key and threshold key).
   String get id;
+
+  /// Whether this metric runs by default. Override to `false` for
+  /// experimental / historical metrics that users opt into via
+  /// `analysis_options.yaml`'s `dartrics: { metrics: { <id>: { enabled: true } } }`.
+  bool get defaultEnabled => true;
 
   /// Computes the metric. Implementations must be deterministic.
   num compute(FunctionMetricInput input);

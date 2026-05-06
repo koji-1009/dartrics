@@ -4,7 +4,7 @@ import '../metric.dart';
 /// function body. Lines that are entirely a `//` comment, entirely inside a
 /// `/* … */` block, or whitespace are excluded; lines with code followed by
 /// a trailing comment count once.
-class SourceLinesOfCode implements FunctionMetric {
+class SourceLinesOfCode extends FunctionMetric {
   const SourceLinesOfCode();
 
   @override

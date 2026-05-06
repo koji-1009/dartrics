@@ -12,7 +12,7 @@ import '../metric.dart';
 /// separately and do **not** contribute to the enclosing function's value.
 ///
 /// Reference: McCabe, T.J. *A Complexity Measure*, IEEE TSE, 1976.
-class CyclomaticComplexity implements FunctionMetric {
+class CyclomaticComplexity extends FunctionMetric {
   const CyclomaticComplexity();
 
   @override

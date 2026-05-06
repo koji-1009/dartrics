@@ -128,4 +128,44 @@ enum Color {
     final records = await MetricEngine().analyze(runner);
     expect(records, isNotEmpty);
   });
+
+  test(
+    'experimental metrics (Halstead, MI) are off by default and skipped',
+    () async {
+      final runner = AnalyzerRunner(roots: [tempDir.path]);
+      final units = await runner.resolveAll();
+      final records = MetricEngine().analyzeResolved(units);
+      final keys = records.expand((r) => r.values.keys).toSet();
+      expect(keys, isNot(contains('halstead-volume')));
+      expect(keys, isNot(contains('halstead-difficulty')));
+      expect(keys, isNot(contains('halstead-effort')));
+      expect(keys, isNot(contains('maintainability-index')));
+      // Sanity: the core metrics still land.
+      expect(keys, contains('cyclomatic-complexity'));
+    },
+  );
+
+  test('thresholds.enabled=true opts into an experimental metric', () async {
+    final runner = AnalyzerRunner(roots: [tempDir.path]);
+    final units = await runner.resolveAll();
+    final engine = MetricEngine(
+      thresholds: const {'halstead-volume': MetricThresholds(enabled: true)},
+    );
+    final records = engine.analyzeResolved(units);
+    final keys = records.expand((r) => r.values.keys).toSet();
+    expect(keys, contains('halstead-volume'));
+  });
+
+  test('thresholds.enabled=false disables a default-on metric', () async {
+    final runner = AnalyzerRunner(roots: [tempDir.path]);
+    final units = await runner.resolveAll();
+    final engine = MetricEngine(
+      thresholds: const {
+        'cyclomatic-complexity': MetricThresholds(enabled: false),
+      },
+    );
+    final records = engine.analyzeResolved(units);
+    final keys = records.expand((r) => r.values.keys).toSet();
+    expect(keys, isNot(contains('cyclomatic-complexity')));
+  });
 }

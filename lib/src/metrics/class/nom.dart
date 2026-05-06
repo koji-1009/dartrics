@@ -6,7 +6,7 @@ import 'class_metric.dart';
 /// class body, including getters, setters, operators, and constructors with
 /// non-empty bodies. Field declarations and abstract members with empty
 /// bodies are excluded.
-class NumberOfMethods implements ClassMetric {
+class NumberOfMethods extends ClassMetric {
   const NumberOfMethods();
 
   @override

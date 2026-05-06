@@ -12,7 +12,7 @@ import 'class_metric.dart';
 /// name is removed. This intentionally counts external types too — it
 /// answers "how many types does this class touch" rather than "how many
 /// other internal types does this class touch".
-class CouplingBetweenObjects implements ClassMetric {
+class CouplingBetweenObjects extends ClassMetric {
   const CouplingBetweenObjects();
 
   @override

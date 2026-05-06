@@ -11,13 +11,21 @@ import 'method_length.dart';
 /// formula returns a value typically in `[0, 171]`; we clamp to that range
 /// to avoid surprising negatives on tiny synthetic bodies.
 ///
+/// Off by default: Microsoft's Visual Studio team retired the metric from
+/// recommended UI in newer releases, citing its composite-of-CC-and-Volume
+/// nature as opaque to act on. Opt in via
+/// `dartrics: { metrics: { maintainability-index: { enabled: true } } }`.
+///
 /// Reference: P. Oman & J. Hagemeister, *Metrics for assessing a software
 /// system's maintainability*, ICSM 1992.
-class MaintainabilityIndex implements FunctionMetric {
+class MaintainabilityIndex extends FunctionMetric {
   const MaintainabilityIndex();
 
   @override
   String get id => 'maintainability-index';
+
+  @override
+  bool get defaultEnabled => false;
 
   @override
   num compute(FunctionMetricInput input) {

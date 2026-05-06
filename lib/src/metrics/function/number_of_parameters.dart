@@ -4,7 +4,7 @@ import '../metric.dart';
 /// optional included). Member-initializer parameters of constructors are
 /// counted alongside regular ones since they are still visible at the call
 /// site.
-class NumberOfParameters implements FunctionMetric {
+class NumberOfParameters extends FunctionMetric {
   const NumberOfParameters();
 
   @override

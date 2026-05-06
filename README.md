@@ -38,31 +38,33 @@ dartrics report metrics.json --reporter md > report.md
 
 ## Provided metrics
 
+dartrics ships a curated set; metrics that don't fit Dart's idioms (single inheritance, mixin/composition culture) are deliberately omitted, and metrics whose predictive value over CC has not held up empirically (Halstead V/D/E, Maintainability Index) ship **off by default** and must be opted into via `dartrics: { metrics: { <id>: { enabled: true } } }` in `analysis_options.yaml`.
+
 ### Function / method level
 
-| Metric | Reference | Notes |
-|---|---|---|
-| Cyclomatic Complexity | McCabe 1976 | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch` |
-| Cognitive Complexity | SonarSource 2018 | B1 control-flow + B2 nesting penalty + B3 logical-op sequences |
-| Halstead Volume / Difficulty / Effort | Halstead 1977 | token-based n1/n2/N1/N2 classification |
-| Maintainability Index | Oman 1992 | `171 − 5.2·ln(V) − 0.23·CC − 16.2·ln(LOC)`, clamped to `[0, 171]` |
-| Maximum Nesting Level | — | depth of `if/for/while/do/switch/try/closure` blocks |
-| Number Of Parameters | — | positional + named + optional |
-| Source Lines Of Code | — | non-blank, non-comment-only lines |
-| Method Length | — | total source lines spanned by the body |
+| Metric | Default | Reference | Notes |
+|---|---|---|---|
+| Cyclomatic Complexity | on | McCabe 1976 | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch` |
+| Cognitive Complexity | on | SonarSource 2018 | B1 control-flow + B2 nesting penalty + B3 logical-op sequences |
+| Maximum Nesting Level | on | — | depth of `if/for/while/do/switch/try/closure` blocks |
+| Number Of Parameters | on | — | positional + named + optional |
+| Source Lines Of Code | on | — | non-blank, non-comment-only lines |
+| Method Length | on | — | total source lines spanned by the body |
+| Halstead Volume / Difficulty / Effort | **off** | Halstead 1977 | token-based n1/n2/N1/N2 classification — historical |
+| Maintainability Index | **off** | Oman 1992 | `171 − 5.2·ln(V) − 0.23·CC − 16.2·ln(LOC)`, clamped — composite, MS retired |
 
 ### Class level
 
-| Metric | Reference | Notes |
-|---|---|---|
-| Number Of Methods | — | members with non-empty bodies |
-| Weighted Methods Per Class | CK 1994 | sum of cyclomatic complexity across methods |
-| LCOM4 | Hitz & Montazeri 1995 | connected components in the field-share + method-call graph |
-| Coupling Between Objects | CK 1994 | distinct other types referenced anywhere in the class |
-| Response For a Class | CK 1994 | `\|methods ∪ method-names invoked from those methods\|` |
-| Depth of Inheritance Tree | CK 1994 | length from this class to `Object` |
-| Number Of Children | CK 1994 | direct subclasses found in the analysis root |
-| Class Length | — | total source lines spanned by the class declaration |
+| Metric | Default | Reference | Notes |
+|---|---|---|---|
+| Number Of Methods | on | — | members with non-empty bodies |
+| Weighted Methods Per Class | on | CK 1994 | sum of cyclomatic complexity across methods |
+| LCOM4 | on | Hitz & Montazeri 1995 | connected components in the field-share + method-call graph |
+| Coupling Between Objects | on | CK 1994 | distinct other types referenced anywhere in the class |
+| Response For a Class | on | CK 1994 | `\|methods ∪ method-names invoked from those methods\|` |
+| Class Length | on | — | total source lines spanned by the class declaration |
+
+DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK 1994 are **not provided**: Dart's mixin + composition-over-inheritance culture keeps single-inheritance chains shallow, so these metrics rarely produce signal in Dart projects.
 
 ### Library / file level
 
@@ -146,6 +148,14 @@ dartrics:
     number-of-parameters:
       warning: 4
       error: 8
+    # opt into a metric that's off by default:
+    halstead-volume:
+      enabled: true
+      warning: 1000
+    # bare-bool short form is also accepted:
+    maintainability-index: true
+    # disable a default-on metric:
+    response-for-class: false
 
   unused:
     entry-points:

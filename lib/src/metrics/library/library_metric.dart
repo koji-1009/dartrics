@@ -126,7 +126,10 @@ class LibraryMetricInput {
 }
 
 abstract class LibraryMetric {
+  const LibraryMetric();
+
   String get id;
+  bool get defaultEnabled => true;
   num compute(LibraryMetricInput input);
 }
 
