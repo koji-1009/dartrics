@@ -6,9 +6,11 @@ import 'package:io/io.dart';
 import '../analyzer_runner.dart';
 import '../config/config_loader.dart';
 import '../models/analysis_report.dart';
+import '../models/unused_declaration.dart';
 import '../reporters/reporters.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
+import 'git_diff.dart';
 
 /// `dartrics unused` — runs only the public-API reachability analysis.
 class UnusedCommand extends Command<int> {
@@ -29,16 +31,32 @@ class UnusedCommand extends Command<int> {
     final paths = options.rest.isNotEmpty
         ? options.rest
         : <String>[options.root];
+    final Set<String>? changed;
+    try {
+      changed = options.since == null
+          ? null
+          : (await changedDartFilesSince(options.since!)).toSet();
+    } on GitDiffException catch (e) {
+      stderr.writeln(e);
+      return ExitCode.data.code;
+    }
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
     final unused = await const UnusedDetector().detect([
       for (final u in units)
         (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
     ], config.unused);
+    final List<UnusedDeclaration> filtered;
+    if (changed == null) {
+      filtered = unused;
+    } else {
+      final allow = changed;
+      filtered = unused.where((u) => allow.contains(u.location.path)).toList();
+    }
     final report = AnalysisReport(
       version: '1.0',
       metrics: const [],
-      unused: unused,
+      unused: filtered,
     )..attachAnalyzedFileCount(units.length);
 
     final reporter = pickReporter(options.reporter);

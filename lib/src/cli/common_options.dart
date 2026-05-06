@@ -22,6 +22,13 @@ void addCommonOptions(ArgParser parser) {
       defaultsTo: '-',
     )
     ..addOption('root', help: 'Analysis root directory.', defaultsTo: '.')
+    ..addOption(
+      'since',
+      help:
+          'Restrict output to files changed since the given git ref '
+          '(e.g. "main", "HEAD~1", "origin/main"). Resolution still uses '
+          'the full project so cross-file analysis stays accurate.',
+    )
     ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',
@@ -47,6 +54,7 @@ class CommonOptions {
     required this.reporter,
     required this.output,
     required this.root,
+    required this.since,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -63,6 +71,7 @@ class CommonOptions {
       reporter: results['reporter'] as String,
       output: results['output'] as String,
       root: results['root'] as String,
+      since: results['since'] as String?,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -74,6 +83,7 @@ class CommonOptions {
   final String reporter;
   final String output;
   final String root;
+  final String? since;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

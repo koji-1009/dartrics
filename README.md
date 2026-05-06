@@ -207,10 +207,29 @@ Common options:
   --reporter <name>        console | json | md | ai | sarif (default: console)
   --output <path>          output destination; "-" means stdout (default: -)
   --root <path>            analysis root directory (default: cwd)
+  --since <ref>            restrict output to .dart files changed vs the
+                           given git ref (e.g. main, HEAD~1, origin/main)
   --fatal-warnings         exit non-zero if any warning is reported
   --fatal-style            exit non-zero if any style violation is reported (reserved)
   -v, --verbose            FINE-level logging
 ```
+
+### `--since` (diff mode)
+
+`--since <ref>` keeps the analysis pipeline whole — every file is still resolved so cross-file metrics (LCOM4, library coupling, public-API reachability) stay accurate — but the emitted report is filtered down to declarations whose owning file changed between `<ref>` and `HEAD` according to `git diff --name-only --diff-filter=AMR <ref>...HEAD -- '*.dart'`.
+
+```bash
+# AI-driven PR review: send only the changed-file violations
+dartrics analyze --since origin/main --reporter ai | claude -p "Refactor the threshold violations"
+
+# CI quality gate on the diff
+dartrics analyze --since origin/main --fatal-warnings
+
+# Unused public-API check, scoped to the diff
+dartrics unused --since HEAD~1
+```
+
+Renames surface as the new path. Untracked files are ignored (they're not part of `git diff`). When git is missing or the ref doesn't resolve, the command exits with `65 EX_DATAERR` and a one-line error.
 
 ### Exit codes (sysexits)
 

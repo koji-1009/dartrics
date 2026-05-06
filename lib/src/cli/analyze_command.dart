@@ -11,6 +11,7 @@ import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
+import 'git_diff.dart';
 
 /// `dartrics analyze` — runs every metric calculator and the unused
 /// detector over the analysis root and emits a combined report.
@@ -32,11 +33,27 @@ class AnalyzeCommand extends Command<int> {
     final paths = options.rest.isNotEmpty
         ? options.rest
         : <String>[options.root];
-    final report = await _analyze(paths, config);
+    final Set<String>? changed;
+    try {
+      changed = await _resolveChangedFiles(options.since);
+    } on GitDiffException catch (e) {
+      stderr.writeln(e);
+      return ExitCode.data.code;
+    }
+    final report = await _analyze(paths, config, changed);
     return _emit(report, options);
   }
 
-  Future<AnalysisReport> _analyze(List<String> paths, Config config) async {
+  Future<Set<String>?> _resolveChangedFiles(String? since) async {
+    if (since == null) return null;
+    return (await changedDartFilesSince(since)).toSet();
+  }
+
+  Future<AnalysisReport> _analyze(
+    List<String> paths,
+    Config config,
+    Set<String>? changed,
+  ) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
     final engine = MetricEngine(thresholds: config.metricThresholds);
@@ -45,8 +62,17 @@ class AnalyzeCommand extends Command<int> {
       for (final u in units)
         (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
     ], config.unused);
-    return AnalysisReport(version: '1.0', metrics: records, unused: unused)
-      ..attachAnalyzedFileCount(units.length);
+    final filteredRecords = changed == null
+        ? records
+        : records.where((r) => changed.contains(r.file)).toList();
+    final filteredUnused = changed == null
+        ? unused
+        : unused.where((u) => changed.contains(u.location.path)).toList();
+    return AnalysisReport(
+      version: '1.0',
+      metrics: filteredRecords,
+      unused: filteredUnused,
+    )..attachAnalyzedFileCount(units.length);
   }
 
   Future<int> _emit(AnalysisReport report, CommonOptions options) async {
