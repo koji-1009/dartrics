@@ -11,7 +11,7 @@ Conventions for AI coding agents (Claude Code, Cursor, Codex, etc.) and human co
 - `lib/src/analyzer_runner.dart` — sole abstraction over `package:analyzer`. Keep direct analyzer API calls inside this file; the rest of the codebase is shielded from analyzer's frequent breaking changes.
 - `lib/src/config/` — YAML loader for the `dartrics:` section in `analysis_options.yaml`.
 - `lib/src/coverage/` — lcov.info parser (`lcov_reader.dart`) and the CLI loader (`coverage_loader.dart`).
-- `lib/src/lint/` — analyzer plugin: `DartricsPlugin` plus the four `AnalysisRule`s under `rules/`. Each rule wraps a function-level metric calculator and reports through `LintCode` with `{0}`/`{1}` placeholders.
+- `lib/src/lint/` — analyzer plugin: `DartricsPlugin` plus the five `AnalysisRule`s under `rules/` (CC, Cognitive, Max nesting, Number of parameters, Boolean-trap). Each rule wraps a function-level metric calculator and reports through `LintCode` with `{0}`/`{1}` placeholders.
 - `lib/src/metrics/{function,class,library}/` — per-scope metric calculators. Each implements `FunctionMetric` / `ClassMetric` / `LibraryMetric`, including the `rationale`, `refactorHints`, and `polarity` getters.
 - `lib/src/metrics/metric_engine.dart` — orchestrator that resolves every Dart file once and runs the registered calculators, attaching coverage / `complexityJustified` to violations when supplied.
 - `lib/src/metrics/metric_catalogue.dart` — `defaultMetricThresholds`, `collectRuleDescriptions`, and `findRuleDescription`. Single source of truth for "which metrics ship with what default threshold + rationale"; consumed by `dartrics rules`, the `--explain` flow, and the SARIF reporter so the three stay in sync.

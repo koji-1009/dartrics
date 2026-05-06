@@ -292,7 +292,7 @@ plugins:
   dartrics: ^0.1.0
 ```
 
-After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin enables four rules by default:
+After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin enables five rules by default:
 
 | Rule                             | Default threshold |
 | -------------------------------- | ----------------- |
@@ -300,6 +300,7 @@ After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis S
 | `dartrics_cognitive_complexity`  | 15                |
 | `dartrics_maximum_nesting_level` | 4                 |
 | `dartrics_number_of_parameters`  | 4                 |
+| `dartrics_boolean_trap`          | 2                 |
 
 Rule thresholds are read from the same `dartrics: { metrics: ... }` section the CLI uses; restart the analysis server after changes. The plugin honours `flutter: true` for the same skip rules as the CLI.
 
@@ -461,7 +462,7 @@ What's wired up for that use case:
 ### Honest limitations
 
 - **0.1.0 is the first release.** Field names are stable through the 0.x series, but the surface has not yet been stress-tested by external users; pin a version in CI.
-- **The analyzer plugin only covers four function-level rules** (CC, Cognitive, Max nesting, Number of parameters). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
+- **The analyzer plugin covers only the five function-level rules** (CC, Cognitive, Max nesting, Number of parameters, Boolean-trap). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
 - **Cross-run memory is out of scope.** dartrics doesn't remember "this dismiss was rejected last iteration; don't propose it again." Stay session-local.
 - **Performance is modest.** `--concurrency` parallelises file resolution but the analyzer driver itself is single-isolate; expect ~10 % wall-time wins on small trees, more on large ones. CPU-bound.
 - **`package:analyzer` 13.x moves fast.** Major Dart SDK or analyzer bumps may require dartrics updates before they ship cleanly.

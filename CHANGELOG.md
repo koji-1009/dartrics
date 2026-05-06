@@ -53,7 +53,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Analyzer plugin
 
-- `plugins: dartrics` in `analysis_options.yaml` enables four function-level rules (`dartrics_cyclomatic_complexity` / `_cognitive_complexity` / `_maximum_nesting_level` / `_number_of_parameters`) inline in `dart analyze` and the IDE.
+- `plugins: dartrics` in `analysis_options.yaml` enables five function-level rules (`dartrics_cyclomatic_complexity` / `_cognitive_complexity` / `_maximum_nesting_level` / `_number_of_parameters` / `_boolean_trap`) inline in `dart analyze` and the IDE.
 - Rule thresholds are configurable through the same `dartrics:` section the CLI uses (long form `{ warning: <n>, error: <n> }` or bare-integer short form). The plugin honours `flutter: true` for the same skip rules as the CLI.
 - Heavier metrics (LCOM4, CBO, RFC, library coupling) and the unused detector stay CLI-only — they need a project-wide index that an analysis-server plugin can't maintain efficiently per file.
 - Diagnostics surface at INFO severity due to an upstream `analysis_server_plugin` 0.3.x constraint (non-INFO `LintCode` crashes the plugin isolate).
