@@ -6,6 +6,7 @@
 /// library.
 library;
 
+export 'src/coverage/lcov_reader.dart' show CoverageIndex, FileCoverage;
 export 'src/metrics/function/cognitive_complexity.dart'
     show CognitiveComplexity;
 export 'src/metrics/function/cyclomatic_complexity.dart'

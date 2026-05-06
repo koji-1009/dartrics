@@ -2,4 +2,5 @@
 # Created by `dart pub`
 .dart_tool/
 tmp/
-coverage/
+# Root-only — `lib/src/coverage/` is real source.
+/coverage/
