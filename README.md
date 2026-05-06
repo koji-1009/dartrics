@@ -411,9 +411,37 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 
 ## Embedding
 
-`lib/dartrics.dart` exposes the metric calculator classes (`CyclomaticComplexity`, `CognitiveComplexity`, …), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, …), the metadata enums (`MetricPolarity`, `ChangeDirection`, `Severity`, `ScopeKind`), and the supporting types (`CoverageIndex`, `FileCoverage`, `AnalyzedFile`, `ExplainEntry`, `dartricsVersion`).
+`lib/dartrics.dart` exposes the metric calculator classes (`CyclomaticComplexity`, `CognitiveComplexity`, …), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, …), the metadata enums (`MetricPolarity`, `ChangeDirection`, `Severity`, `ScopeKind`, `DismissalSource`), and the supporting types and helpers (`CoverageIndex`, `FileCoverage`, `AnalyzedFile`, `ExplainEntry`, `Dismissal`, `DismissalConfig`, `computeViolationId`, `dartricsVersion`).
 
 `example/main.dart` shows a 30-line standalone embedding.
+
+## Recommendation
+
+`dartrics` 0.1.0 is **recommended for AI-driven Dart codebases** — projects where Claude Code, Cursor, Codex, or another agent is doing meaningful code review or refactor work and the maintainer wants the agent's quality judgements to be grounded in reproducible, citation-backed metrics rather than vibes.
+
+What's wired up for that use case:
+
+- **Resolution** — every violation carries its threshold, severity, scope coverage, branch coverage, `complexityJustified` tag, and (where applicable) `dismissed` / `dismissalRejected` state. The `--reporter ai` YAML is sorted so the most actionable items come first.
+- **Stability** — every violation has a 16-hex stable `id` so AI loops can correlate runs ("same id appeared again ⇒ my last refactor missed it"). Three published JSON Schemas (config / report / dismissals) cover the on-disk and on-wire surfaces. `# dartrics ai-report v1` is a contractual header.
+- **Actionability** — `--explain` (now with auto-explain default-on) inlines the metric's rationale and refactor hints. Each metric exposes a `polarity` so the regression diff knows which direction is "healthier". The dismiss channel turns "I don't agree with this metric here" into a tracked, validated, auditable decision instead of a silent disable.
+- **Noise control** — `--snapshot` / `--since` / `--limit` / `--strict-dismiss` compose into a noise floor that AI loops can actually live with; `--strict-dismiss --fatal-warnings` makes a clean CI gate.
+
+End-to-end walkthrough with sample prompts: [`doc/ai-loop.md`](doc/ai-loop.md).
+
+### Honest limitations
+
+- **0.1.0 is the first release.** Field names are stable through the 0.x series, but the surface has not yet been stress-tested by external users; pin a version in CI.
+- **The analyzer plugin only covers four function-level rules** (CC, Cognitive, Max nesting, Number of parameters). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
+- **Cross-run memory is out of scope.** dartrics doesn't remember "this dismiss was rejected last iteration; don't propose it again." Stay session-local.
+- **Performance is modest.** `--concurrency` parallelises file resolution but the analyzer driver itself is single-isolate; expect ~10 % wall-time wins on small trees, more on large ones. CPU-bound.
+- **`package:analyzer` 13.x moves fast.** Major Dart SDK or analyzer bumps may require dartrics updates before they ship cleanly.
+- **Built-in metric set is not exhaustive.** The catalogue deliberately omits metrics whose predictive value over CC has not held up empirically (DIT, NOC) and ships Halstead V/D/E + Maintainability Index off-by-default. Bring your own opt-in.
+
+### Who should not adopt 0.1.0 yet
+
+- Teams that need **per-line metric thresholds** in the IDE for the full metric suite — the plugin is intentionally narrow.
+- Teams that don't engage with the dismiss channel at all — the validator is opinionated, and a pure-fail-fast linter (`dart analyze` + `--fatal-warnings`) is a better fit.
+- Teams using Dart < 3.10 or analyzer < 13.
 
 ## Development
 
