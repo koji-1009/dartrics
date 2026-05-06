@@ -40,6 +40,70 @@ Future<Config> loadConfig(String path) async {
     exclude: _parseStringList(dartrics['exclude']),
     flutter: dartrics['flutter'] as bool? ?? false,
     snapshot: _parseSnapshot(dartrics['snapshot']),
+    dismissals: _parseDismissals(dartrics['dismissals']),
+  );
+}
+
+DismissalConfig _parseDismissals(Object? node) {
+  if (node == null) return const DismissalConfig();
+  if (node is! YamlMap) {
+    throw ConfigException(
+      'dartrics.dismissals must be a map (got ${node.runtimeType})',
+    );
+  }
+  final sourcesNode = node['sources'];
+  bool comment;
+  bool yamlSource;
+  if (sourcesNode == null) {
+    // Bare `dismissals:` block — both channels on by default so the user
+    // does not have to enumerate them.
+    comment = true;
+    yamlSource = true;
+  } else if (sourcesNode is YamlMap) {
+    comment = sourcesNode['comment'] as bool? ?? true;
+    yamlSource = sourcesNode['yaml'] as bool? ?? true;
+  } else {
+    throw ConfigException(
+      'dartrics.dismissals.sources must be a map (got '
+      '${sourcesNode.runtimeType})',
+    );
+  }
+  if (!comment && !yamlSource) {
+    throw ConfigException(
+      'dartrics.dismissals: at least one dismissal source must be enabled',
+    );
+  }
+  final requireReason = node['requireReason'] as bool? ?? true;
+  final minReasonRaw = node['minReasonLength'];
+  final minReason = minReasonRaw is int
+      ? minReasonRaw
+      : defaultDismissalMinReasonLength;
+  if (minReason < 0) {
+    throw ConfigException(
+      'dartrics.dismissals.minReasonLength must be non-negative',
+    );
+  }
+  final requireAuthor = node['requireAuthor'] as bool? ?? false;
+  if (requireAuthor && !yamlSource) {
+    throw ConfigException(
+      'dartrics.dismissals.requireAuthor needs sources.yaml: true',
+    );
+  }
+  final requireTimestamp = node['requireTimestamp'] as bool? ?? false;
+  if (requireTimestamp && !yamlSource) {
+    throw ConfigException(
+      'dartrics.dismissals.requireTimestamp needs sources.yaml: true',
+    );
+  }
+  final yamlPath = node['yamlPath'];
+  return DismissalConfig(
+    commentSource: comment,
+    yamlSource: yamlSource,
+    requireReason: requireReason,
+    minReasonLength: minReason,
+    requireAuthor: requireAuthor,
+    requireTimestamp: requireTimestamp,
+    yamlPath: yamlPath is String ? yamlPath : null,
   );
 }
 

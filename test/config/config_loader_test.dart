@@ -162,4 +162,170 @@ dartrics:
     final config = await loadConfig(f.path);
     expect(config.snapshot.mode, SnapshotMode.cache);
   });
+
+  group('dismissals', () {
+    test('absent block leaves both sources off', () async {
+      final f = File('${dir.path}/no-dismiss.yaml');
+      await f.writeAsString('dartrics:\n  flutter: false\n');
+      final config = await loadConfig(f.path);
+      expect(config.dismissals.commentSource, isFalse);
+      expect(config.dismissals.yamlSource, isFalse);
+      expect(config.dismissals.enabled, isFalse);
+    });
+
+    test('bare block enables both sources with defaults', () async {
+      final f = File('${dir.path}/bare-dismiss.yaml');
+      await f.writeAsString('dartrics:\n  dismissals: {}\n');
+      final config = await loadConfig(f.path);
+      expect(config.dismissals.commentSource, isTrue);
+      expect(config.dismissals.yamlSource, isTrue);
+      expect(config.dismissals.requireReason, isTrue);
+      expect(config.dismissals.minReasonLength, 20);
+      expect(config.dismissals.requireAuthor, isFalse);
+      expect(config.dismissals.requireTimestamp, isFalse);
+      expect(config.dismissals.yamlPath, isNull);
+    });
+
+    test('granular sources + knobs round-trip', () async {
+      final f = File('${dir.path}/granular.yaml');
+      await f.writeAsString('''
+dartrics:
+  dismissals:
+    sources:
+      comment: false
+      yaml: true
+    requireReason: false
+    minReasonLength: 5
+    requireAuthor: true
+    requireTimestamp: true
+    yamlPath: custom.yaml
+''');
+      final config = await loadConfig(f.path);
+      expect(config.dismissals.commentSource, isFalse);
+      expect(config.dismissals.yamlSource, isTrue);
+      expect(config.dismissals.requireReason, isFalse);
+      expect(config.dismissals.minReasonLength, 5);
+      expect(config.dismissals.requireAuthor, isTrue);
+      expect(config.dismissals.requireTimestamp, isTrue);
+      expect(config.dismissals.yamlPath, 'custom.yaml');
+    });
+
+    test('rejects when both sources are disabled', () async {
+      final f = File('${dir.path}/no-source.yaml');
+      await f.writeAsString('''
+dartrics:
+  dismissals:
+    sources:
+      comment: false
+      yaml: false
+''');
+      await expectLater(
+        loadConfig(f.path),
+        throwsA(
+          isA<ConfigException>().having(
+            (e) => e.message,
+            'message',
+            contains('at least one dismissal source must be enabled'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects negative minReasonLength', () async {
+      final f = File('${dir.path}/neg-len.yaml');
+      await f.writeAsString('''
+dartrics:
+  dismissals:
+    minReasonLength: -1
+''');
+      await expectLater(
+        loadConfig(f.path),
+        throwsA(
+          isA<ConfigException>().having(
+            (e) => e.message,
+            'message',
+            contains('minReasonLength must be non-negative'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects requireAuthor without yaml source', () async {
+      final f = File('${dir.path}/author-no-yaml.yaml');
+      await f.writeAsString('''
+dartrics:
+  dismissals:
+    sources:
+      comment: true
+      yaml: false
+    requireAuthor: true
+''');
+      await expectLater(
+        loadConfig(f.path),
+        throwsA(
+          isA<ConfigException>().having(
+            (e) => e.message,
+            'message',
+            contains('requireAuthor needs sources.yaml: true'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects requireTimestamp without yaml source', () async {
+      final f = File('${dir.path}/ts-no-yaml.yaml');
+      await f.writeAsString('''
+dartrics:
+  dismissals:
+    sources:
+      comment: true
+      yaml: false
+    requireTimestamp: true
+''');
+      await expectLater(
+        loadConfig(f.path),
+        throwsA(
+          isA<ConfigException>().having(
+            (e) => e.message,
+            'message',
+            contains('requireTimestamp needs sources.yaml: true'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects non-map dismissals node', () async {
+      final f = File('${dir.path}/scalar-dismiss.yaml');
+      await f.writeAsString('dartrics:\n  dismissals: nope\n');
+      await expectLater(
+        loadConfig(f.path),
+        throwsA(
+          isA<ConfigException>().having(
+            (e) => e.message,
+            'message',
+            contains('dartrics.dismissals must be a map'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects non-map sources node', () async {
+      final f = File('${dir.path}/scalar-sources.yaml');
+      await f.writeAsString('''
+dartrics:
+  dismissals:
+    sources: yaml
+''');
+      await expectLater(
+        loadConfig(f.path),
+        throwsA(
+          isA<ConfigException>().having(
+            (e) => e.message,
+            'message',
+            contains('dartrics.dismissals.sources must be a map'),
+          ),
+        ),
+      );
+    });
+  });
 }

@@ -7,6 +7,7 @@ class Config {
     this.exclude = const [],
     this.flutter = false,
     this.snapshot = const SnapshotConfig(),
+    this.dismissals = const DismissalConfig(),
   });
 
   /// Map of `metric-id` → severity thresholds.
@@ -28,6 +29,66 @@ class Config {
   /// are stored under `.dart_tool/dartrics/snapshot.json` (auto-ignored
   /// by `.gitignore` conventions).
   final SnapshotConfig snapshot;
+
+  /// Configuration for the deliberate-dismissal channel. Disabled by
+  /// default — both sources stay off until the user adds a
+  /// `dismissals:` block to `analysis_options.yaml`.
+  final DismissalConfig dismissals;
+}
+
+/// Default path the YAML sidecar is read from when [DismissalConfig.yamlPath]
+/// is `null`. Resolved relative to the analysis root.
+const String defaultDismissalsYamlPath = 'dartrics-dismissals.yaml';
+
+/// Default minimum length (after trim) the `reason` text must reach to
+/// be accepted when [DismissalConfig.requireReason] is on.
+const int defaultDismissalMinReasonLength = 20;
+
+/// Settings that govern how `// dartrics:dismiss` comments and the
+/// `dartrics-dismissals.yaml` sidecar are parsed and validated.
+///
+/// Disabled by default — both [commentSource] and [yamlSource] are
+/// `false` until the user opts in. The loader flips them to `true`
+/// independently when the corresponding `sources:` keys appear under
+/// `dartrics.dismissals`.
+class DismissalConfig {
+  const DismissalConfig({
+    this.commentSource = false,
+    this.yamlSource = false,
+    this.requireReason = true,
+    this.minReasonLength = defaultDismissalMinReasonLength,
+    this.requireAuthor = false,
+    this.requireTimestamp = false,
+    this.yamlPath,
+  });
+
+  /// Whether `// dartrics:dismiss …` comments are honoured.
+  final bool commentSource;
+
+  /// Whether the YAML sidecar file is loaded.
+  final bool yamlSource;
+
+  /// When true, an empty / missing reason rejects the dismissal and
+  /// surfaces a stderr WARNING. When false, reasons are still preserved
+  /// when present but never block a match.
+  final bool requireReason;
+
+  /// Minimum trimmed length the `reason` text must reach. Ignored when
+  /// [requireReason] is false. Must be `>= 0`.
+  final int minReasonLength;
+
+  /// When true, YAML entries without `by:` are rejected.
+  final bool requireAuthor;
+
+  /// When true, YAML entries without `at:` are rejected.
+  final bool requireTimestamp;
+
+  /// Optional override for the YAML sidecar path. `null` ⇒ defaults to
+  /// [defaultDismissalsYamlPath] under the analysis root.
+  final String? yamlPath;
+
+  /// Convenience: any source enabled?
+  bool get enabled => commentSource || yamlSource;
 }
 
 /// Mode of the per-run snapshot file used to drive AI / pre-commit
