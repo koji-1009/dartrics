@@ -18,6 +18,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 - `dartrics report <input.json>` re-emits a previously saved JSON report in a different format.
 - `dartrics rules` catalogues every metric with its rationale + refactor hints in `--reporter ai|md|json|console`.
 - `dartrics regression [--before <ref>] [--after <ref>]` compares metrics between two git states (default: `HEAD~1` vs the working tree). Uses git worktrees for the historical side. Diff entries are classified as `improved` / `regressed` / `unchanged` / `added` / `removed` per `MetricPolarity`. A built-in cosmetic-split heuristic flags refactors that look like AI just shuffled complexity into one-line helpers without actually reducing it.
+- `dartrics manual` prints the AI-facing operator's manual to stdout. The content is a mirror of [`doc/manual.md`](doc/manual.md) embedded as a const string in the executable, so it travels with `dart pub global activate dartrics` and is reachable from any agent loop without a separate doc download. A parity test enforces byte-equality with the markdown source so the two cannot drift.
 
 ### AI integration (`--reporter ai`)
 

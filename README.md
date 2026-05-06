@@ -41,6 +41,7 @@ dartrics analyze lib/ --since origin/main --fatal-warnings
 | `report <input.json>` | Re-emit a previously saved JSON report in another format. |
 | `rules` | Catalogue every metric with its rationale and refactor hints. |
 | `regression` | Compare metrics between two git states; classify each delta as improved / regressed / unchanged / added / removed. |
+| `manual` | Print the AI-facing operator's manual (mirror of [`doc/manual.md`](doc/manual.md)). |
 
 ```
 Top-level options:
@@ -115,7 +116,7 @@ Each metric exposes `rationale`, `refactorHints`, and `polarity` (`down` / `up` 
 
 The CLI's `--reporter ai` is the primary integration point for AI tooling. The output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. Two companion docs aimed at the AI consumer:
 
-- [`doc/manual.md`](doc/manual.md) — operator's manual. Each metric framed as a lens on "hard to read", with the accept-or-reject decision step made explicit.
+- [`doc/manual.md`](doc/manual.md) — operator's manual. Each metric framed as a lens on "hard to read", with the accept-or-reject decision step made explicit. Also reachable from inside an agent loop as `dartrics manual`, which prints the same content to stdout (the manual ships with the executable so `dart pub global activate dartrics` is enough — no separate doc download needed).
 - [`doc/ai-loop.md`](doc/ai-loop.md) — end-to-end loop walkthrough (setup → propose → apply → verify) with sample prompts.
 
 Eight flags compose into a tight refactor loop:
