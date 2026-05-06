@@ -33,9 +33,16 @@ class UnusedConfig {
       'protected',
       'JsonSerializable',
     ],
+    this.presets = const [],
   });
 
   final List<String> entryPoints;
   final bool excludeExported;
   final List<String> ignoreAnnotations;
+
+  /// Opt-in keep-alive annotation presets for popular code-generation
+  /// packages (`freezed`, `json_serializable`, `dart_mappable`,
+  /// `go_router_builder`, `auto_route`). See `keep_alive_presets.dart`
+  /// for the contents shipped with each preset.
+  final List<String> presets;
 }

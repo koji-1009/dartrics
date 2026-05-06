@@ -157,10 +157,30 @@ dartrics:
       - "visibleForTesting"
       - "protected"
       - "JsonSerializable"
+    presets:                    # opt-in code-gen keep-alive sets
+      - freezed
+      - json_serializable
+      - dart_mappable
+      - go_router_builder
+      - auto_route
 
   exclude:
     - "lib/generated/**"
 ```
+
+### Code-gen keep-alive presets
+
+The `presets:` list expands to extra `ignoreAnnotations` so that classes annotated for popular code-generation packages aren't flagged as unused on a fresh checkout (before `dart run build_runner build`). Shipped presets and the annotations they cover:
+
+| preset | annotations |
+|---|---|
+| `freezed` | `freezed`, `Freezed`, `unfreezed` |
+| `json_serializable` | `JsonSerializable`, `JsonEnum` |
+| `dart_mappable` | `MappableClass`, `MappableEnum`, `MappableLib` |
+| `go_router_builder` | `TypedGoRoute`, `TypedShellRoute`, `TypedStatefulShellRoute` |
+| `auto_route` | `RoutePage`, `AutoRouterConfig` |
+
+Unknown preset names are silently ignored, so adding a preset never breaks an older dartrics version. Custom annotations beyond the presets stay in `ignore-annotations:`.
 
 ## CLI
 

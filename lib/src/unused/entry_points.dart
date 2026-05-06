@@ -1,5 +1,6 @@
 import '../config/config.dart';
 import 'declaration_record.dart';
+import 'keep_alive_presets.dart';
 
 /// Finds the [DeclarationRecord]s that should be treated as reachability
 /// roots according to [config].
@@ -12,12 +13,19 @@ List<DeclarationRecord> resolveEntryPoints(
   for (final ep in config.entryPoints) {
     if (!ep.startsWith('@pragma:')) entrySimpleNames.add(ep);
   }
+  final keepAliveAnnotations = <String>{
+    ...config.ignoreAnnotations,
+    ...expandPresets(config.presets),
+  };
   for (final d in declarations) {
     if (entrySimpleNames.contains(d.name)) roots.add(d);
     if (d.hasVmEntryPointPragma) roots.add(d);
-    if (config.ignoreAnnotations.any(d.annotations.contains)) {
-      // Treating "ignored annotations" as roots ensures their declarations
-      // are never reported as unused even when nothing references them.
+    if (keepAliveAnnotations.any(d.annotations.contains)) {
+      // Annotations from `ignore-annotations` plus the union of every
+      // opted-in preset (e.g. `freezed`, `json_serializable`) keep their
+      // declarations alive even if nothing references them — useful when
+      // the matching `.g.dart` / `.freezed.dart` partner hasn't been
+      // generated yet.
       roots.add(d);
     }
     if (config.excludeExported && _isLibraryPublic(d.location.path)) {
