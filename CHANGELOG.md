@@ -22,11 +22,15 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 ### AI integration (`--reporter ai`)
 
 - Token-efficient YAML-ish output starting with `# dartrics ai-report v1`. The header is contractual; field renames or removals trigger a new header (`v2`).
-- `--explain <metric-id>` (repeatable) injects the metric's rationale + refactor hints alongside the violations. Pair with `dartrics rules` to feed the catalogue once and have agents reference it.
+- **Auto-explain** (default on; `--no-auto-explain` opts out) attaches each fired metric's rationale + refactor hints to the report's `explain:` block — AI loops no longer need to know to pass `--explain <id>` for every threshold they care about.
+- `--explain <metric-id>` (repeatable) is still honoured and **unions** with auto-explain; explicit ids stay first in the order so authored prompts remain deterministic.
+- **Stable violation `id`** — every violation carries a 16-hex-char `sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF. Exported as `computeViolationId(file, scope, metricId)` for embedders.
+- **`--limit <n>`** caps the violations + unused entries shown by the AI / md reporters after the priority sort. AI report records the dropped count in a `truncated:` block; md report appends `_+ N more violation(s) hidden by --limit_`. JSON / SARIF / console stay unlimited.
 - `--coverage <path>` (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key that puts low-coverage entries first and `complexityJustified` ones last so token budget lands on the most actionable items.
 - `complexityJustified: true` flags CC / Cognitive violations whose scope has branch coverage ≥ 0.8 (or line ≥ 0.95 when no `BRDA:` records are present) — *earned complexity* AI loops should leave alone.
 - **Deliberate dismissal** lets agents triage a specific `(file, scope, metric)` triple via `// dartrics:dismiss <metric> reason="…"` comments or a `dartrics-dismissals.yaml` sidecar. Both channels are opt-in through `dartrics: { dismissals: … }` in `analysis_options.yaml`. Validated entries decorate the violation with `dismissed: true` + carried `reason` / `by` / `at`; entries that fail `requireReason` / `minReasonLength` / `requireAuthor` / `requireTimestamp` keep the violation **live** and stamp it with `dismissalRejected: <why>` plus a stderr WARNING. `--strict-dismiss` ignores every dismissal for the run.
 - `--since <git-ref>` filters output to declarations whose owning `.dart` file changed between `<ref>` and `HEAD`. Cross-file analysis still resolves the full project so LCOM4 / library coupling / public-API reachability stay accurate; only the *emitted* records are filtered.
+- End-to-end loop walkthrough — setup → propose → apply → verify, with sample prompts and troubleshooting — lives in [`doc/ai-loop.md`](doc/ai-loop.md).
 
 ### Reporters
 
@@ -57,13 +61,13 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### CLI surface
 
-- Common options: `--config`, `--reporter`, `--output`, `--root`, `--since`, `--explain`, `--snapshot`, `--coverage`, `--strict-dismiss`, `--concurrency`, `--fatal-warnings`, `--fatal-style`, `-v`.
+- Common options: `--config`, `--reporter`, `--output`, `--root`, `--since`, `--explain`, `--snapshot`, `--coverage`, `--strict-dismiss`, `--concurrency`, `--limit`, `--auto-explain` / `--no-auto-explain`, `--fatal-warnings`, `--fatal-style`, `-v`.
 - `dartrics --version` prints the build's version. The same string is exported as `dartricsVersion` from `package:dartrics/dartrics.dart`.
 - Exit codes are sysexits-aligned: 0 success, 1 violations (with `--fatal-warnings`), 64 usage, 65 data, 70 internal, 78 config.
 
 ### Embedding
 
-- `lib/dartrics.dart` exposes the metric calculator classes (`CyclomaticComplexity`, `CognitiveComplexity`, `Lcom4`, …), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, …), the metadata enums (`MetricPolarity`, `ChangeDirection`, `Severity`, `ScopeKind`, `DismissalSource`), and the supporting types (`CoverageIndex`, `FileCoverage`, `AnalyzedFile`, `ExplainEntry`, `Dismissal`, `DismissalConfig`, `dartricsVersion`).
+- `lib/dartrics.dart` exposes the metric calculator classes (`CyclomaticComplexity`, `CognitiveComplexity`, `Lcom4`, …), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, …), the metadata enums (`MetricPolarity`, `ChangeDirection`, `Severity`, `ScopeKind`, `DismissalSource`), and the supporting types and helpers (`CoverageIndex`, `FileCoverage`, `AnalyzedFile`, `ExplainEntry`, `Dismissal`, `DismissalConfig`, `computeViolationId`, `dartricsVersion`).
 - `example/main.dart` shows a 30-line standalone embedding.
 
 ### Performance

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:dartrics/src/models/source_location.dart';
+import 'package:dartrics/src/models/unused_declaration.dart';
 import 'package:dartrics/src/reporters/ai_reporter.dart';
 import 'package:dartrics/src/reporters/md_reporter.dart';
 import 'package:dartrics/src/reporters/reporters.dart';
@@ -73,6 +74,41 @@ void main() {
       expect(RegExp(r'^  - file:', multiLine: true).allMatches(body).length, 2);
       expect(body, contains('truncated:'));
       expect(body, contains('violations: 3'));
+    });
+
+    test('truncates the unused list independently of violations', () async {
+      final dir = await Directory.systemTemp.createTemp('ai_lim_');
+      addTearDown(() => dir.delete(recursive: true));
+      final out = File('${dir.path}/r.yaml');
+      final sink = out.openWrite();
+      final report = AnalysisReport(
+        version: '1.0',
+        metrics: const [],
+        unused: [
+          for (var i = 0; i < 4; i++)
+            UnusedDeclaration(
+              kind: UnusedKind.function,
+              name: 'unused_$i',
+              location: SourceLocation(
+                path: '/proj/u$i.dart',
+                line: 1,
+                column: 1,
+              ),
+            ),
+        ],
+      );
+      AiReporter(
+        limit: 2,
+        sourceLoader: (path) => {path: 'line\n' * 10},
+      ).report(report, sink);
+      await sink.close();
+      final body = await out.readAsString();
+      expect(body, contains('unused:'));
+      expect(body, contains('unused_0'));
+      expect(body, contains('unused_1'));
+      expect(body, isNot(contains('unused_3')));
+      expect(body, contains('truncated:'));
+      expect(body, contains('unused: 2'));
     });
   });
 

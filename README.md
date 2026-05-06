@@ -113,9 +113,14 @@ Each metric exposes `rationale`, `refactorHints`, and `polarity` (`down` / `up` 
 
 ## AI integration
 
-The CLI's `--reporter ai` is the primary integration point for AI tooling. The output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. Five flags compose into a tight refactor loop:
+The CLI's `--reporter ai` is the primary integration point for AI tooling. The output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. End-to-end loop walkthrough — setup → propose → apply → verify, with sample prompts — lives in [`doc/ai-loop.md`](doc/ai-loop.md).
+
+Eight flags compose into a tight refactor loop:
 
 - **`--explain <metric-id>`** (repeatable) injects the metric's paragraph rationale and concrete refactor hints alongside the violations. The catalogue lives in `dartrics rules` so you can also feed it once and have agents reference it.
+- **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints for every metric that produced at least one violation. Most loops never need the explicit `--explain` flag.
+- **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF.
+- **`--limit <n>`** caps violations + unused entries shown by the AI / md reporters after the priority sort. Token-budget control for context-bounded agents; truncated entries are summarised in a `truncated:` block (AI) or `_+ N more_` line (md).
 - **`--coverage <path>`** (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key — low-coverage / high-severity entries land first, `complexityJustified` ones at the bottom.
 - **`complexityJustified: true`** flags CC / Cognitive violations whose scope has branch coverage `≥ 0.8` (or line `≥ 0.95` when `BRDA:` records are absent). The intent is *earned complexity*: a function that's complex but exhaustively tested is probably complex on purpose, so AI loops should leave it alone.
 - **Deliberate dismissal** lets agents (and humans) suppress a specific `(file, scope, metric)` triple — see [Deliberate dismissal](#deliberate-dismissal) below.
