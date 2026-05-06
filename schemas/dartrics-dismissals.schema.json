@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/koji-1009/dartrics/blob/main/schemas/dartrics-dismissals.schema.json",
+  "title": "dartrics dismissals sidecar",
+  "description": "Schema for the YAML sidecar that records deliberate dismissals (// dartrics:dismiss). Loaded when `dartrics.dismissals.sources.yaml: true` in analysis_options.yaml.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "Schema version. Bumped on breaking changes; `1` is the only currently-supported value.",
+      "const": 1
+    },
+    "dismissals": {
+      "description": "Ordered list of dismissal entries. When two entries share the same (file, scope, metric) triple the later entry wins.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/Dismissal" },
+      "default": []
+    }
+  },
+  "$defs": {
+    "Dismissal": {
+      "type": "object",
+      "required": ["file", "scope", "metric"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "description": "Project-root-relative path of the .dart file the dismissal targets. Compared exactly against MetricRecord.file.",
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "description": "Scope name (e.g. `parse`, `Foo.bar`, `Foo.named`, or the file path for library-level metrics). Compared exactly against MetricRecord.scope.name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "metric": {
+          "description": "Metric id this dismissal applies to (e.g. `cyclomatic-complexity`, `method-length`). One entry = one metric.",
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "description": "Free-form rationale. Required when `dartrics.dismissals.requireReason: true` (default). Length is gated by `minReasonLength` (default 20 chars after trim).",
+          "type": "string"
+        },
+        "by": {
+          "description": "Optional author tag. Required when `dartrics.dismissals.requireAuthor: true`.",
+          "type": "string"
+        },
+        "at": {
+          "description": "Optional ISO-8601 timestamp. Required when `dartrics.dismissals.requireTimestamp: true`. Accepts both YAML quoted strings and native YAML timestamps.",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

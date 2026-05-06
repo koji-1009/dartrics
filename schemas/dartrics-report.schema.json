@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/koji-1009/dartrics/blob/main/schemas/dartrics-report.schema.json",
+  "title": "dartrics analysis report (JSON reporter)",
+  "description": "Schema for the JSON output of `dartrics analyze --reporter json`. Mirrors the in-memory `AnalysisReport` shape; field names are stable through the 0.x series, additions are non-breaking, renames trigger a major bump.",
+  "type": "object",
+  "required": ["version", "metrics", "unused"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "Reporter schema version. `1.0` for the 0.x series.",
+      "type": "string"
+    },
+    "analyzedFiles": {
+      "description": "Per-file fingerprints used to drive snapshot-mode diffs. Only emitted by the JSON reporter; the markdown / ai / sarif / console reporters omit it because the snapshot file is the source of truth.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/AnalyzedFile" }
+    },
+    "metrics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/MetricRecord" }
+    },
+    "unused": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/UnusedDeclaration" }
+    }
+  },
+  "$defs": {
+    "AnalyzedFile": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "ScopeRef": {
+      "type": "object",
+      "required": ["type", "name", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["function", "method", "klass", "file", "library"]
+        },
+        "name": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "MetricRecord": {
+      "type": "object",
+      "required": ["file", "scope", "values", "violations"],
+      "additionalProperties": false,
+      "properties": {
+        "file": { "type": "string" },
+        "scope": { "$ref": "#/$defs/ScopeRef" },
+        "values": {
+          "description": "Map of metric id → numeric value computed for this scope.",
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "violations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/MetricViolation" }
+        }
+      }
+    },
+    "MetricViolation": {
+      "type": "object",
+      "required": ["metric", "level", "threshold"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "description": "Metric id (e.g. `cyclomatic-complexity`).",
+          "type": "string"
+        },
+        "level": {
+          "description": "Severity at which the threshold was crossed.",
+          "enum": ["info", "warning", "error"]
+        },
+        "threshold": {
+          "description": "Threshold value the scope's metric reached or exceeded.",
+          "type": "number"
+        },
+        "scopeCoverage": {
+          "description": "Line coverage for this scope, in [0.0, 1.0]. Only present when --coverage is engaged.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "scopeBranchCoverage": {
+          "description": "Branch coverage for this scope, in [0.0, 1.0]. Only present when BRDA records exist.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "complexityJustified": {
+          "description": "True when CC / Cognitive crossed threshold but coverage is high enough that the complexity is most likely earned. Only emitted when set.",
+          "const": true
+        },
+        "dismissed": {
+          "description": "True when a `dartrics:dismiss` directive (comment or YAML) matched this violation and passed validation. Only emitted when set.",
+          "const": true
+        },
+        "dismissedFrom": {
+          "description": "Channel the accepted dismissal came from. Only emitted when `dismissed: true`.",
+          "enum": ["comment", "yaml"]
+        },
+        "dismissReason": {
+          "description": "Reason text carried in from the matched dismissal.",
+          "type": "string"
+        },
+        "dismissedBy": {
+          "description": "Author tag from a YAML dismissal's `by:` field. YAML-only.",
+          "type": "string"
+        },
+        "dismissedAt": {
+          "description": "Timestamp from a YAML dismissal's `at:` field, serialised as ISO-8601. YAML-only.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "dismissalRejected": {
+          "description": "Set when a dismissal entry matched the violation but failed validation (e.g. reason too short). Mutually exclusive with `dismissed`.",
+          "type": "string"
+        }
+      }
+    },
+    "UnusedDeclaration": {
+      "type": "object",
+      "required": ["kind", "name", "file", "line"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "function",
+            "method",
+            "klass",
+            "field",
+            "typedef",
+            "enumValue",
+            "extension"
+          ]
+        },
+        "name": { "type": "string" },
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

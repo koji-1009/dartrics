@@ -363,6 +363,21 @@ The JSON reporter emits the same logical model plus an `analyzedFiles` list that
 
 `analyzedFiles` is JSON-only — the markdown / ai / sarif / console reporters omit it because the snapshot file is the source of truth for hash data.
 
+### JSON Schema files
+
+Machine-checkable schemas live under [`schemas/`](schemas/):
+
+- [`dartrics-report.schema.json`](schemas/dartrics-report.schema.json) — JSON reporter output (`dartrics analyze --reporter json`). Covers `version`, `analyzedFiles`, `metrics[].violations[]` (including the dismissal fields above), and `unused[]`.
+- [`dartrics-dismissals.schema.json`](schemas/dartrics-dismissals.schema.json) — the YAML sidecar (`dartrics-dismissals.yaml`). Drop a `# yaml-language-server: $schema=…` directive at the top of your sidecar to get IDE autocomplete + validation:
+
+  ```yaml
+  # yaml-language-server: $schema=https://raw.githubusercontent.com/koji-1009/dartrics/main/schemas/dartrics-dismissals.schema.json
+  version: 1
+  dismissals: []
+  ```
+
+Both schemas are draft-2020-12. Field additions are non-breaking; renames trigger a major version bump (`1` → `2` for the dismissals sidecar, `1.0` → `2.0` for the JSON report `version`).
+
 ## Output formats
 
 - **console** — human-friendly summary line + per-violation lines.
@@ -400,6 +415,10 @@ dart pub run coverage:test_with_coverage  # 100% line coverage is required
 
 See [`AGENTS.md`](AGENTS.md) for the contributor / AI-agent workflow notes.
 
+### Bundled Claude Code skill
+
+`.claude/skills/dart-cli-app-best-practices/` is a verbatim copy of the [`dart-cli-app-best-practices`](https://github.com/kevmoo/dash_skills) skill from [kevmoo/dash_skills](https://github.com/kevmoo/dash_skills) (Apache-2.0). It informs the CLI entrypoint conventions used in `bin/` and `lib/src/entry_point.dart` — keep it in sync upstream when refactoring.
+
 ## License
 
-MIT.
+MIT for dartrics itself; the bundled skill in `.claude/skills/` is Apache-2.0 (see its `SKILL.md` frontmatter).
