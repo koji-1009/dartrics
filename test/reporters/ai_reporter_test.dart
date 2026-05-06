@@ -9,6 +9,27 @@ import 'package:test/test.dart';
 import 'sample_report.dart';
 
 void main() {
+  test(
+    'empty report emits a clean header (no `null` prefix from dapper)',
+    () async {
+      // dapper.formatYaml('# header only\n') returns 'null# header only\n'
+      // because the document has no parseable body. The reporter sidesteps
+      // that path so a clean codebase doesn't produce corrupted YAML.
+      final tmp = Directory.systemTemp.createTempSync();
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final temp = File('${tmp.path}/empty.yaml');
+      final sink = temp.openWrite();
+      AiReporter().report(
+        AnalysisReport(version: '1.0', metrics: const [], unused: const []),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, isNot(startsWith('null')));
+      expect(body.trim(), '# dartrics ai-report v1');
+    },
+  );
+
   test('emits violations and unused with snippet placeholder', () async {
     final tmp = Directory.systemTemp.createTempSync();
     addTearDown(() => tmp.deleteSync(recursive: true));

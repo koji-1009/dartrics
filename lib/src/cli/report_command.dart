@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 
+import '../dismiss/dismissal.dart';
 import '../models/analysis_report.dart';
 import '../models/source_location.dart';
 import '../models/unused_declaration.dart';
@@ -58,10 +59,22 @@ class ReportCommand extends Command<int> {
   }
 }
 
+/// Decodes the JSON-reporter shape produced by `dartrics analyze
+/// --reporter json`. Field-for-field round-trippable: every property that
+/// `MetricViolation.toJson` / `MetricRecord.toJson` emits is re-read here
+/// so re-emitting through the AI / md / SARIF reporters retains stable
+/// `id`s, coverage data, dismiss state, and the `analyzedFiles` snapshot
+/// list. Without that, `dartrics analyze --reporter json | tee r.json &&
+/// dartrics report r.json --reporter ai` would silently strip every
+/// field added in rounds 2 → 4.
 AnalysisReport _decode(String body) {
   final raw = jsonDecode(body) as Map<String, Object?>;
   return AnalysisReport(
     version: raw['version'] as String? ?? '1.0',
+    analyzedFiles: ((raw['analyzedFiles'] as List?) ?? const [])
+        .cast<Map<String, Object?>>()
+        .map(AnalyzedFile.fromJson)
+        .toList(),
     metrics: ((raw['metrics'] as List?) ?? const [])
         .cast<Map<String, Object?>>()
         .map(_decodeRecord)
@@ -97,10 +110,24 @@ MetricRecord _decodeRecord(Map<String, Object?> json) {
 }
 
 MetricViolation _decodeViolation(Map<String, Object?> json) {
+  final dismissedFromName = json['dismissedFrom'] as String?;
+  final dismissedAt = json['dismissedAt'] as String?;
   return MetricViolation(
+    id: json['id'] as String? ?? '',
     metricId: json['metric'] as String,
     severity: Severity.values.byName(json['level'] as String),
     threshold: json['threshold'] as num,
+    scopeCoverage: (json['scopeCoverage'] as num?)?.toDouble(),
+    scopeBranchCoverage: (json['scopeBranchCoverage'] as num?)?.toDouble(),
+    complexityJustified: json['complexityJustified'] as bool? ?? false,
+    dismissed: json['dismissed'] as bool? ?? false,
+    dismissReason: json['dismissReason'] as String?,
+    dismissedBy: json['dismissedBy'] as String?,
+    dismissedAt: dismissedAt == null ? null : DateTime.parse(dismissedAt),
+    dismissedFrom: dismissedFromName == null
+        ? null
+        : DismissalSource.values.byName(dismissedFromName),
+    dismissalRejected: json['dismissalRejected'] as String?,
   );
 }
 

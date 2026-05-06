@@ -28,16 +28,29 @@ class AiReporter implements Reporter {
 
   @override
   void report(AnalysisReport report, IOSink sink) {
-    final buf = StringBuffer()..writeln('# dartrics ai-report v1');
-    _writeExplanations(buf, report);
-    final dropped = _writeViolations(buf, report);
-    final unusedDropped = _writeUnused(buf, report);
+    const header = '# dartrics ai-report v1';
+    final body = StringBuffer();
+    _writeExplanations(body, report);
+    final dropped = _writeViolations(body, report);
+    final unusedDropped = _writeUnused(body, report);
     if (dropped > 0 || unusedDropped > 0) {
-      buf.writeln('truncated:');
-      if (dropped > 0) buf.writeln('  violations: $dropped');
-      if (unusedDropped > 0) buf.writeln('  unused: $unusedDropped');
+      body.writeln('truncated:');
+      if (dropped > 0) body.writeln('  violations: $dropped');
+      if (unusedDropped > 0) body.writeln('  unused: $unusedDropped');
     }
-    sink.write(formatYaml(buf.toString()));
+    // `package:dapper` 1.4.6 returns 'null<comment>\n' when fed a
+    // comment-only string (no parseable body). On a clean codebase the
+    // ai report is exactly that — header + nothing — so we bypass
+    // dapper and write the header directly. The header alone is a
+    // valid YAML document (a single comment line).
+    if (body.isEmpty) {
+      sink.writeln(header);
+      return;
+    }
+    final full = StringBuffer()
+      ..writeln(header)
+      ..write(body.toString());
+    sink.write(formatYaml(full.toString()));
   }
 
   void _writeExplanations(StringBuffer buf, AnalysisReport report) {
