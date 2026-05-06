@@ -41,6 +41,32 @@ void main() {
     },
   );
 
+  test('generated dart files are skipped by default', () async {
+    await File('${dir.path}/lib/model.g.dart').writeAsString('// generated');
+    await File(
+      '${dir.path}/lib/model.freezed.dart',
+    ).writeAsString('// generated');
+    await File('${dir.path}/lib/router.gr.dart').writeAsString('// generated');
+    await File('${dir.path}/lib/proto.pb.dart').writeAsString('// generated');
+    final runner = AnalyzerRunner(roots: ['${dir.path}/lib']);
+    final files = await runner.collectDartFiles();
+    expect(files.any((p) => p.endsWith('.g.dart')), isFalse);
+    expect(files.any((p) => p.endsWith('.freezed.dart')), isFalse);
+    expect(files.any((p) => p.endsWith('.gr.dart')), isFalse);
+    expect(files.any((p) => p.endsWith('.pb.dart')), isFalse);
+    expect(files.any((p) => p.endsWith('a.dart')), isTrue);
+  });
+
+  test('includeGenerated: true brings generated files back in', () async {
+    await File('${dir.path}/lib/model.g.dart').writeAsString('// generated');
+    final runner = AnalyzerRunner(
+      roots: ['${dir.path}/lib'],
+      includeGenerated: true,
+    );
+    final files = await runner.collectDartFiles();
+    expect(files.any((p) => p.endsWith('.g.dart')), isTrue);
+  });
+
   test('exclude globs filter relative paths', () async {
     final runner = AnalyzerRunner(
       roots: ['${dir.path}/lib'],
