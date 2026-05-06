@@ -60,6 +60,8 @@ Common options:
   --coverage <path>        attach lcov.info coverage to every violation;
                            defaults to coverage/lcov.info when present;
                            `--coverage none` to disable
+  --strict-dismiss         ignore every `dartrics:dismiss` directive
+                           (comment + YAML); useful in CI / final review
   --fatal-warnings         exit non-zero if any warning is reported
   --fatal-style            exit non-zero if any style violation is reported (reserved)
   -v, --verbose            FINE-level logging
@@ -114,8 +116,54 @@ The CLI's `--reporter ai` is the primary integration point for AI tooling. The o
 - **`--explain <metric-id>`** (repeatable) injects the metric's paragraph rationale and concrete refactor hints alongside the violations. The catalogue lives in `dartrics rules` so you can also feed it once and have agents reference it.
 - **`--coverage <path>`** (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key — low-coverage / high-severity entries land first, `complexityJustified` ones at the bottom.
 - **`complexityJustified: true`** flags CC / Cognitive violations whose scope has branch coverage `≥ 0.8` (or line `≥ 0.95` when `BRDA:` records are absent). The intent is *earned complexity*: a function that's complex but exhaustively tested is probably complex on purpose, so AI loops should leave it alone.
+- **Deliberate dismissal** lets agents (and humans) suppress a specific `(file, scope, metric)` triple — see [Deliberate dismissal](#deliberate-dismissal) below.
 - **`--snapshot <mode>`** writes a per-file `sha256` after each run and emits only the records for files whose hash changed on the next invocation. Git-independent, so it works for AI loops, pre-commit hooks (dirty index), and non-git VCS (`jj`, `sapling`). `cache` (default) lands at `.dart_tool/dartrics/snapshot.json`; `baseline` at `dartrics-snapshot.json` for CI-shared baselines.
 - **`--since <git-ref>`** filters the output to declarations whose owning `.dart` file changed between `<ref>` and `HEAD` (per `git diff --name-only --diff-filter=AMR`). Cross-file analysis stays accurate; only the *emitted* records are filtered.
+
+### Deliberate dismissal
+
+Suppress a specific violation when a refactor would actually hide intent. dartrics treats dismissals as a triaged-but-still-visible bucket: violations stay in the report, but `dismissed: true` (with the carried `reason`) tells AI loops to leave them alone. Two channels, both opt-in via `analysis_options.yaml`:
+
+```yaml
+dartrics:
+  dismissals: {}                # bare block ⇒ both sources on, requireReason: true (≥20 chars)
+```
+
+```yaml
+dartrics:
+  dismissals:
+    sources:
+      comment: true             # // dartrics:dismiss …
+      yaml: true                # dartrics-dismissals.yaml
+    requireReason: true
+    minReasonLength: 20
+    requireAuthor: false        # YAML-only (`by:` field)
+    requireTimestamp: false     # YAML-only (`at:` field)
+    yamlPath: dartrics-dismissals.yaml
+```
+
+**Comment form** — sits immediately above the declaration; blank line invalidates it. Stack multiple lines for multiple metrics:
+
+```dart
+// dartrics:dismiss cyclomatic-complexity reason="State machine: splitting hides intent"
+// dartrics:dismiss method-length reason="State machine: splitting hides intent"
+int parse(Token start) { ... }
+```
+
+**YAML form** — `dartrics-dismissals.yaml` at the project root (or `yamlPath:`):
+
+```yaml
+version: 1
+dismissals:
+  - file: lib/parser.dart
+    scope: parse
+    metric: cyclomatic-complexity
+    reason: "Recursive descent parser; splitting hides intent"
+    by: claude-opus-4-7         # required when requireAuthor: true
+    at: "2026-05-06T19:14:00Z"  # required when requireTimestamp: true
+```
+
+Hits flow through the validator. Reasons that fall short of `minReasonLength` keep the violation **live** and stamp it with `dismissalRejected: <why>` (plus a stderr WARNING) so the agent can amend the entry. YAML always beats a colliding comment with the same key. `--strict-dismiss` makes the engine ignore every dismissal for that run — useful in CI / final review when the operator wants to see the raw triage list.
 
 ### Regression check
 
@@ -276,6 +324,12 @@ violations:
     coverage: 0.34              # only when --coverage is engaged
     branchCoverage: 0.20        # only when BRDA records exist
     complexityJustified: true   # only when set
+    dismissed: true             # only when a dismissal accepted this violation
+    dismissedFrom: yaml         # comment | yaml
+    dismissReason: "…"          # carried verbatim from the dismissal
+    dismissedBy: "claude-opus-4-7"   # YAML form only
+    dismissedAt: "2026-05-06T19:14:00.000Z"  # YAML form only
+    dismissalRejected: "…"      # mutually exclusive with `dismissed`; entry matched but failed validation
     snippet: |
       …7 lines centred on `line`…
 unused:
