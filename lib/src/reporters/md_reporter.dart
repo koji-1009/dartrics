@@ -80,9 +80,16 @@ class MdReporter implements Reporter {
       );
       buf.writeln();
       for (final v in m.violations) {
+        final cov = v.scopeCoverage;
+        final justified = v.complexityJustified;
+        final suffix = StringBuffer();
+        if (cov != null) {
+          suffix.write(' · coverage ${(cov * 100).toStringAsFixed(0)}%');
+        }
+        if (justified) suffix.write(' · _earned_');
         buf.writeln(
           '- ${v.metricId}: **${m.values[v.metricId]}** '
-          '(${v.severity.name} at ${v.threshold})',
+          '(${v.severity.name} at ${v.threshold})$suffix',
         );
       }
       buf.writeln();

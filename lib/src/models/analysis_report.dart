@@ -39,16 +39,38 @@ class MetricViolation {
     required this.metricId,
     required this.severity,
     required this.threshold,
+    this.scopeCoverage,
+    this.scopeBranchCoverage,
+    this.complexityJustified = false,
   });
 
   final String metricId;
   final Severity severity;
   final num threshold;
 
+  /// Line coverage of the violating scope, in `[0.0, 1.0]`. `null` when
+  /// no `lcov.info` was supplied or when the scope had no executable
+  /// lines reported.
+  final double? scopeCoverage;
+
+  /// Branch coverage of the violating scope, in `[0.0, 1.0]`. `null`
+  /// when the lcov source contained no `BRDA:` records for the range.
+  final double? scopeBranchCoverage;
+
+  /// True when the violating scope is heavily covered enough that its
+  /// complexity is most likely "earned" rather than incidental. Set by
+  /// the engine when `branch >= 0.8` (or `line >= 0.95` when no branch
+  /// data is available) on the CC / Cognitive metrics. AI loops should
+  /// deprioritise refactoring these.
+  final bool complexityJustified;
+
   Map<String, Object?> toJson() => {
     'metric': metricId,
     'level': severity.name,
     'threshold': threshold,
+    if (scopeCoverage != null) 'scopeCoverage': scopeCoverage,
+    if (scopeBranchCoverage != null) 'scopeBranchCoverage': scopeBranchCoverage,
+    if (complexityJustified) 'complexityJustified': true,
   };
 }
 

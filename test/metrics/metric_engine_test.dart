@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartrics/src/analyzer_runner.dart';
 import 'package:dartrics/src/config/config.dart';
+import 'package:dartrics/src/coverage/lcov_reader.dart';
 import 'package:dartrics/src/metrics/metric_engine.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:test/test.dart';
@@ -248,5 +249,151 @@ class Hello extends StatelessWidget {
         .keys
         .toSet();
     expect(fCtorKeys, isNot(contains('number-of-parameters')));
+  });
+
+  group('coverage-aware violations', () {
+    late Directory dir;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('engine_cov_');
+      await Directory('${dir.path}/lib').create();
+      await File(
+        '${dir.path}/pubspec.yaml',
+      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+int branchy(int x) {
+  if (x > 0) return 1;
+  if (x < 0) return -1;
+  if (x == 0) return 0;
+  return 99;
+}
+''');
+    });
+
+    tearDown(() => dir.delete(recursive: true));
+
+    test('attaches coverage and tags justified CC when branch ≥ 0.8', () async {
+      final lcovPath = '${dir.path}/lib/foo.dart';
+      final coverage = CoverageIndex.parse('''
+SF:$lcovPath
+DA:1,1
+DA:2,1
+DA:3,1
+DA:4,1
+DA:5,1
+DA:6,1
+DA:7,1
+BRDA:2,0,0,3
+BRDA:2,0,1,4
+BRDA:3,0,0,2
+BRDA:3,0,1,5
+BRDA:4,0,0,3
+BRDA:4,0,1,3
+end_of_record
+''');
+      final runner = AnalyzerRunner(roots: [dir.path]);
+      final units = await runner.resolveAll();
+      final engine = MetricEngine(
+        thresholds: const {
+          'cyclomatic-complexity': MetricThresholds(warning: 1),
+        },
+        coverage: coverage,
+      );
+      final records = engine.analyzeResolved(units);
+      final fn = records.firstWhere((r) => r.scope.name == 'branchy');
+      final v = fn.violations.firstWhere(
+        (v) => v.metricId == 'cyclomatic-complexity',
+      );
+      expect(v.scopeCoverage, 1.0);
+      expect(v.scopeBranchCoverage, 1.0);
+      expect(v.complexityJustified, isTrue);
+    });
+
+    test('does not tag complexityJustified when coverage is low', () async {
+      final lcovPath = '${dir.path}/lib/foo.dart';
+      final coverage = CoverageIndex.parse('''
+SF:$lcovPath
+DA:1,1
+DA:2,1
+DA:3,0
+DA:4,0
+DA:5,0
+DA:6,0
+DA:7,1
+end_of_record
+''');
+      final runner = AnalyzerRunner(roots: [dir.path]);
+      final units = await runner.resolveAll();
+      final engine = MetricEngine(
+        thresholds: const {
+          'cyclomatic-complexity': MetricThresholds(warning: 1),
+        },
+        coverage: coverage,
+      );
+      final records = engine.analyzeResolved(units);
+      final fn = records.firstWhere((r) => r.scope.name == 'branchy');
+      final v = fn.violations.firstWhere(
+        (v) => v.metricId == 'cyclomatic-complexity',
+      );
+      expect(v.complexityJustified, isFalse);
+      expect(v.scopeCoverage, lessThan(0.95));
+    });
+
+    test('falls back to line coverage when no BRDA records', () async {
+      final lcovPath = '${dir.path}/lib/foo.dart';
+      // 95%+ line coverage, no branch records.
+      final coverage = CoverageIndex.parse('''
+SF:$lcovPath
+DA:1,1
+DA:2,1
+DA:3,1
+DA:4,1
+DA:5,1
+DA:6,1
+DA:7,1
+end_of_record
+''');
+      final runner = AnalyzerRunner(roots: [dir.path]);
+      final units = await runner.resolveAll();
+      final engine = MetricEngine(
+        thresholds: const {
+          'cyclomatic-complexity': MetricThresholds(warning: 1),
+        },
+        coverage: coverage,
+      );
+      final records = engine.analyzeResolved(units);
+      final fn = records.firstWhere((r) => r.scope.name == 'branchy');
+      final v = fn.violations.firstWhere(
+        (v) => v.metricId == 'cyclomatic-complexity',
+      );
+      expect(v.scopeBranchCoverage, isNull);
+      expect(v.complexityJustified, isTrue);
+    });
+
+    test('non-justifiable metrics never get the tag', () async {
+      final lcovPath = '${dir.path}/lib/foo.dart';
+      final coverage = CoverageIndex.parse('''
+SF:$lcovPath
+DA:1,1
+DA:2,1
+DA:3,1
+DA:4,1
+DA:5,1
+DA:6,1
+DA:7,1
+end_of_record
+''');
+      final runner = AnalyzerRunner(roots: [dir.path]);
+      final units = await runner.resolveAll();
+      final engine = MetricEngine(
+        thresholds: const {'method-length': MetricThresholds(warning: 1)},
+        coverage: coverage,
+      );
+      final records = engine.analyzeResolved(units);
+      final fn = records.firstWhere((r) => r.scope.name == 'branchy');
+      final v = fn.violations.firstWhere((v) => v.metricId == 'method-length');
+      expect(v.scopeCoverage, isNotNull);
+      expect(v.complexityJustified, isFalse);
+    });
   });
 }

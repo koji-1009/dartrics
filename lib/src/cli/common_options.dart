@@ -43,6 +43,14 @@ void addCommonOptions(ArgParser parser) {
           'Override snapshot mode (cache | baseline | none) or supply a '
           'custom file path. Beats the analysis_options.yaml setting.',
     )
+    ..addOption(
+      'coverage',
+      help:
+          'Path to an lcov.info file. Coverage data is attached to '
+          'every emitted violation; high-coverage CC / Cognitive '
+          'violations get a `complexityJustified` tag. Defaults to '
+          'coverage/lcov.info when it exists; pass `none` to disable.',
+    )
     ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',
@@ -71,6 +79,7 @@ class CommonOptions {
     required this.since,
     required this.explain,
     required this.snapshot,
+    required this.coverage,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -90,6 +99,7 @@ class CommonOptions {
       since: results['since'] as String?,
       explain: List<String>.from(results['explain'] as List<String>),
       snapshot: results['snapshot'] as String?,
+      coverage: results['coverage'] as String?,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -104,6 +114,7 @@ class CommonOptions {
   final String? since;
   final List<String> explain;
   final String? snapshot;
+  final String? coverage;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

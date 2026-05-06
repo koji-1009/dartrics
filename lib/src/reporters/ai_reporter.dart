@@ -51,25 +51,57 @@ class AiReporter implements Reporter {
   }
 
   void _writeViolations(StringBuffer buf, AnalysisReport report) {
-    final list = report.metrics.where((m) => m.violations.isNotEmpty).toList();
-    if (list.isEmpty) return;
+    final entries = <_ViolationEntry>[
+      for (final m in report.metrics)
+        for (final v in m.violations) _ViolationEntry(record: m, violation: v),
+    ];
+    if (entries.isEmpty) return;
+    entries.sort(_compareViolations);
     buf.writeln('violations:');
-    for (final m in list) {
-      for (final v in m.violations) {
-        buf
-          ..writeln('  - file: ${m.file}')
-          ..writeln('    line: ${m.scope.location.line}')
-          ..writeln('    scope: ${m.scope.name}')
-          ..writeln('    metric: ${v.metricId}')
-          ..writeln('    value: ${m.values[v.metricId]}')
-          ..writeln('    threshold: ${v.threshold}')
-          ..writeln('    severity: ${v.severity.name}')
-          ..writeln('    snippet: |');
-        for (final line in _snippetFor(m.file, m.scope.location.line)) {
-          buf.writeln('      $line');
-        }
+    for (final e in entries) {
+      final m = e.record;
+      final v = e.violation;
+      buf
+        ..writeln('  - file: ${m.file}')
+        ..writeln('    line: ${m.scope.location.line}')
+        ..writeln('    scope: ${m.scope.name}')
+        ..writeln('    metric: ${v.metricId}')
+        ..writeln('    value: ${m.values[v.metricId]}')
+        ..writeln('    threshold: ${v.threshold}')
+        ..writeln('    severity: ${v.severity.name}');
+      if (v.scopeCoverage != null) {
+        buf.writeln('    coverage: ${v.scopeCoverage!.toStringAsFixed(2)}');
+      }
+      if (v.scopeBranchCoverage != null) {
+        buf.writeln(
+          '    branchCoverage: ${v.scopeBranchCoverage!.toStringAsFixed(2)}',
+        );
+      }
+      if (v.complexityJustified) {
+        buf.writeln('    complexityJustified: true');
+      }
+      buf.writeln('    snippet: |');
+      for (final line in _snippetFor(m.file, m.scope.location.line)) {
+        buf.writeln('      $line');
       }
     }
+  }
+
+  /// Highest-severity, lowest-priority-key violations come first.
+  /// Priority key collapses coverage + justified into a single number:
+  /// low coverage (most actionable) at 0.0, no coverage data in the
+  /// middle (0.5), `complexityJustified` at the bottom (2.0).
+  int _compareViolations(_ViolationEntry a, _ViolationEntry b) {
+    final bySev = b.violation.severity.rank.compareTo(
+      a.violation.severity.rank,
+    );
+    if (bySev != 0) return bySev;
+    return _priority(a.violation).compareTo(_priority(b.violation));
+  }
+
+  double _priority(MetricViolation v) {
+    if (v.complexityJustified) return 2.0;
+    return v.scopeCoverage ?? 0.5;
   }
 
   void _writeUnused(StringBuffer buf, AnalysisReport report) {
@@ -107,4 +139,10 @@ Map<String, String> _defaultSourceLoader(String path) {
   } on FileSystemException {
     return {path: ''};
   }
+}
+
+class _ViolationEntry {
+  const _ViolationEntry({required this.record, required this.violation});
+  final MetricRecord record;
+  final MetricViolation violation;
 }

@@ -4,6 +4,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 
 import '../analyzer_runner.dart';
 import '../config/config.dart';
+import '../coverage/lcov_reader.dart';
 import '../models/analysis_report.dart';
 import '../models/source_location.dart';
 import 'class/class_metric.dart';
@@ -23,6 +24,7 @@ class MetricEngine {
     List<LibraryMetric>? libraryMetrics,
     Map<String, MetricThresholds>? thresholds,
     this.flutter = false,
+    this.coverage,
   }) : functionMetrics = functionMetrics ?? defaultFunctionMetrics,
        classMetrics = classMetrics ?? defaultClassMetrics,
        libraryMetrics = libraryMetrics ?? defaultLibraryMetrics,
@@ -36,6 +38,28 @@ class MetricEngine {
   /// Mirror of [Config.flutter] — when `true`, [FlutterAware] skips
   /// metrics that produce noisy results on idiomatic Flutter widgets.
   final bool flutter;
+
+  /// Optional lcov coverage data. When supplied, every emitted
+  /// [MetricViolation] is annotated with the scope's line / branch
+  /// coverage and a `complexityJustified` flag (see C2/C3 in
+  /// `tmp/v0.1.0_round2_plan.md`).
+  final CoverageIndex? coverage;
+
+  /// Metric ids whose `complexityJustified` tag is computed from
+  /// coverage. Limited to CC and Cognitive because those are the
+  /// metrics where high values can be earned by exhaustive testing.
+  static const Set<String> _justifiableMetrics = {
+    'cyclomatic-complexity',
+    'cognitive-complexity',
+  };
+
+  /// Branch-coverage threshold above which a CC / Cognitive violation
+  /// is considered "earned".
+  static const double _branchJustifiedThreshold = 0.8;
+
+  /// Line-coverage threshold used as a fallback when branch coverage
+  /// data isn't available for the scope.
+  static const double _lineJustifiedThreshold = 0.95;
 
   Future<List<MetricRecord>> analyze(AnalyzerRunner runner) async {
     final units = await runner.resolveAll();
@@ -83,6 +107,7 @@ class MetricEngine {
       if (!_isMetricEnabled(calc.id, calc.defaultEnabled)) continue;
       values[calc.id] = calc.compute(input);
     }
+    final lineCount = file.unit.lineInfo.lineCount;
     return MetricRecord(
       file: file.path,
       scope: ScopeRef(
@@ -91,7 +116,12 @@ class MetricEngine {
         location: SourceLocation(path: file.path, line: 1, column: 1),
       ),
       values: values,
-      violations: _violationsFor(values),
+      violations: _violationsFor(
+        values: values,
+        path: file.path,
+        startLine: 1,
+        endLine: lineCount,
+      ),
     );
   }
 
@@ -112,11 +142,18 @@ class MetricEngine {
         if (skip.contains(calc.id)) continue;
         values[calc.id] = calc.compute(input);
       }
+      final startLine = file.unit.lineInfo.getLocation(decl.offset).lineNumber;
+      final endLine = file.unit.lineInfo.getLocation(decl.end).lineNumber;
       yield MetricRecord(
         file: file.path,
         scope: _scopeOf(decl, input, file.path),
         values: values,
-        violations: _violationsFor(values),
+        violations: _violationsFor(
+          values: values,
+          path: file.path,
+          startLine: startLine,
+          endLine: endLine,
+        ),
       );
     }
   }
@@ -140,6 +177,7 @@ class MetricEngine {
         values[calc.id] = calc.compute(input);
       }
       final loc = file.unit.lineInfo.getLocation(cls.offset);
+      final endLine = file.unit.lineInfo.getLocation(cls.end).lineNumber;
       yield MetricRecord(
         file: file.path,
         scope: ScopeRef(
@@ -152,7 +190,12 @@ class MetricEngine {
           ),
         ),
         values: values,
-        violations: _violationsFor(values),
+        violations: _violationsFor(
+          values: values,
+          path: file.path,
+          startLine: loc.lineNumber,
+          endLine: endLine,
+        ),
       );
     }
   }
@@ -173,17 +216,31 @@ class MetricEngine {
     return ScopeRef(kind: kind, name: input.scopeName, location: source);
   }
 
-  List<MetricViolation> _violationsFor(Map<String, num> values) {
+  List<MetricViolation> _violationsFor({
+    required Map<String, num> values,
+    required String path,
+    required int startLine,
+    required int endLine,
+  }) {
+    final cov = coverage?.forFile(path);
+    final lineCoverage = cov?.lineCoverageInRange(startLine, endLine);
+    final branchCoverage = cov?.branchCoverageInRange(startLine, endLine);
     final violations = <MetricViolation>[];
     for (final entry in values.entries) {
       final t = thresholds[entry.key];
       if (t == null) continue;
+      final justified =
+          _justifiableMetrics.contains(entry.key) &&
+          _isJustified(branch: branchCoverage, line: lineCoverage);
       if (t.error != null && entry.value >= t.error!) {
         violations.add(
           MetricViolation(
             metricId: entry.key,
             severity: Severity.error,
             threshold: t.error!,
+            scopeCoverage: lineCoverage,
+            scopeBranchCoverage: branchCoverage,
+            complexityJustified: justified,
           ),
         );
       } else if (t.warning != null && entry.value >= t.warning!) {
@@ -192,11 +249,23 @@ class MetricEngine {
             metricId: entry.key,
             severity: Severity.warning,
             threshold: t.warning!,
+            scopeCoverage: lineCoverage,
+            scopeBranchCoverage: branchCoverage,
+            complexityJustified: justified,
           ),
         );
       }
     }
     return violations;
+  }
+
+  /// True when the scope's coverage is high enough to mark a high CC /
+  /// Cognitive value as "earned". Branch coverage wins when present;
+  /// line coverage is a more conservative fallback.
+  bool _isJustified({double? branch, double? line}) {
+    if (branch != null) return branch >= _branchJustifiedThreshold;
+    if (line != null) return line >= _lineJustifiedThreshold;
+    return false;
   }
 }
 

@@ -6,6 +6,8 @@ import 'package:io/io.dart';
 import '../analyzer_runner.dart';
 import '../config/config.dart';
 import '../config/config_loader.dart';
+import '../coverage/coverage_loader.dart';
+import '../coverage/lcov_reader.dart';
 import '../metrics/metric_engine.dart';
 import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
@@ -46,6 +48,19 @@ class AnalyzeCommand extends Command<int> {
       config.snapshot,
       options.snapshot,
     );
+    final CoverageIndex? coverage;
+    try {
+      coverage = await loadCoverage(
+        cliValue: options.coverage,
+        root: options.root,
+      );
+    } on CoverageLoadException catch (e) {
+      stderr.writeln(e);
+      return ExitCode.data.code;
+    } on FormatException catch (e) {
+      stderr.writeln('coverage parse error: ${e.message}');
+      return ExitCode.data.code;
+    }
     final report = await _analyze(
       paths,
       config,
@@ -54,6 +69,7 @@ class AnalyzeCommand extends Command<int> {
       snapshotConfig,
       options.root,
       options.since != null,
+      coverage,
     );
     return _emit(report, options);
   }
@@ -71,12 +87,14 @@ class AnalyzeCommand extends Command<int> {
     SnapshotConfig snapshotConfig,
     String root,
     bool sinceActive,
+    CoverageIndex? coverage,
   ) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
     final engine = MetricEngine(
       thresholds: config.metricThresholds,
       flutter: config.flutter,
+      coverage: coverage,
     );
     final records = engine.analyzeResolved(units);
     final unused = await const UnusedDetector().detect([
