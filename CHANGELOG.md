@@ -31,6 +31,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 - **Deliberate dismissal** lets agents triage a specific `(file, scope, metric)` triple via `// dartrics:dismiss <metric> reason="…"` comments or a `dartrics-dismissals.yaml` sidecar. Both channels are opt-in through `dartrics: { dismissals: … }` in `analysis_options.yaml`. Validated entries decorate the violation with `dismissed: true` + carried `reason` / `by` / `at`; entries that fail `requireReason` / `minReasonLength` / `requireAuthor` / `requireTimestamp` keep the violation **live** and stamp it with `dismissalRejected: <why>` plus a stderr WARNING. `--strict-dismiss` ignores every dismissal for the run.
 - `--since <git-ref>` filters output to declarations whose owning `.dart` file changed between `<ref>` and `HEAD`. Cross-file analysis still resolves the full project so LCOM4 / library coupling / public-API reachability stay accurate; only the *emitted* records are filtered.
 - End-to-end loop walkthrough — setup → propose → apply → verify, with sample prompts and troubleshooting — lives in [`doc/ai-loop.md`](doc/ai-loop.md).
+- AI-facing operator's manual — each metric framed as a lens on "hard to read" with the accept / refactor / dismiss decision step made first-class — lives in [`doc/manual.md`](doc/manual.md).
 
 ### Reporters
 

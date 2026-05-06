@@ -113,7 +113,10 @@ Each metric exposes `rationale`, `refactorHints`, and `polarity` (`down` / `up` 
 
 ## AI integration
 
-The CLI's `--reporter ai` is the primary integration point for AI tooling. The output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. End-to-end loop walkthrough — setup → propose → apply → verify, with sample prompts — lives in [`doc/ai-loop.md`](doc/ai-loop.md).
+The CLI's `--reporter ai` is the primary integration point for AI tooling. The output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. Two companion docs aimed at the AI consumer:
+
+- [`doc/manual.md`](doc/manual.md) — operator's manual. Each metric framed as a lens on "hard to read", with the accept-or-reject decision step made explicit.
+- [`doc/ai-loop.md`](doc/ai-loop.md) — end-to-end loop walkthrough (setup → propose → apply → verify) with sample prompts.
 
 Eight flags compose into a tight refactor loop:
 
@@ -426,7 +429,8 @@ What's wired up for that use case:
 - **Actionability** — `--explain` (now with auto-explain default-on) inlines the metric's rationale and refactor hints. Each metric exposes a `polarity` so the regression diff knows which direction is "healthier". The dismiss channel turns "I don't agree with this metric here" into a tracked, validated, auditable decision instead of a silent disable.
 - **Noise control** — `--snapshot` / `--since` / `--limit` / `--strict-dismiss` compose into a noise floor that AI loops can actually live with; `--strict-dismiss --fatal-warnings` makes a clean CI gate.
 
-End-to-end walkthrough with sample prompts: [`doc/ai-loop.md`](doc/ai-loop.md).
+- AI-facing reference: [`doc/manual.md`](doc/manual.md).
+- End-to-end walkthrough with sample prompts: [`doc/ai-loop.md`](doc/ai-loop.md).
 
 ### Honest limitations
 

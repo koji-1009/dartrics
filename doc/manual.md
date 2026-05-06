@@ -1,0 +1,307 @@
+# dartrics manual — for AI agents
+
+> **Operator's manual for AI consumers.** README describes what `dartrics` *is*; this page describes what `dartrics` *does for you* and how to drive it. If you are an AI editing Dart code with an editor-tool harness (Claude Code, Cursor, Codex, Aider, OpenHands), this is your reference.
+
+## The premise — multiple lenses on your own writing
+
+Humans read code and feel things. *"This function is gnarly."* *"This class is doing too much."* *"I can't tell what scope I'm in."* These reactions are real signals about working-memory load, but they are not reproducible — different reviewers feel them at different thresholds, and an AI doesn't feel them at all.
+
+Decades of software-engineering research has converted those felt reactions into reproducible measurements. Each metric in `dartrics` is one such **lens**: a specific, citation-backed instrument that surfaces a specific kind of "hard to read." None of the lenses is the whole picture. Putting on more than one lens, in succession, is the point.
+
+`dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, or formally dismiss with a reason. That decision step is first-class.
+
+```
+                you propose code
+                       │
+                       ▼
+       ┌──────────────────────────────┐
+       │  put on the lenses           │  ← dartrics analyze --reporter ai
+       │  (reproducible readability)  │
+       └──────────────────────────────┘
+                       │
+              for each violation:
+                       │
+       ┌───────────────┼───────────────┐
+       ▼               ▼               ▼
+  REFACTOR         DISMISS         PUNT
+  (lens shows      (lens reads     (mark unsure
+   real fix)        it but the      and surface
+                    structure is    a question)
+                    load-bearing)
+                       │
+                       ▼
+       ┌──────────────────────────────┐
+       │  verify the lens moved       │  ← dartrics regression --reporter ai
+       └──────────────────────────────┘
+```
+
+## The lens battery
+
+Eleven lenses ship default-on. Four ship default-off because their predictive value over cyclomatic complexity has not held up empirically — they remain available but you must opt them in.
+
+Each entry below names: **the felt reaction** it captures, **what the lens computes**, the **default warning threshold**, and **when to refactor vs. dismiss**.
+
+### Function / method lenses
+
+| Lens | "Hard to read" feeling | What it measures | Default warning |
+| --- | --- | --- | --- |
+| `cyclomatic-complexity` | "I'd have to trace too many paths to know this is correct." | `1 + d` decision points: `if`, `for`, `while`, `do`, `switch case`, `&&`, `\|\|`, `?:`, `catch`. (McCabe 1976) | 10 |
+| `cognitive-complexity` | "It's not just branchy, it's *tangled*." | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (Sonar 2018) | 15 |
+| `maximum-nesting-level` | "I can't tell which scope I'm in." | Max depth of `if`, `for`, `while`, `do`, `switch`, `try`, closure blocks. | 4 |
+| `number-of-parameters` | "Too many knobs at the call site." | Positional + named + optional. | 4 |
+| `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
+| `method-length` | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | — |
+| `halstead-volume` (off) | — | `(N1+N2) · log₂(n1+n2)`. Token-based historical metric. (Halstead 1977) | opt-in |
+| `halstead-difficulty` (off) | — | `(n1/2) · (N2/n2)`. (Halstead 1977) | opt-in |
+| `halstead-effort` (off) | — | `volume · difficulty`. (Halstead 1977) | opt-in |
+| `maintainability-index` (off) | — | `171 − 5.2·ln(V) − 0.23·CC − 16.2·ln(LOC)`, clamped. Composite. (Oman 1992; Microsoft retired it from Visual Studio.) | opt-in |
+
+### Class lenses
+
+| Lens | "Hard to read" feeling | What it measures | Reference |
+| --- | --- | --- | --- |
+| `number-of-methods` | "Too many entry points to keep in my head." | Members with non-empty bodies. | — |
+| `weighted-methods-per-class` | "The whole class is heavy, not just one method." | Sum of cyclomatic complexity across methods. | CK 1994 |
+| `lcom4` | "This class is doing more than one thing." | Connected components in the field-share + method-call graph. ≥ 2 ⇒ the class can be split along the components. | Hitz & Montazeri 1995 |
+| `coupling-between-objects` | "This class needs to know about the world to do its job." | Distinct other types referenced anywhere in the class. | CK 1994 |
+| `response-for-class` | "Touching one method drags too many friends along." | `\|methods ∪ method-names invoked from those methods\|`. | CK 1994 |
+| `class-length` | "I can't see the class on one screen." | Total source lines spanned by the class. | — |
+
+DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intentionally **not** provided. Dart's mixin + composition-over-inheritance culture keeps single-inheritance chains shallow, so they rarely produce signal.
+
+### Library / file lenses (Martin 1994)
+
+| Lens | "Hard to read" feeling | What it measures |
+| --- | --- | --- |
+| `efferent-coupling` (Ce) | "This file pulls on a lot of strings." | Distinct project-internal + `package:` dependencies (excludes `dart:*`). |
+| `afferent-coupling` (Ca) | "Touching this file ripples everywhere." | Incoming internal-import edges. |
+| `instability` (I) | "This is a fragile hub." | `Ce / (Ca + Ce)`. 0 = maximally stable, 1 = maximally unstable. |
+| `abstractness` (A) | — | Abstract / mixin types ÷ total class-like declarations. |
+| `distance-from-main-sequence` (D) | "It's a concrete file that everyone depends on, or an abstract leaf." | `\|A + I − 1\|`. Both extremes are smells. |
+
+## Polarity — which way is healthier
+
+Each lens declares a `polarity`:
+
+- `down` — lower is better. The default. (CC, Cognitive, nesting, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC, Ce, Ca, instability, distance.)
+- `up` — higher is better. (Maintainability index.)
+- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead V/D/E, abstractness in isolation.)
+
+You read this off the regression diff so you don't accidentally celebrate a metric that drifted the wrong way.
+
+## The accept / refactor / dismiss decision
+
+This is the step that distinguishes `dartrics` from a linter. For every violation the report shows you:
+
+### Refactor when…
+
+The metric points at a real readability problem and the structure is **decomposable without loss of intent**. Standard moves:
+
+| Lens | First moves to try |
+| --- | --- |
+| `cyclomatic-complexity` | Extract Method · Replace Conditional with Polymorphism · Guard Clauses · Replace nested ternary with named branches |
+| `cognitive-complexity` | Extract the deepest branch · Replace `if/else if` chain with typed dispatch · Collapse boolean spaghetti via early returns |
+| `maximum-nesting-level` | Early return / continue · Extract inner block · Invert the condition to flatten the happy path |
+| `number-of-parameters` | Introduce Parameter Object · Builder for optional config · Split into two functions if half the params are unused on each call |
+| `method-length` | Extract Method along the comment seams · Move bookkeeping to a helper |
+| `lcom4` | Split the class along the connected components. The components are usually two responsibilities pretending to be one. |
+| `coupling-between-objects` | Hide concrete types behind an interface · Move the orchestration to a coordinator class |
+| `response-for-class` | Move methods that only call out to other types onto those types · Apply Tell-Don't-Ask |
+| `instability` / `distance-from-main-sequence` | Move stable types upward, depend on abstractions · Move volatile types into leaves |
+
+`dartrics rules --reporter ai` dumps the full per-metric `refactorHints` — keep that catalogue at hand or rely on auto-explain to inline it per run.
+
+### Dismiss when…
+
+The lens reads it correctly but the structure is **load-bearing**: a state machine the user calls into; a recursive descent parser whose grammar mirrors the function shape; an exhaustive switch over a sealed type; a decoder fan-out where every branch is a real protocol case. Splitting it would hide intent, not clarify it.
+
+A dismiss is a tracked, auditable decision, not a silent disable. You write:
+
+```dart
+// dartrics:dismiss cognitive-complexity reason="Recursive descent parser; splitting per-token would hide the grammar"
+Token parse(Token start) { ... }
+```
+
+or, for projects that require author + timestamp:
+
+```yaml
+# dartrics-dismissals.yaml
+version: 1
+dismissals:
+  - file: lib/parser.dart
+    scope: Parser.parse
+    metric: cognitive-complexity
+    reason: "Recursive descent parser; splitting per-token would hide the grammar"
+    by: claude-opus-4-7
+    at: "2026-05-07T10:00:00Z"
+```
+
+The validator will reject reasons shorter than `minReasonLength` (default 20 chars) and stamp the violation with `dismissalRejected: <why>`. Your dismiss is **not silent**: if it didn't take, the next pass will tell you why.
+
+### Punt when…
+
+The lens reads it but you genuinely don't know whether the structure is load-bearing without project context the harness hasn't given you (domain rules, performance constraints, historical bug fixes baked into a function shape). Surface a specific question to the user instead of guessing.
+
+## High-coverage signal — `complexityJustified`
+
+If `--coverage <path>` is engaged (auto-detected from `coverage/lcov.info`) the report annotates each violation with `coverage` (line) and `branchCoverage` when the lcov has `BRDA:` records. CC and Cognitive violations whose scope is well-tested (branch ≥ 0.8, or line ≥ 0.95 when no branch data) get `complexityJustified: true`.
+
+**Read this as: "the human has already paid the price of branching with tests; refactor at your own risk."** AI loops should generally leave `complexityJustified` violations alone unless the metric is *catastrophically* over threshold (e.g. CC > 2× warning).
+
+The AI reporter sorts these to the bottom so they don't compete for token budget.
+
+## The cosmetic-split anti-pattern
+
+Common AI failure mode: split a 30-line function with CC = 14 into ten three-line helpers. CC drops to 4 in the original, but each helper is now a one-line passthrough and the total readability got worse, not better.
+
+`dartrics regression` detects this:
+
+```
+tinyHelpersAdded ≥ 3 ∧ slocDelta > 4·helpers ∧ ccReduction < 2·helpers
+```
+
+When the regression diff prints `looksCosmetic: true`, **revert your refactor**. Real complexity reduction either:
+
+- removes a dimension (boolean → enum, dispatch table → polymorphism), or
+- consolidates duplicated branches into one parameterised path.
+
+It does not redistribute branches across more functions while keeping all the branching logic.
+
+## The operational protocol
+
+Inside an AI loop, run this sequence. Each step has a clear contract.
+
+### 1. Setup (once per session)
+
+```yaml
+# analysis_options.yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/koji-1009/dartrics/main/schemas/dartrics-config.schema.json
+
+dartrics:
+  flutter: true                  # only if shipping Flutter
+  metrics:
+    cyclomatic-complexity: { warning: 10, error: 20 }
+    cognitive-complexity:  { warning: 15, error: 25 }
+    method-length:         { warning: 30, error: 60 }
+    maximum-nesting-level: { warning: 4 }
+    number-of-parameters:  { warning: 4, error: 8 }
+  dismissals: {}                 # opt into the dismiss channel
+  snapshot:
+    mode: cache                  # `.dart_tool/dartrics/snapshot.json`
+```
+
+Generate coverage so `complexityJustified` works:
+
+```bash
+dart pub global activate coverage
+dart pub run coverage:test_with_coverage
+```
+
+### 2. Read through the lenses
+
+```bash
+dartrics analyze \
+  --reporter ai \
+  --since origin/main \
+  --limit 30
+```
+
+Why each flag matters in the loop:
+
+| Flag | What it gives you |
+| --- | --- |
+| `--reporter ai` | YAML-ish output with `# dartrics ai-report v1` header. Sorted: severity ↓, then coverage ↓, then `complexityJustified` ↓, then `dismissed` ↓. The most actionable items are at the top. |
+| `--since <ref>` | Only emit records whose owning file changed vs `<ref>`. Cross-file resolution still happens fully — only the *emitted* records are filtered. Stops you from re-litigating debt outside this PR. |
+| `--limit <n>` | Hard cap on emitted entries after the priority sort. Excess is summarised in `truncated:`. Token-budget control. |
+| (auto-explain) | Default-on. Every metric that fired gets its rationale + refactor hints attached as the report's `explain:` block. You don't need to know which metric ids exist. |
+| `--coverage <path>` | Default-on when `coverage/lcov.info` exists. Adds `coverage` / `branchCoverage` / `complexityJustified` to each violation. |
+
+### 3. For each violation, decide
+
+Re-read [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision). The report's `id` field (16 hex chars, stable across runs) is your handle for "is this the same violation I tried to fix last iteration?"
+
+### 4. Apply the change
+
+Either edit the scope, or add a `// dartrics:dismiss` comment / a YAML sidecar entry. Don't reach for `--strict-dismiss` or remove the metric from config — those are operator escape hatches, not refactor outcomes.
+
+### 5. Verify
+
+Two complementary checks. Run both.
+
+**Per-scope diff:**
+
+```bash
+dartrics regression --before HEAD~1 --after HEAD --reporter ai
+```
+
+You're looking for:
+
+- `direction: improved` on the violations you targeted — your fix actually moved the metric.
+- `looksCosmetic: false` on the summary — you didn't just shuffle complexity into helpers.
+- No `direction: regressed` entries on metrics you didn't intend to touch.
+
+**Strict triage list (CI / final review):**
+
+```bash
+dartrics analyze --strict-dismiss --fatal-warnings
+```
+
+`--strict-dismiss` ignores every dismissal so the operator sees the raw triage list. Combined with `--fatal-warnings`, this exits non-zero whenever an unsuppressed warning remains — suitable as a pre-merge gate.
+
+### 6. If the same `id` reappears
+
+Your fix didn't take. Open the corresponding scope, look at the metric value vs threshold delta in the new report, and either:
+
+- refactor harder (the previous move was insufficient), or
+- formalise the dismiss (you've concluded the structure is load-bearing).
+
+There is no third option of "ignore it again."
+
+## Flag map (for reference)
+
+| Goal | Flag | Notes |
+| --- | --- | --- |
+| Pick the AI-shaped report | `--reporter ai` | Mandatory for AI loops |
+| Filter to changed files | `--since <git-ref>` | Renames surface as the new path |
+| Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
+| Cap output for token budget | `--limit <n>` | Applied after priority sort |
+| Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
+| Force rationale | `--explain <id>` | Repeatable; unions with auto-explain |
+| Drop auto-explain | `--no-auto-explain` | Recovers pre-0.1.0 silence |
+| Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
+| Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
+| Inject metric catalogue once | `dartrics rules --reporter ai` | Feed once into a system prompt |
+| Verify a refactor | `dartrics regression` | Runs `git worktree` for the historical side |
+
+## Exit codes
+
+| Code | Meaning | What you do |
+| --- | --- | --- |
+| 0 | Clean | Continue. |
+| 1 | Violations + `--fatal-warnings` | Either refactor or dismiss with reason. |
+| 64 | Bad CLI args | Re-read your command. |
+| 65 | Bad input (e.g. `--since` ref doesn't resolve) | Surface to the user; don't guess a different ref. |
+| 70 | Internal error | Surface to the user with the stderr message; this is a bug in `dartrics`. |
+| 78 | Bad config | The stderr message names the offending key. The config schema (`schemas/dartrics-config.schema.json`) catches most of these in-editor before you run. |
+
+## What's *not* in the lens battery
+
+Knowing what `dartrics` deliberately doesn't measure is part of the contract:
+
+- **No "code smell" detectors.** No god-object, no feature-envy, no shotgun-surgery heuristics. Those land in noise territory at the false-positive rates `analyzer` can support.
+- **No automatic fixes.** `dartrics` measures and explains. It does not edit your code. The dismiss channel is *you* writing a comment / YAML, not the tool rewriting the source.
+- **No ML-derived weights.** Every threshold is documented and overridable. Lens output is reproducible across runs given the same source tree.
+- **No cross-PR memory.** The tool doesn't remember "this dismiss was rejected last iteration." Stay session-local.
+- **No DIT / NOC.** Dart inheritance chains are too shallow for the metric to produce signal.
+- **No test-quality lenses.** Coverage is read in only as a complexity-justification signal. Mutation score, assertion density, etc. are out of scope.
+- **No build-tree depth lens for Flutter.** `Widget.build()` is opted *out* of the depth-based lenses (`flutter: true`); a hypothetical `widget-tree-depth` metric is not yet shipped.
+
+## Pointers
+
+- README — project description, install, configuration reference.
+- AGENTS.md — contributor / PR conventions.
+- `doc/ai-loop.md` — narrative walkthrough of one full iteration with sample prompts.
+- `dartrics rules --reporter ai` — full rationale + refactor-hint catalogue at runtime.
+- `schemas/dartrics-config.schema.json` — IDE autocomplete + typo detection for the config block.
+- `schemas/dartrics-report.schema.json` — JSON-reporter output schema (use this if you parse the report yourself).
+- `schemas/dartrics-dismissals.schema.json` — sidecar schema for the YAML dismiss form.
