@@ -97,6 +97,8 @@ class HalsteadVolume extends FunctionMetric {
   @override
   bool get defaultEnabled => false;
   @override
+  MetricPolarity get polarity => MetricPolarity.neutral;
+  @override
   String get rationale =>
       'Halstead Volume `V = N · log₂(η)` (Halstead, *Elements of '
       'Software Science*, 1977) describes the "amount of mental work" '
@@ -127,6 +129,8 @@ class HalsteadDifficulty extends FunctionMetric {
   @override
   bool get defaultEnabled => false;
   @override
+  MetricPolarity get polarity => MetricPolarity.neutral;
+  @override
   String get rationale =>
       'Halstead Difficulty `D = (n₁ / 2) · (N₂ / n₂)` (Halstead, 1977) '
       'attempts to quantify how error-prone a function is to write, by '
@@ -152,6 +156,8 @@ class HalsteadEffort extends FunctionMetric {
   String get id => 'halstead-effort';
   @override
   bool get defaultEnabled => false;
+  @override
+  MetricPolarity get polarity => MetricPolarity.neutral;
   @override
   String get rationale =>
       'Halstead Effort `E = D · V` (Halstead, 1977) is the product of '

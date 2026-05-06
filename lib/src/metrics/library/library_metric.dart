@@ -2,6 +2,8 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:path/path.dart' as p;
 
+import '../metric.dart';
+
 /// Per-file precomputed information for the library-level metrics.
 class LibraryStats {
   LibraryStats({
@@ -137,6 +139,10 @@ abstract class LibraryMetric {
 
   /// Concrete refactor moves to take when the metric trips.
   List<String> get refactorHints;
+
+  /// Direction in which the value moves when the code gets healthier.
+  /// See `FunctionMetric.polarity`.
+  MetricPolarity get polarity => MetricPolarity.neutral;
 
   num compute(LibraryMetricInput input);
 }

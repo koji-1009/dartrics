@@ -28,6 +28,9 @@ class MaintainabilityIndex extends FunctionMetric {
   bool get defaultEnabled => false;
 
   @override
+  MetricPolarity get polarity => MetricPolarity.up;
+
+  @override
   String get rationale =>
       'Maintainability Index `MI = 171 − 5.2·ln(V) − 0.23·CC − '
       '16.2·ln(LOC)` (Oman & Hagemeister, ICSM 1992) summarises three '

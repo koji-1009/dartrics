@@ -1,3 +1,4 @@
+import '../metric.dart';
 import 'library_metric.dart';
 
 /// Efferent Coupling (Ce, Martin 1994) — number of distinct libraries this
@@ -112,6 +113,8 @@ class DistanceFromMainSequence extends LibraryMetric {
   const DistanceFromMainSequence();
   @override
   String get id => 'distance-from-main-sequence';
+  @override
+  MetricPolarity get polarity => MetricPolarity.down;
   @override
   String get rationale =>
       'Distance from the Main Sequence `D = |A + I − 1|` (Martin 1994) '

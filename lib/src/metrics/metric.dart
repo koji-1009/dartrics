@@ -39,6 +39,22 @@ class FunctionMetricInput {
   late final String scopeName = _scopeNameOf(declaration);
 }
 
+/// Direction in which a metric value moves when the underlying code
+/// gets healthier. Used by `dartrics regression` to classify before /
+/// after diffs as `improved` / `regressed` / `unchanged`.
+enum MetricPolarity {
+  /// Lower values are healthier (e.g. cyclomatic complexity, SLOC).
+  down,
+
+  /// Higher values are healthier (e.g. maintainability index).
+  up,
+
+  /// Either direction can be a sign of improvement depending on the
+  /// design role (e.g. instability, coupling totals). Regression diffs
+  /// surface the delta but don't classify it.
+  neutral,
+}
+
 /// Function/method-level metric.
 abstract class FunctionMetric {
   const FunctionMetric();
@@ -60,6 +76,11 @@ abstract class FunctionMetric {
   /// Concrete refactor moves a developer (or AI agent) can take when the
   /// metric trips. Each entry is a single short imperative sentence.
   List<String> get refactorHints;
+
+  /// Direction in which the value moves when the code gets healthier.
+  /// Override to `up` for inverse metrics (maintainability index) and
+  /// `neutral` for metrics where neither direction is universally good.
+  MetricPolarity get polarity => MetricPolarity.down;
 
   /// Computes the metric. Implementations must be deterministic.
   num compute(FunctionMetricInput input);

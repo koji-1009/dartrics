@@ -1,6 +1,8 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/source/line_info.dart';
 
+import '../metric.dart';
+
 /// Cross-class index built once per `MetricEngine.analyze` invocation.
 ///
 /// Look-ups are by unqualified class name; this is intentionally lossy across
@@ -48,6 +50,10 @@ abstract class ClassMetric {
 
   /// Concrete refactor moves to take when the metric trips.
   List<String> get refactorHints;
+
+  /// Direction in which the value moves when the code gets healthier.
+  /// See `FunctionMetric.polarity`.
+  MetricPolarity get polarity => MetricPolarity.down;
 
   num compute(ClassMetricInput input);
 }
