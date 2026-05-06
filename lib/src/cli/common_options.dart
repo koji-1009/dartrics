@@ -37,6 +37,12 @@ void addCommonOptions(ArgParser parser) {
           'include several metrics at once.',
       splitCommas: true,
     )
+    ..addOption(
+      'snapshot',
+      help:
+          'Override snapshot mode (cache | baseline | none) or supply a '
+          'custom file path. Beats the analysis_options.yaml setting.',
+    )
     ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',
@@ -64,6 +70,7 @@ class CommonOptions {
     required this.root,
     required this.since,
     required this.explain,
+    required this.snapshot,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -82,6 +89,7 @@ class CommonOptions {
       root: results['root'] as String,
       since: results['since'] as String?,
       explain: List<String>.from(results['explain'] as List<String>),
+      snapshot: results['snapshot'] as String?,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -95,6 +103,7 @@ class CommonOptions {
   final String root;
   final String? since;
   final List<String> explain;
+  final String? snapshot;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

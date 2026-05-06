@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartrics/src/cli/runner.dart';
@@ -168,9 +169,13 @@ int f() { return 1; }
       ]);
     });
     expect(code, 0);
-    final body = await out.readAsString();
-    expect(body, contains('touched.dart'));
-    expect(body, isNot(contains('keep.dart')));
+    final decoded =
+        jsonDecode(await out.readAsString()) as Map<String, Object?>;
+    final metricFiles = (decoded['metrics']! as List<Object?>)
+        .cast<Map<String, Object?>>();
+    final files = metricFiles.map((m) => m['file']).toSet();
+    expect(files.any((f) => f.toString().endsWith('touched.dart')), isTrue);
+    expect(files.any((f) => f.toString().endsWith('keep.dart')), isFalse);
   });
 
   test('analyze --since exits 65 when ref is bogus', () async {
@@ -239,9 +244,14 @@ int f() { return 1; }
       ]);
     });
     expect(code, 0);
-    final body = await out.readAsString();
-    expect(body, contains('NewlyUnused'));
-    expect(body, isNot(contains('"name":"B"')));
+    final decoded =
+        jsonDecode(await out.readAsString()) as Map<String, Object?>;
+    final unusedNames = (decoded['unused']! as List<Object?>)
+        .cast<Map<String, Object?>>()
+        .map((m) => m['name'])
+        .toSet();
+    expect(unusedNames, contains('NewlyUnused'));
+    expect(unusedNames, isNot(contains('B')));
   });
 
   test('unused --since exits 65 when git fails', () async {

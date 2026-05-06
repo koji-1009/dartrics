@@ -13,6 +13,7 @@ import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
 import 'rules_command.dart';
+import 'snapshot.dart';
 
 /// `dartrics analyze` — runs every metric calculator and the unused
 /// detector over the analysis root and emits a combined report.
@@ -41,7 +42,19 @@ class AnalyzeCommand extends Command<int> {
       stderr.writeln(e);
       return ExitCode.data.code;
     }
-    final report = await _analyze(paths, config, changed, options.explain);
+    final snapshotConfig = resolveSnapshotConfig(
+      config.snapshot,
+      options.snapshot,
+    );
+    final report = await _analyze(
+      paths,
+      config,
+      changed,
+      options.explain,
+      snapshotConfig,
+      options.root,
+      options.since != null,
+    );
     return _emit(report, options);
   }
 
@@ -55,6 +68,9 @@ class AnalyzeCommand extends Command<int> {
     Config config,
     Set<String>? changed,
     List<String> explainIds,
+    SnapshotConfig snapshotConfig,
+    String root,
+    bool sinceActive,
   ) async {
     final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
     final units = await runner.resolveAll();
@@ -67,16 +83,34 @@ class AnalyzeCommand extends Command<int> {
       for (final u in units)
         (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
     ], config.unused);
-    final filteredRecords = changed == null
+
+    final hashes = hashFiles([
+      for (final u in units) (path: u.path, content: u.unit.content),
+    ]);
+    final snapshotPath = snapshotPathFor(snapshotConfig, root);
+    Set<String>? snapshotChanged;
+    if (snapshotPath != null && !sinceActive) {
+      snapshotChanged = Snapshot.read(snapshotPath).changedPaths(hashes);
+    }
+    if (snapshotPath != null) {
+      writeSnapshot(snapshotPath, hashes);
+    }
+
+    // `--since` and snapshot diffs are mutually exclusive (snapshotChanged
+    // is only computed when `--since` isn't active), so a coalescing read
+    // is enough — no need to intersect.
+    final allowed = changed ?? snapshotChanged;
+    final filteredRecords = allowed == null
         ? records
-        : records.where((r) => changed.contains(r.file)).toList();
-    final filteredUnused = changed == null
+        : records.where((r) => allowed.contains(r.file)).toList();
+    final filteredUnused = allowed == null
         ? unused
-        : unused.where((u) => changed.contains(u.location.path)).toList();
+        : unused.where((u) => allowed.contains(u.location.path)).toList();
     return AnalysisReport(
       version: '1.0',
       metrics: filteredRecords,
       unused: filteredUnused,
+      analyzedFiles: hashes,
       explanations: buildExplanations(explainIds),
     )..attachAnalyzedFileCount(units.length);
   }

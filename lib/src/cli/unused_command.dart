@@ -12,6 +12,7 @@ import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
 import 'rules_command.dart';
+import 'snapshot.dart';
 
 /// `dartrics unused` — runs only the public-API reachability analysis.
 class UnusedCommand extends Command<int> {
@@ -47,17 +48,39 @@ class UnusedCommand extends Command<int> {
       for (final u in units)
         (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
     ], config.unused);
+
+    final snapshotConfig = resolveSnapshotConfig(
+      config.snapshot,
+      options.snapshot,
+    );
+    final hashes = hashFiles([
+      for (final u in units) (path: u.path, content: u.unit.content),
+    ]);
+    final snapshotPath = snapshotPathFor(snapshotConfig, options.root);
+    Set<String>? snapshotChanged;
+    if (snapshotPath != null && options.since == null) {
+      snapshotChanged = Snapshot.read(snapshotPath).changedPaths(hashes);
+    }
+    if (snapshotPath != null) {
+      writeSnapshot(snapshotPath, hashes);
+    }
+
+    // `--since` and snapshot diffs are mutually exclusive — see the
+    // matching note in `analyze_command.dart`.
+    final allowed = changed ?? snapshotChanged;
     final List<UnusedDeclaration> filtered;
-    if (changed == null) {
+    if (allowed == null) {
       filtered = unused;
     } else {
-      final allow = changed;
-      filtered = unused.where((u) => allow.contains(u.location.path)).toList();
+      filtered = unused
+          .where((u) => allowed.contains(u.location.path))
+          .toList();
     }
     final report = AnalysisReport(
       version: '1.0',
       metrics: const [],
       unused: filtered,
+      analyzedFiles: hashes,
       explanations: buildExplanations(options.explain),
     )..attachAnalyzedFileCount(units.length);
 

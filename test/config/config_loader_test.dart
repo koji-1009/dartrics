@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dartrics/src/config/config.dart';
 import 'package:dartrics/src/config/config_loader.dart';
 import 'package:test/test.dart';
 
@@ -119,5 +120,46 @@ dartrics:
     await f.writeAsString('dartrics:\n  flutter: true\n');
     final config = await loadConfig(f.path);
     expect(config.flutter, isTrue);
+  });
+
+  test('parses snapshot section with mode + path', () async {
+    final f = File('${dir.path}/snap.yaml');
+    await f.writeAsString('''
+dartrics:
+  snapshot:
+    mode: baseline
+    path: custom-snap.json
+''');
+    final config = await loadConfig(f.path);
+    expect(config.snapshot.mode, SnapshotMode.baseline);
+    expect(config.snapshot.path, 'custom-snap.json');
+  });
+
+  test('snapshot accepts a bare string mode', () async {
+    final f = File('${dir.path}/snap-string.yaml');
+    await f.writeAsString('dartrics:\n  snapshot: cache\n');
+    final config = await loadConfig(f.path);
+    expect(config.snapshot.mode, SnapshotMode.cache);
+    expect(config.snapshot.path, isNull);
+  });
+
+  test('snapshot accepts a bool toggle', () async {
+    final f = File('${dir.path}/snap-bool.yaml');
+    await f.writeAsString('dartrics:\n  snapshot: false\n');
+    final config = await loadConfig(f.path);
+    expect(config.snapshot.mode, SnapshotMode.none);
+  });
+
+  test('rejects unknown snapshot modes with ConfigException', () async {
+    final f = File('${dir.path}/snap-bogus.yaml');
+    await f.writeAsString('dartrics:\n  snapshot: bogus\n');
+    await expectLater(loadConfig(f.path), throwsA(isA<ConfigException>()));
+  });
+
+  test('snapshot map without a mode falls back to cache', () async {
+    final f = File('${dir.path}/snap-empty.yaml');
+    await f.writeAsString('dartrics:\n  snapshot: {}\n');
+    final config = await loadConfig(f.path);
+    expect(config.snapshot.mode, SnapshotMode.cache);
   });
 }

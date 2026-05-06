@@ -125,6 +125,7 @@ void main() {
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/lib').create();
     await File('${dir.path}/lib/a.dart').writeAsString('void a() {}\n');
+    // Snapshot off — we already exercised that path elsewhere.
     final out = '${dir.path}/run.json';
     final code = await buildCommandRunner().run([
       'analyze',
@@ -135,6 +136,8 @@ void main() {
       out,
       '--explain',
       'cyclomatic-complexity',
+      '--snapshot',
+      'none',
       '--config',
       '${dir.path}/no.yaml',
     ]);
@@ -144,15 +147,26 @@ void main() {
     expect(body, contains('cyclomatic-complexity'));
   });
 
-  test('AnalysisReport surfaces explanations on the model', () {
+  test('AnalysisReport carries explanations + analyzedFiles in JSON', () {
     final report = AnalysisReport(
       version: '1.0',
       metrics: const [],
       unused: const [],
+      analyzedFiles: const [AnalyzedFile(path: 'a.dart', sha256: 'abc')],
       explanations: const [
         ExplainEntry(metricId: 'm', rationale: 'r', refactorHints: ['h']),
       ],
     );
-    expect(report.explanations.single.metricId, 'm');
+    final json = report.toJson();
+    expect(json['analyzedFiles'], isNotNull);
+    final list = json['analyzedFiles']! as List;
+    expect(list.first, containsPair('path', 'a.dart'));
+  });
+
+  test('AnalyzedFile.fromJson round-trips', () {
+    const original = AnalyzedFile(path: 'a.dart', sha256: 'abc');
+    final round = AnalyzedFile.fromJson(original.toJson());
+    expect(round.path, 'a.dart');
+    expect(round.sha256, 'abc');
   });
 }

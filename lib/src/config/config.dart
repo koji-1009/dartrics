@@ -6,6 +6,7 @@ class Config {
     this.unused = const UnusedConfig(),
     this.exclude = const [],
     this.flutter = false,
+    this.snapshot = const SnapshotConfig(),
   });
 
   /// Map of `metric-id` → severity thresholds.
@@ -22,6 +23,38 @@ class Config {
   /// constructors with many key/callback parameters). Off by default
   /// for non-Flutter packages.
   final bool flutter;
+
+  /// Snapshot mode and path. Ships in `cache` mode by default — diffs
+  /// are stored under `.dart_tool/dartrics/snapshot.json` (auto-ignored
+  /// by `.gitignore` conventions).
+  final SnapshotConfig snapshot;
+}
+
+/// Mode of the per-run snapshot file used to drive AI / pre-commit
+/// loops that want to see only what changed since the last analysis.
+enum SnapshotMode {
+  /// `.dart_tool/dartrics/snapshot.json` — gitignored by convention,
+  /// stays local to each developer's machine.
+  cache,
+
+  /// `dartrics-snapshot.json` at the repo root — meant to be committed
+  /// so CI can compare an open PR against the established baseline.
+  baseline,
+
+  /// Snapshot disabled. Useful in CI runs that only want to act on
+  /// `--since <git-ref>` filtering.
+  none,
+}
+
+class SnapshotConfig {
+  const SnapshotConfig({this.mode = SnapshotMode.cache, this.path});
+
+  final SnapshotMode mode;
+
+  /// Optional override for the snapshot file path. When `null`, the
+  /// path is derived from [mode]: `.dart_tool/dartrics/snapshot.json`
+  /// for `cache`, `dartrics-snapshot.json` for `baseline`.
+  final String? path;
 }
 
 class MetricThresholds {

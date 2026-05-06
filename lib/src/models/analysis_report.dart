@@ -82,6 +82,23 @@ class MetricRecord {
   };
 }
 
+/// Per-file fingerprint persisted into the snapshot file. The hash is
+/// keyed off the raw source bytes, deliberately ignoring `mtime` so that
+/// VCS / CI clones with a fresh stamp don't blow the cache.
+class AnalyzedFile {
+  const AnalyzedFile({required this.path, required this.sha256});
+
+  factory AnalyzedFile.fromJson(Map<String, Object?> json) => AnalyzedFile(
+    path: json['path']! as String,
+    sha256: json['sha256']! as String,
+  );
+
+  final String path;
+  final String sha256;
+
+  Map<String, Object?> toJson() => {'path': path, 'sha256': sha256};
+}
+
 /// Catalogue entry for a metric whose rationale should accompany the
 /// emitted report (`--explain <metric-id>`).
 class ExplainEntry {
@@ -102,12 +119,18 @@ class AnalysisReport {
     required this.version,
     required this.metrics,
     required this.unused,
+    this.analyzedFiles = const [],
     this.explanations = const [],
   });
 
   final String version;
   final List<MetricRecord> metrics;
   final List<UnusedDeclaration> unused;
+
+  /// Optional snapshot of every file the analyzer hashed during this run.
+  /// Empty when snapshot mode is `none` or the snapshot writer isn't
+  /// engaged. Only the JSON reporter persists this field.
+  final List<AnalyzedFile> analyzedFiles;
 
   /// Optional list of rationale + hint blurbs to render alongside the
   /// per-violation output.
@@ -127,6 +150,8 @@ class AnalysisReport {
 
   Map<String, Object?> toJson() => {
     'version': version,
+    if (analyzedFiles.isNotEmpty)
+      'analyzedFiles': analyzedFiles.map((f) => f.toJson()).toList(),
     'metrics': metrics.map((m) => m.toJson()).toList(),
     'unused': unused.map((u) => u.toJson()).toList(),
   };

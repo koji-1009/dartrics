@@ -39,7 +39,42 @@ Future<Config> loadConfig(String path) async {
     unused: _parseUnused(dartrics['unused']),
     exclude: _parseStringList(dartrics['exclude']),
     flutter: dartrics['flutter'] as bool? ?? false,
+    snapshot: _parseSnapshot(dartrics['snapshot']),
   );
+}
+
+SnapshotConfig _parseSnapshot(Object? node) {
+  if (node is String) {
+    return SnapshotConfig(mode: _modeFromString(node));
+  }
+  if (node is YamlMap) {
+    final modeRaw = node['mode'];
+    final mode = modeRaw is String
+        ? _modeFromString(modeRaw)
+        : SnapshotMode.cache;
+    final path = node['path'];
+    return SnapshotConfig(mode: mode, path: path is String ? path : null);
+  }
+  if (node is bool) {
+    return SnapshotConfig(mode: node ? SnapshotMode.cache : SnapshotMode.none);
+  }
+  return const SnapshotConfig();
+}
+
+SnapshotMode _modeFromString(String raw) {
+  switch (raw) {
+    case 'cache':
+      return SnapshotMode.cache;
+    case 'baseline':
+      return SnapshotMode.baseline;
+    case 'none':
+    case 'off':
+      return SnapshotMode.none;
+    default:
+      throw ConfigException(
+        'unknown snapshot mode "$raw" (expected cache | baseline | none)',
+      );
+  }
 }
 
 Map<String, MetricThresholds> _parseMetrics(Object? node) {
