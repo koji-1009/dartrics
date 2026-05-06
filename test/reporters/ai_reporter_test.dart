@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:dartrics/src/models/source_location.dart';
 import 'package:dartrics/src/reporters/ai_reporter.dart';
@@ -256,6 +257,125 @@ void main() {
       expect(noBIdx, lessThan(highIdx));
     },
   );
+
+  test('renders dismiss metadata and pushes dismissed entries last', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    final at = DateTime.utc(2026, 5, 6, 19, 14);
+    final report = AnalysisReport(
+      version: '1.0',
+      metrics: [
+        // Plain warning — should sort first.
+        const MetricRecord(
+          file: '/proj/live.dart',
+          scope: ScopeRef(
+            kind: ScopeKind.function,
+            name: 'live',
+            location: SourceLocation(
+              path: '/proj/live.dart',
+              line: 1,
+              column: 1,
+            ),
+          ),
+          values: {'cyclomatic-complexity': 11},
+          violations: [
+            MetricViolation(
+              metricId: 'cyclomatic-complexity',
+              severity: Severity.warning,
+              threshold: 10,
+            ),
+          ],
+        ),
+        // Dismissed warning — should sink to the bottom.
+        MetricRecord(
+          file: '/proj/dismissed.dart',
+          scope: const ScopeRef(
+            kind: ScopeKind.function,
+            name: 'silenced',
+            location: SourceLocation(
+              path: '/proj/dismissed.dart',
+              line: 1,
+              column: 1,
+            ),
+          ),
+          values: const {'cyclomatic-complexity': 11},
+          violations: [
+            MetricViolation(
+              metricId: 'cyclomatic-complexity',
+              severity: Severity.warning,
+              threshold: 10,
+              dismissed: true,
+              dismissReason: 'state machine: splits hide intent',
+              dismissedBy: 'claude-opus-4-7',
+              dismissedAt: at,
+              dismissedFrom: DismissalSource.yaml,
+            ),
+          ],
+        ),
+      ],
+      unused: const [],
+    );
+    AiReporter(
+      sourceLoader: (path) => {
+        path: List.generate(100, (i) => 'line${i + 1}').join('\n'),
+      },
+    ).report(report, sink);
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('dismissed: true'));
+    expect(body, contains('dismissedFrom: yaml'));
+    expect(body, contains('dismissedBy: claude-opus-4-7'));
+    expect(body, contains('dismissedAt:'));
+    expect(body, contains('"state machine: splits hide intent"'));
+    final liveIdx = body.indexOf('live');
+    final silencedIdx = body.indexOf('silenced');
+    expect(liveIdx, lessThan(silencedIdx));
+  });
+
+  test('renders dismissalRejected without dismissed flag', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    final report = AnalysisReport(
+      version: '1.0',
+      metrics: const [
+        MetricRecord(
+          file: '/proj/foo.dart',
+          scope: ScopeRef(
+            kind: ScopeKind.function,
+            name: 'fn',
+            location: SourceLocation(
+              path: '/proj/foo.dart',
+              line: 1,
+              column: 1,
+            ),
+          ),
+          values: {'cyclomatic-complexity': 11},
+          violations: [
+            MetricViolation(
+              metricId: 'cyclomatic-complexity',
+              severity: Severity.warning,
+              threshold: 10,
+              dismissalRejected: 'reason too short (need >= 20)',
+            ),
+          ],
+        ),
+      ],
+      unused: [],
+    );
+    AiReporter(
+      sourceLoader: (path) => {
+        path: List.generate(100, (i) => 'line${i + 1}').join('\n'),
+      },
+    ).report(report, sink);
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('dismissalRejected:'));
+    expect(body, isNot(contains('dismissed: true')));
+  });
 
   test('renders an explain block when explanations are attached', () async {
     final tmp = Directory.systemTemp.createTempSync();

@@ -80,6 +80,26 @@ class AiReporter implements Reporter {
       if (v.complexityJustified) {
         buf.writeln('    complexityJustified: true');
       }
+      if (v.dismissed) {
+        buf.writeln('    dismissed: true');
+        if (v.dismissedFrom != null) {
+          buf.writeln('    dismissedFrom: ${v.dismissedFrom!.name}');
+        }
+        if (v.dismissReason != null && v.dismissReason!.isNotEmpty) {
+          buf.writeln('    dismissReason: ${_escape(v.dismissReason!)}');
+        }
+        if (v.dismissedBy != null) {
+          buf.writeln('    dismissedBy: ${_escape(v.dismissedBy!)}');
+        }
+        if (v.dismissedAt != null) {
+          buf.writeln(
+            '    dismissedAt: ${_escape(v.dismissedAt!.toIso8601String())}',
+          );
+        }
+      }
+      if (v.dismissalRejected != null) {
+        buf.writeln('    dismissalRejected: ${_escape(v.dismissalRejected!)}');
+      }
       buf.writeln('    snippet: |');
       for (final line in _snippetFor(m.file, m.scope.location.line)) {
         buf.writeln('      $line');
@@ -88,9 +108,11 @@ class AiReporter implements Reporter {
   }
 
   /// Highest-severity, lowest-priority-key violations come first.
-  /// Priority key collapses coverage + justified into a single number:
-  /// low coverage (most actionable) at 0.0, no coverage data in the
-  /// middle (0.5), `complexityJustified` at the bottom (2.0).
+  /// Priority key collapses coverage + earned + dismissed into a single
+  /// number: low coverage (most actionable) at 0.0, no coverage data
+  /// in the middle (0.5), `complexityJustified` at 2.0, and `dismissed`
+  /// entries at 3.0 — they sit at the very bottom because the user has
+  /// already triaged them.
   int _compareViolations(_ViolationEntry a, _ViolationEntry b) {
     final bySev = b.violation.severity.rank.compareTo(
       a.violation.severity.rank,
@@ -100,6 +122,7 @@ class AiReporter implements Reporter {
   }
 
   double _priority(MetricViolation v) {
+    if (v.dismissed) return 3.0;
     if (v.complexityJustified) return 2.0;
     return v.scopeCoverage ?? 0.5;
   }

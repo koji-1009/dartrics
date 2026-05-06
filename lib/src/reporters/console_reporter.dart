@@ -14,10 +14,13 @@ class ConsoleReporter implements Reporter {
     );
     for (final record in report.metrics) {
       for (final v in record.violations) {
+        final tags = StringBuffer();
+        if (v.dismissed) tags.write(' [dismissed]');
+        if (v.dismissalRejected != null) tags.write(' [dismissal-rejected]');
         sink.writeln(
           '${record.file}:${record.scope.location.line} '
           '[${v.severity.name}] ${v.metricId} = ${record.values[v.metricId]} '
-          '(threshold ${v.threshold}) in ${record.scope.name}',
+          '(threshold ${v.threshold}) in ${record.scope.name}$tags',
         );
       }
     }

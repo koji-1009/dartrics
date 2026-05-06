@@ -66,6 +66,67 @@ void main() {
     expect(body, contains('earned'));
   });
 
+  test('renders dismissed and dismissal-rejected suffixes', () async {
+    final temp = await File.fromUri(
+      Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+    ).create();
+    final sink = temp.openWrite();
+    final report = AnalysisReport(
+      version: '1.0',
+      metrics: const [
+        MetricRecord(
+          file: '/proj/lib/dis.dart',
+          scope: ScopeRef(
+            kind: ScopeKind.function,
+            name: 'dismissed',
+            location: SourceLocation(
+              path: '/proj/lib/dis.dart',
+              line: 1,
+              column: 1,
+            ),
+          ),
+          values: {'cyclomatic-complexity': 11},
+          violations: [
+            MetricViolation(
+              metricId: 'cyclomatic-complexity',
+              severity: Severity.warning,
+              threshold: 10,
+              dismissed: true,
+              dismissReason: 'state machine: splits hide intent',
+            ),
+          ],
+        ),
+        MetricRecord(
+          file: '/proj/lib/rej.dart',
+          scope: ScopeRef(
+            kind: ScopeKind.function,
+            name: 'rejected',
+            location: SourceLocation(
+              path: '/proj/lib/rej.dart',
+              line: 1,
+              column: 1,
+            ),
+          ),
+          values: {'cyclomatic-complexity': 11},
+          violations: [
+            MetricViolation(
+              metricId: 'cyclomatic-complexity',
+              severity: Severity.warning,
+              threshold: 10,
+              dismissalRejected: 'reason too short (need >= 20)',
+            ),
+          ],
+        ),
+      ],
+      unused: const [],
+    );
+    MdReporter().report(report, sink);
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('_dismissed_'));
+    expect(body, contains('_dismissal-rejected_'));
+  });
+
   test(
     'renders an Explanations section when explanations are attached',
     () async {

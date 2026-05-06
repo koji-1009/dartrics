@@ -87,6 +87,10 @@ class MdReporter implements Reporter {
           suffix.write(' · coverage ${(cov * 100).toStringAsFixed(0)}%');
         }
         if (justified) suffix.write(' · _earned_');
+        if (v.dismissed) suffix.write(' · _dismissed_');
+        if (v.dismissalRejected != null) {
+          suffix.write(' · _dismissal-rejected_');
+        }
         buf.writeln(
           '- ${v.metricId}: **${m.values[v.metricId]}** '
           '(${v.severity.name} at ${v.threshold})$suffix',
