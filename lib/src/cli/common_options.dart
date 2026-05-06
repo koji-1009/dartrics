@@ -66,6 +66,14 @@ void addCommonOptions(ArgParser parser) {
           'the host CPU count clamped to 16.',
     )
     ..addFlag(
+      'auto-explain',
+      help:
+          'Auto-attach the rationale + refactor hints for every metric '
+          'that fired at least one violation. Pass --no-auto-explain to '
+          'opt out (matches pre-0.1.0 behaviour).',
+      defaultsTo: true,
+    )
+    ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',
       negatable: false,
@@ -96,6 +104,7 @@ class CommonOptions {
     required this.coverage,
     required this.strictDismiss,
     required this.concurrency,
+    required this.autoExplain,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -131,6 +140,7 @@ class CommonOptions {
       coverage: results['coverage'] as String?,
       strictDismiss: results['strict-dismiss'] as bool,
       concurrency: concurrency,
+      autoExplain: results['auto-explain'] as bool,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -150,6 +160,11 @@ class CommonOptions {
 
   /// `--concurrency` override. `null` ⇒ defaults to the host CPU count.
   final int? concurrency;
+
+  /// When `true`, attach `--explain`-style rationale to every metric
+  /// that produced at least one violation in the report. Toggleable via
+  /// `--no-auto-explain`.
+  final bool autoExplain;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

@@ -78,6 +78,7 @@ class AnalyzeCommand extends Command<int> {
       coverage,
       options.strictDismiss,
       options.concurrency,
+      options.autoExplain,
     );
     return _emit(report, options);
   }
@@ -98,6 +99,7 @@ class AnalyzeCommand extends Command<int> {
     CoverageIndex? coverage,
     bool strictDismiss,
     int? concurrency,
+    bool autoExplain,
   ) async {
     final runner = AnalyzerRunner(
       roots: paths,
@@ -147,13 +149,34 @@ class AnalyzeCommand extends Command<int> {
     final filteredUnused = allowed == null
         ? unused
         : unused.where((u) => allowed.contains(u.location.path)).toList();
+    final resolvedExplainIds = autoExplain
+        ? _withAutoExplain(explicit: explainIds, records: filteredRecords)
+        : explainIds;
     return AnalysisReport(
       version: '1.0',
       metrics: filteredRecords,
       unused: filteredUnused,
       analyzedFiles: hashes,
-      explanations: buildExplanations(explainIds),
+      explanations: buildExplanations(resolvedExplainIds),
     )..attachAnalyzedFileCount(units.length);
+  }
+
+  /// Unions [explicit] (`--explain`) with the metric ids that fired at
+  /// least one violation in [records]. The output preserves the
+  /// explicit list's order so authored prompts stay deterministic, then
+  /// appends the auto-discovered ids in the order they were first seen.
+  List<String> _withAutoExplain({
+    required List<String> explicit,
+    required List<MetricRecord> records,
+  }) {
+    final seen = {...explicit};
+    final out = [...explicit];
+    for (final r in records) {
+      for (final v in r.violations) {
+        if (seen.add(v.metricId)) out.add(v.metricId);
+      }
+    }
+    return out;
   }
 
   Future<int> _emit(AnalysisReport report, CommonOptions options) async {
