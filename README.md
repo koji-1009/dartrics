@@ -26,6 +26,12 @@ dartrics analyze lib/ --reporter md > report.md
 # Token-efficient YAML-ish report optimized for LLM consumption
 dartrics analyze lib/ --reporter ai | claude -p "Refactor the threshold violations"
 
+# Inject a metric's rationale + refactor hints alongside the violations
+dartrics analyze lib/ --reporter ai --explain cyclomatic-complexity
+
+# Catalogue every built-in metric (rationale + refactor hints)
+dartrics rules --reporter ai
+
 # SARIF 2.1.0 for GitHub Code Scanning / GitLab ingestion
 dartrics analyze lib/ --reporter sarif --output dartrics.sarif
 
@@ -201,6 +207,10 @@ Commands:
   analyze        compute every metric and run the unused detector
   unused         run only the public-API reachability detector
   report         re-emit a previously saved JSON report in another format
+  rules          list every metric with its rationale and refactor hints
+
+Top-level options:
+  --version                print the dartrics version and exit
 
 Common options:
   --config <path>          configuration file (default: analysis_options.yaml)
@@ -209,10 +219,39 @@ Common options:
   --root <path>            analysis root directory (default: cwd)
   --since <ref>            restrict output to .dart files changed vs the
                            given git ref (e.g. main, HEAD~1, origin/main)
+  --explain <metric-id>    inject the metric's rationale + refactor hints
+                           into the report (repeatable)
+  --snapshot <mode>        cache | baseline | none, or a custom path; overrides
+                           the analysis_options.yaml setting
   --fatal-warnings         exit non-zero if any warning is reported
   --fatal-style            exit non-zero if any style violation is reported (reserved)
   -v, --verbose            FINE-level logging
 ```
+
+### Snapshot diff mode
+
+`dartrics analyze` and `dartrics unused` write a per-run snapshot of every analysed file's `sha256` and reuse it on the next invocation to emit only the records for files whose hash changed. The snapshot is git-independent, which makes it useful in three settings:
+
+- AI loops that re-run after an automated refactor and only want to see the freshly-introduced violations.
+- Pre-commit hooks where the working tree is dirty and `git diff` would be misleading.
+- Non-git VCS (`jj`, `sapling`, …) where `--since` has no ref to compare against.
+
+Three modes:
+
+| Mode | Default path | When to use |
+|---|---|---|
+| `cache` (default) | `.dart_tool/dartrics/snapshot.json` | Local AI / dev loop. The path is git-ignored by Dart convention. |
+| `baseline` | `dartrics-snapshot.json` (repo root) | Commit the snapshot so CI can compare a PR against the established baseline. |
+| `none` | — | Disable snapshot diffing entirely (CI runs that only want `--since`). |
+
+```yaml
+dartrics:
+  snapshot:
+    mode: baseline
+    # path: custom-snap.json   # optional override
+```
+
+The mode can also be flipped per-invocation: `--snapshot cache`, `--snapshot baseline`, `--snapshot none`, or `--snapshot <path>`. When `--since <ref>` is also supplied the git ref wins for filtering and the snapshot file is updated but not consulted.
 
 ### `--since` (diff mode)
 
@@ -249,6 +288,72 @@ Renames surface as the new path. Untracked files are ignored (they're not part o
 - **md** — Markdown for PR comments and issue bodies, finalised through `package:dapper`'s `formatMarkdown` for canonical formatting.
 - **ai** — token-efficient YAML-ish report with one block per violation/unused entry plus a 7-line snippet window centred on the location, finalised through `formatYaml`.
 - **sarif** — SARIF 2.1.0 envelope ingestible by GitHub Code Scanning / GitLab.
+
+## Flutter-aware mode
+
+Setting `dartrics: { flutter: true }` in `analysis_options.yaml` (or in the plugin block) relaxes a small set of metrics on idiomatic Flutter widgets so AI refactor loops don't churn on healthy `build()` trees:
+
+| Target | Effect |
+|---|---|
+| `Widget.build()` | `maximum-nesting-level` and `method-length` are skipped |
+| Widget constructor | `number-of-parameters` is skipped |
+| Other methods on the same widget | Measured normally |
+
+Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Cyclomatic / cognitive complexity, SLOC, and the class- and library-level metrics still apply, because deep branching inside `build()` is still hard to read.
+
+## AI report schema (v1)
+
+The `--reporter ai` output is the primary integration point for AI tooling. The format is:
+
+```yaml
+# dartrics ai-report v1
+explain:                   # optional, only present when --explain is used
+  - metric: cyclomatic-complexity
+    rationale: |
+      ...one-paragraph rationale...
+    refactorHints:
+      - hint sentence
+      - …
+violations:
+  - file: lib/foo.dart
+    line: 42
+    scope: Foo.bar
+    metric: cyclomatic-complexity
+    value: 12
+    threshold: 10
+    severity: warning
+    snippet: |
+      …7 lines centred on `line`…
+unused:
+  - file: lib/util.dart
+    line: 88
+    kind: function
+    name: _legacyFormatter
+    snippet: |
+      …7 lines centred on `line`…
+```
+
+Stable contract:
+
+- `# dartrics ai-report v1` header is present on every emission. Consumers can match on it to validate the format.
+- The snippet block is a YAML literal (`|`) of up to 7 lines (`line ± 3`).
+- Field names (`metric`, `severity`, `scope`, etc.) are stable through the `0.x` series. New fields may be added.
+- Breaking changes (renames, removals, semantic shifts) trigger a new header, e.g. `# dartrics ai-report v2`.
+
+The JSON reporter emits the same logical model plus an `analyzedFiles` list that backs the snapshot diff:
+
+```json
+{
+  "version": "1.0",
+  "analyzedFiles": [
+    { "path": "lib/foo.dart", "sha256": "…" }
+  ],
+  "metrics": [...],
+  "unused": [...]
+}
+```
+
+`analyzedFiles` is JSON-only — the markdown / ai / sarif / console reporters omit it because the snapshot file is the source of truth for hash data.
 
 ## Repository layout
 
