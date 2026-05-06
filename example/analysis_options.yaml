@@ -1,0 +1,24 @@
+include: package:lints/recommended.yaml
+
+# Smallest interesting dartrics config. Drop this in a real project's
+# `analysis_options.yaml` and run `dart pub run dartrics analyze .` (or
+# the standalone `dartrics analyze .` once installed) to see violations.
+dartrics:
+  # Tighten the function-level thresholds; the defaults are deliberately
+  # forgiving for first-time runs.
+  metrics:
+    cyclomatic-complexity:
+      warning: 8
+      error: 16
+    cognitive-complexity:
+      warning: 10
+    number-of-parameters: 4
+
+  # Snapshot mode for AI / pre-commit loops. Default `cache` writes to
+  # `.dart_tool/dartrics/snapshot.json` so the file is automatically
+  # ignored by git via the standard `.dart_tool/` rule.
+  snapshot:
+    mode: cache
+
+  # Enable the Flutter widget skip rules if the package contains widgets.
+  # flutter: true
