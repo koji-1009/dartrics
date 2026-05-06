@@ -59,6 +59,12 @@ void addCommonOptions(ArgParser parser) {
           'wants to see what was triaged out.',
       negatable: false,
     )
+    ..addOption(
+      'concurrency',
+      help:
+          'Maximum number of files resolved in parallel. Defaults to '
+          'the host CPU count clamped to 16.',
+    )
     ..addFlag(
       'fatal-warnings',
       help: 'Exit non-zero if any warning is reported.',
@@ -89,6 +95,7 @@ class CommonOptions {
     required this.snapshot,
     required this.coverage,
     required this.strictDismiss,
+    required this.concurrency,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -100,6 +107,19 @@ class CommonOptions {
     if (results['verbose'] as bool) {
       Logger.root.level = Level.FINE;
     }
+    final concurrencyRaw = results['concurrency'] as String?;
+    final int? concurrency;
+    if (concurrencyRaw == null) {
+      concurrency = null;
+    } else {
+      final parsed = int.tryParse(concurrencyRaw);
+      if (parsed == null || parsed < 1) {
+        throw FormatException(
+          '--concurrency must be a positive integer (got "$concurrencyRaw")',
+        );
+      }
+      concurrency = parsed;
+    }
     return CommonOptions(
       configPath: results['config'] as String,
       reporter: results['reporter'] as String,
@@ -110,6 +130,7 @@ class CommonOptions {
       snapshot: results['snapshot'] as String?,
       coverage: results['coverage'] as String?,
       strictDismiss: results['strict-dismiss'] as bool,
+      concurrency: concurrency,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -126,6 +147,9 @@ class CommonOptions {
   final String? snapshot;
   final String? coverage;
   final bool strictDismiss;
+
+  /// `--concurrency` override. `null` ⇒ defaults to the host CPU count.
+  final int? concurrency;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

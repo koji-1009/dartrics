@@ -4,3 +4,7 @@
 tmp/
 # Root-only — `lib/src/coverage/` is real source.
 /coverage/
+
+# Local benchmarking artefacts.
+bin/*.jit
+bin/*.aot

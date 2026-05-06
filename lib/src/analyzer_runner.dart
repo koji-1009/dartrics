@@ -4,6 +4,7 @@ import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:glob/glob.dart';
 import 'package:path/path.dart' as p;
+import 'package:pool/pool.dart';
 
 /// Suffixes that mark a Dart file as machine-generated. Metrics computed
 /// on these would be both noise (the human didn't write the code) and
@@ -32,10 +33,28 @@ class AnalyzerRunner {
     required this.roots,
     this.exclude = const [],
     this.includeGenerated = false,
-  });
+    int? concurrency,
+  }) : concurrency = concurrency ?? defaultConcurrency();
+
+  /// Default parallelism for [resolveAll]. Mirrors the host's CPU count
+  /// so analyzer driver work overlaps file I/O, but never goes below 1
+  /// (host might report 0 in odd VMs) or above 16 (diminishing returns
+  /// + memory pressure on the analyzer).
+  static int defaultConcurrency() {
+    final cpus = Platform.numberOfProcessors;
+    if (cpus <= 0) return 1;
+    if (cpus > 16) return 16;
+    return cpus;
+  }
 
   final List<String> roots;
   final List<String> exclude;
+
+  /// Maximum concurrent [resolve] calls issued by [resolveAll]. The
+  /// analyzer driver internally serializes work, so the win is mostly
+  /// I/O / parsing overlap; a value larger than `numberOfProcessors`
+  /// rarely pays off.
+  final int concurrency;
 
   /// When `false` (default), files matching one of [_generatedSuffixes]
   /// are skipped during file collection. Set to `true` if a project really
@@ -112,14 +131,34 @@ class AnalyzerRunner {
   }
 
   /// Resolves every Dart file under [roots], skipping paths that the
-  /// analyzer can't fully resolve.
+  /// analyzer can't fully resolve. Runs up to [concurrency] resolves in
+  /// flight at once via `package:pool`; ordering of the output list
+  /// follows the alphabetical file list so reports stay deterministic.
   Future<List<({String path, ResolvedUnitResult unit})>> resolveAll() async {
     final files = await collectDartFiles();
-    final out = <({String path, ResolvedUnitResult unit})>[];
-    for (final path in files) {
-      final unit = await resolve(path);
-      if (unit != null) out.add((path: path, unit: unit));
+    if (files.isEmpty) return const [];
+    if (concurrency <= 1 || files.length == 1) {
+      final out = <({String path, ResolvedUnitResult unit})>[];
+      for (final path in files) {
+        final unit = await resolve(path);
+        if (unit != null) out.add((path: path, unit: unit));
+      }
+      return out;
     }
-    return out;
+    final pool = Pool(concurrency);
+    try {
+      final results = await Future.wait([
+        for (final path in files)
+          pool.withResource(
+            () async => (path: path, unit: await resolve(path)),
+          ),
+      ]);
+      return [
+        for (final r in results)
+          if (r.unit != null) (path: r.path, unit: r.unit!),
+      ];
+    } finally {
+      await pool.close();
+    }
   }
 }

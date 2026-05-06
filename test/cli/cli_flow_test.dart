@@ -132,6 +132,70 @@ int f() { return 1; }
     expect(code, 0);
   });
 
+  test(
+    '--concurrency=4 produces the same report as the sequential default',
+    () async {
+      final outA = File('${dir.path}/cc-default.json');
+      final codeA = await buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        outA.path,
+        '--config',
+        '${dir.path}/no.yaml',
+        '--concurrency',
+        '1',
+        '--snapshot',
+        'none',
+      ]);
+      final outB = File('${dir.path}/cc-parallel.json');
+      final codeB = await buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        outB.path,
+        '--config',
+        '${dir.path}/no.yaml',
+        '--concurrency',
+        '4',
+        '--snapshot',
+        'none',
+      ]);
+      expect(codeA, 0);
+      expect(codeB, 0);
+      expect(outA.readAsStringSync(), outB.readAsStringSync());
+    },
+  );
+
+  test('--concurrency rejects non-positive integers', () async {
+    expect(
+      () => buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--config',
+        '${dir.path}/no.yaml',
+        '--concurrency',
+        '0',
+      ]),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      () => buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--config',
+        '${dir.path}/no.yaml',
+        '--concurrency',
+        'eight',
+      ]),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('analyze --since filters output to git-changed dart files', () async {
     final repo = await _initGitRepo('cli_flow_since_');
     addTearDown(() => repo.delete(recursive: true));

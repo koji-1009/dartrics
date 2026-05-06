@@ -42,7 +42,11 @@ class UnusedCommand extends Command<int> {
       stderr.writeln(e);
       return ExitCode.data.code;
     }
-    final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
+    final runner = AnalyzerRunner(
+      roots: paths,
+      exclude: config.exclude,
+      concurrency: options.concurrency,
+    );
     final units = await runner.resolveAll();
     final unused = await const UnusedDetector().detect([
       for (final u in units)

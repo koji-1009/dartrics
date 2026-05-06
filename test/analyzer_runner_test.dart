@@ -75,4 +75,45 @@ void main() {
     final files = await runner.collectDartFiles();
     expect(files.any((p) => p.endsWith('b.dart')), isFalse);
   });
+
+  group('concurrency', () {
+    test('default clamps host CPU count to [1, 16]', () {
+      // Whatever Platform.numberOfProcessors reports, the clamp must hold.
+      final actual = AnalyzerRunner.defaultConcurrency();
+      expect(actual, greaterThanOrEqualTo(1));
+      expect(actual, lessThanOrEqualTo(16));
+    });
+
+    test('explicit concurrency=1 keeps the runner sequential', () async {
+      // Resolves both files with the sequential branch — primarily a
+      // coverage exercise; the assertion is that resolveAll returns
+      // every collectable file in deterministic order.
+      await File(
+        '${dir.path}/pubspec.yaml',
+      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      final runner = AnalyzerRunner(roots: ['${dir.path}/lib'], concurrency: 1);
+      final units = await runner.resolveAll();
+      final paths = units.map((u) => u.path).toList();
+      expect(paths.first.endsWith('a.dart'), isTrue);
+      expect(paths.last.endsWith('b.dart'), isTrue);
+    });
+
+    test('parallel resolveAll preserves alphabetical ordering', () async {
+      await File(
+        '${dir.path}/pubspec.yaml',
+      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      final runner = AnalyzerRunner(roots: ['${dir.path}/lib'], concurrency: 4);
+      final units = await runner.resolveAll();
+      expect(
+        units.map((u) => u.path).toList(),
+        orderedEquals(units.map((u) => u.path).toList()..sort()),
+      );
+    });
+
+    test('resolveAll returns const [] for empty file list', () async {
+      final runner = AnalyzerRunner(roots: ['${dir.path}/empty']);
+      final units = await runner.resolveAll();
+      expect(units, isEmpty);
+    });
+  });
 }

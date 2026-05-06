@@ -62,6 +62,8 @@ Common options:
                            `--coverage none` to disable
   --strict-dismiss         ignore every `dartrics:dismiss` directive
                            (comment + YAML); useful in CI / final review
+  --concurrency <n>        max files resolved in parallel (default: host
+                           CPU count, clamped to 16)
   --fatal-warnings         exit non-zero if any warning is reported
   --fatal-style            exit non-zero if any style violation is reported (reserved)
   -v, --verbose            FINE-level logging

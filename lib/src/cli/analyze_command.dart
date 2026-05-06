@@ -77,6 +77,7 @@ class AnalyzeCommand extends Command<int> {
       options.since != null,
       coverage,
       options.strictDismiss,
+      options.concurrency,
     );
     return _emit(report, options);
   }
@@ -96,8 +97,13 @@ class AnalyzeCommand extends Command<int> {
     bool sinceActive,
     CoverageIndex? coverage,
     bool strictDismiss,
+    int? concurrency,
   ) async {
-    final runner = AnalyzerRunner(roots: paths, exclude: config.exclude);
+    final runner = AnalyzerRunner(
+      roots: paths,
+      exclude: config.exclude,
+      concurrency: concurrency,
+    );
     final units = await runner.resolveAll();
     final dismissals = _buildDismissalIndex(
       strictDismiss: strictDismiss,

@@ -57,7 +57,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### CLI surface
 
-- Common options: `--config`, `--reporter`, `--output`, `--root`, `--since`, `--explain`, `--snapshot`, `--coverage`, `--strict-dismiss`, `--fatal-warnings`, `--fatal-style`, `-v`.
+- Common options: `--config`, `--reporter`, `--output`, `--root`, `--since`, `--explain`, `--snapshot`, `--coverage`, `--strict-dismiss`, `--concurrency`, `--fatal-warnings`, `--fatal-style`, `-v`.
 - `dartrics --version` prints the build's version. The same string is exported as `dartricsVersion` from `package:dartrics/dartrics.dart`.
 - Exit codes are sysexits-aligned: 0 success, 1 violations (with `--fatal-warnings`), 64 usage, 65 data, 70 internal, 78 config.
 
@@ -65,6 +65,10 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 - `lib/dartrics.dart` exposes the metric calculator classes (`CyclomaticComplexity`, `CognitiveComplexity`, `Lcom4`, …), the report shapes (`AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, …), the metadata enums (`MetricPolarity`, `ChangeDirection`, `Severity`, `ScopeKind`, `DismissalSource`), and the supporting types (`CoverageIndex`, `FileCoverage`, `AnalyzedFile`, `ExplainEntry`, `Dismissal`, `DismissalConfig`, `dartricsVersion`).
 - `example/main.dart` shows a 30-line standalone embedding.
+
+### Performance
+
+- File resolution in `AnalyzerRunner.resolveAll` now uses `package:pool` to run up to `--concurrency` resolves in flight at once. Default mirrors the host CPU count (clamped to 16). Output ordering remains alphabetical so reports stay deterministic across runs. The win on smaller trees (≈50 files) is ≈10 % wall-time; larger codebases get more.
 
 ### Tooling
 
