@@ -40,6 +40,7 @@ class MetricViolation {
     required this.metricId,
     required this.severity,
     required this.threshold,
+    this.id = '',
     this.scopeCoverage,
     this.scopeBranchCoverage,
     this.complexityJustified = false,
@@ -50,6 +51,16 @@ class MetricViolation {
     this.dismissedFrom,
     this.dismissalRejected,
   });
+
+  /// Stable identifier for this `(file, scope, metric)` triple. The first
+  /// 16 hex chars of `sha256("<file>|<scope>|<metricId>")` — collisions
+  /// at 64 bits are not a practical concern for any single project.
+  ///
+  /// Empty string in the const default constructor purely so the
+  /// pre-id-bearing fixtures keep compiling; the engine sets it on
+  /// every emitted violation. AI loops can correlate across runs:
+  /// "id `a3f1c4e9…` showed up again ⇒ my last refactor missed it."
+  final String id;
 
   final String metricId;
   final Severity severity;
@@ -101,6 +112,7 @@ class MetricViolation {
   final String? dismissalRejected;
 
   Map<String, Object?> toJson() => {
+    if (id.isNotEmpty) 'id': id,
     'metric': metricId,
     'level': severity.name,
     'threshold': threshold,

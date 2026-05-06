@@ -73,6 +73,11 @@
       "required": ["metric", "level", "threshold"],
       "additionalProperties": false,
       "properties": {
+        "id": {
+          "description": "Stable 16-hex-char identifier for the (file, scope, metric) triple. Survives line-number drift; AI loops use it to correlate violations across runs.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
         "metric": {
           "description": "Metric id (e.g. `cyclomatic-complexity`).",
           "type": "string"

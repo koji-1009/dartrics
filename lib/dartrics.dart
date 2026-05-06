@@ -23,6 +23,7 @@ export 'src/metrics/function/number_of_parameters.dart' show NumberOfParameters;
 export 'src/metrics/function/source_lines_of_code.dart' show SourceLinesOfCode;
 export 'src/metrics/metric.dart'
     show FunctionMetric, FunctionMetricInput, MetricPolarity;
+export 'src/metrics/metric_engine.dart' show computeViolationId;
 export 'src/models/analysis_report.dart'
     show
         AnalysisReport,

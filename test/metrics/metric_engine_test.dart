@@ -514,5 +514,14 @@ int branchy(int x) {
       expect(v.dismissalRejected, isNull);
       expect(v.dismissedFrom, isNull);
     });
+
+    test('every emitted violation carries a 16-hex id', () async {
+      final records = await runWith(index: DismissalIndex.empty());
+      final fn = records.firstWhere((r) => r.scope.name == 'branchy');
+      for (final v in fn.violations) {
+        expect(v.id, hasLength(16));
+        expect(RegExp(r'^[0-9a-f]{16}$').hasMatch(v.id), isTrue);
+      }
+    });
   });
 }

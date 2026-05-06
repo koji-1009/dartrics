@@ -17,6 +17,7 @@ class SarifReporter implements Reporter {
         results.add({
           'ruleId': v.metricId,
           'level': _level(v.severity),
+          if (v.id.isNotEmpty) 'partialFingerprints': {'dartrics/v1': v.id},
           'message': {
             'text':
                 '${v.metricId} = ${m.values[v.metricId]} '

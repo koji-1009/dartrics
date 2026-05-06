@@ -61,8 +61,9 @@ class AiReporter implements Reporter {
     for (final e in entries) {
       final m = e.record;
       final v = e.violation;
+      buf.writeln('  - file: ${m.file}');
+      if (v.id.isNotEmpty) buf.writeln('    id: ${v.id}');
       buf
-        ..writeln('  - file: ${m.file}')
         ..writeln('    line: ${m.scope.location.line}')
         ..writeln('    scope: ${m.scope.name}')
         ..writeln('    metric: ${v.metricId}')

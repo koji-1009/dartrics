@@ -83,6 +83,7 @@ class MdReporter implements Reporter {
         final cov = v.scopeCoverage;
         final justified = v.complexityJustified;
         final suffix = StringBuffer();
+        if (v.id.isNotEmpty) suffix.write(' · `${v.id}`');
         if (cov != null) {
           suffix.write(' · coverage ${(cov * 100).toStringAsFixed(0)}%');
         }

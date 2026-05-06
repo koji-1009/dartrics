@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:crypto/crypto.dart';
 
 import '../analyzer_runner.dart';
 import '../config/config.dart';
@@ -298,6 +301,11 @@ class MetricEngine {
     required double? branchCoverage,
     required bool justified,
   }) {
+    final id = computeViolationId(
+      file: path,
+      scope: scopeName,
+      metricId: metricId,
+    );
     final hit = dismissals.lookup(
       file: path,
       scope: scopeName,
@@ -305,6 +313,7 @@ class MetricEngine {
     );
     if (hit == null) {
       return MetricViolation(
+        id: id,
         metricId: metricId,
         severity: severity,
         threshold: threshold,
@@ -316,6 +325,7 @@ class MetricEngine {
     final check = validateDismissal(hit, dismissalConfig);
     if (check is DismissalAccepted) {
       return MetricViolation(
+        id: id,
         metricId: metricId,
         severity: severity,
         threshold: threshold,
@@ -332,6 +342,7 @@ class MetricEngine {
     final rejected = check as DismissalRejected;
     onDismissalRejection?.call(rejected.dismissal, rejected.reason);
     return MetricViolation(
+      id: id,
       metricId: metricId,
       severity: severity,
       threshold: threshold,
@@ -350,6 +361,22 @@ class MetricEngine {
     if (line != null) return line >= _lineJustifiedThreshold;
     return false;
   }
+}
+
+/// Stable id for a `(file, scope, metric)` triple, suitable for AI
+/// loops to correlate violations across runs. The first 16 hex chars
+/// of `sha256("<file>|<scope>|<metric>")` — 64 bits, well below the
+/// birthday-collision floor for any single project.
+///
+/// Pipe-delimited (not colon) so absolute Windows paths (`C:/foo`) do
+/// not introduce ambiguity.
+String computeViolationId({
+  required String file,
+  required String scope,
+  required String metricId,
+}) {
+  final digest = sha256.convert(utf8.encode('$file|$scope|$metricId'));
+  return digest.toString().substring(0, 16);
 }
 
 class _ResolvedFile {
