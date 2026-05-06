@@ -40,7 +40,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 - `json` — stable schema for `jq` pipelines and SARIF transformation; carries `analyzedFiles` (sha256 list) when snapshot mode is engaged.
 - `md` — Markdown for PR comments and issue bodies, formatted via `package:dapper.formatMarkdown`.
 - `ai` — described above.
-- `sarif` 2.1.0 — GitHub Code Scanning / GitLab ingestion.
+- `sarif` 2.1.0 — GitHub Code Scanning / GitLab ingestion. `tool.driver.rules` is populated for every metric that fired in the run, carrying the rationale in `fullDescription`, the refactor hints in `help.markdown`, and `helpUri` deep-linking back to the README anchor — so the platform surfaces the full lens explanation inline next to each result instead of an opaque rule id.
 
 ### Public-API unused-code detection
 

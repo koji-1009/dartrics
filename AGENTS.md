@@ -14,7 +14,9 @@ Conventions for AI coding agents (Claude Code, Cursor, Codex, etc.) and human co
 - `lib/src/lint/` — analyzer plugin: `DartricsPlugin` plus the four `AnalysisRule`s under `rules/`. Each rule wraps a function-level metric calculator and reports through `LintCode` with `{0}`/`{1}` placeholders.
 - `lib/src/metrics/{function,class,library}/` — per-scope metric calculators. Each implements `FunctionMetric` / `ClassMetric` / `LibraryMetric`, including the `rationale`, `refactorHints`, and `polarity` getters.
 - `lib/src/metrics/metric_engine.dart` — orchestrator that resolves every Dart file once and runs the registered calculators, attaching coverage / `complexityJustified` to violations when supplied.
+- `lib/src/metrics/metric_catalogue.dart` — `defaultMetricThresholds`, `collectRuleDescriptions`, and `findRuleDescription`. Single source of truth for "which metrics ship with what default threshold + rationale"; consumed by `dartrics rules`, the `--explain` flow, and the SARIF reporter so the three stay in sync.
 - `lib/src/metrics/flutter_aware.dart` — pure-AST helpers used by both the engine and the plugin to skip noisy widget patterns.
+- `lib/src/metrics/test_aware.dart` — pure-path helper that recognises `_test.dart` files under `test/` or `integration_test/` so the engine and the plugin can step aside on size-and-shape lenses for legitimate AAA / group-setUp scaffolding.
 - `lib/src/models/` — `AnalysisReport`, `MetricRecord`, `MetricViolation`, `ScopeRef`, `UnusedDeclaration`, `SourceLocation`, `RegressionReport` family, `AnalyzedFile`, `ExplainEntry`. Stable JSON schema lives here.
 - `lib/src/regression/` — `RegressionDiff` (pure computation) and `GitWorktree` (the short-lived `git worktree add` adapter for the historical side of the diff).
 - `lib/src/reporters/` — `console` / `json` / `md` / `ai` / `sarif` / `regression` / `rules`. `md` and `ai` finalise through `package:dapper`.

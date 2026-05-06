@@ -412,7 +412,7 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 - **json** — stable schema for `jq` pipelines and SARIF transformation.
 - **md** — Markdown for PR comments and issue bodies, finalised through `package:dapper`'s `formatMarkdown`.
 - **ai** — token-efficient YAML-ish report (see schema above).
-- **sarif** — SARIF 2.1.0 envelope ingestible by GitHub Code Scanning / GitLab.
+- **sarif** — SARIF 2.1.0 envelope ingestible by GitHub Code Scanning / GitLab. `tool.driver.rules` is populated for every metric that fired in the run — `fullDescription` carries the rationale, `help.markdown` carries the refactor hints, `helpUri` deep-links back to the README anchor — so the platform shows the full lens explanation inline next to each result.
 
 ## Exit codes (sysexits)
 

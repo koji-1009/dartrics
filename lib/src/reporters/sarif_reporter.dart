@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../metrics/metric_catalogue.dart';
 import '../models/analysis_report.dart';
 import 'reporter.dart';
+import 'rules_reporter.dart';
 
 /// SARIF 2.1.0 reporter — produces a static-analysis result file consumable
 /// by GitHub Code Scanning, GitLab, and any other tool that ingests SARIF.
@@ -92,20 +94,105 @@ class SarifReporter implements Reporter {
     }
   }
 
+  /// Builds `tool.driver.rules` so GitHub Code Scanning / GitLab show
+  /// the metric's rationale + refactor hints inline next to the result,
+  /// rather than just an opaque rule id. Only the rules that actually
+  /// produced a result in [report] are emitted, matching the SARIF 2.1.0
+  /// guidance that `rules` should be the rules consulted, not every
+  /// rule the tool ships.
   List<Map<String, Object?>> _rulesFor(AnalysisReport report) {
-    final ids = <String>{};
+    final firedMetrics = <String>{};
     for (final m in report.metrics) {
       for (final v in m.violations) {
-        ids.add(v.metricId);
+        firedMetrics.add(v.metricId);
       }
     }
-    if (report.unused.isNotEmpty) ids.add('unused-declaration');
-    return [
-      for (final id in ids)
-        {
+
+    final rules = <Map<String, Object?>>[];
+    for (final id in firedMetrics) {
+      final desc = findRuleDescription(id);
+      if (desc == null) {
+        // Metric without a registered description (custom embedder).
+        // Surface the bare id so consumers still resolve a rule entry,
+        // but don't fabricate metadata we don't have.
+        rules.add({
           'id': id,
           'shortDescription': {'text': id},
-        },
-    ];
+        });
+        continue;
+      }
+      rules.add(_metricRule(desc));
+    }
+
+    if (report.unused.isNotEmpty) rules.add(_unusedRule());
+    return rules;
+  }
+
+  /// SARIF rule object for a built-in metric. The `name` is a
+  /// PascalCased form of the kebab-case id (GitHub Code Scanning's
+  /// preference). `helpUri` points at the README anchor — every metric
+  /// section in README has a stable lower-cased anchor matching its id.
+  Map<String, Object?> _metricRule(RuleDescription desc) {
+    return {
+      'id': desc.id,
+      'name': _toPascalCase(desc.id),
+      'shortDescription': {'text': _firstSentence(desc.rationale)},
+      'fullDescription': {'text': desc.rationale},
+      'helpUri': 'https://pub.dev/packages/dartrics#${desc.id}',
+      'help': {'text': _helpText(desc), 'markdown': _helpMarkdown(desc)},
+      'properties': {
+        'tags': ['dartrics', desc.scope],
+        if (desc.defaultThreshold != null)
+          'defaultThreshold': desc.defaultThreshold,
+      },
+    };
+  }
+
+  /// SARIF rule object for the public-API unused-declaration check.
+  /// Distinct from a metric — its description is hand-authored.
+  Map<String, Object?> _unusedRule() {
+    const text =
+        'Public-API reachability check (Periphery-style BFS over a '
+        'name-based reference graph). Reports public declarations that no '
+        "entry point reaches. Roots are `main`, `@pragma('vm:entry-point')`, "
+        'and `lib/` exports outside `lib/src/` (when `excludeExported` is '
+        'on). Private (underscore-prefixed) names are intentionally '
+        "skipped — `dart analyze`'s `dead_code` lint already covers them.";
+    return {
+      'id': 'unused-declaration',
+      'name': 'UnusedDeclaration',
+      'shortDescription': {
+        'text': 'Public declaration is never reached from any entry point.',
+      },
+      'fullDescription': {'text': text},
+      'helpUri':
+          'https://pub.dev/packages/dartrics#public-api-unused-code-detection',
+      'properties': {
+        'tags': ['dartrics', 'unused'],
+      },
+    };
+  }
+
+  String _firstSentence(String paragraph) {
+    final period = paragraph.indexOf('. ');
+    if (period < 0) return paragraph;
+    return paragraph.substring(0, period + 1);
+  }
+
+  String _toPascalCase(String kebab) {
+    return kebab
+        .split('-')
+        .map((p) => p.isEmpty ? p : p[0].toUpperCase() + p.substring(1))
+        .join();
+  }
+
+  String _helpText(RuleDescription desc) {
+    final hints = desc.refactorHints.map((String h) => '- $h').join('\n');
+    return '${desc.rationale}\n\nRefactor hints:\n$hints';
+  }
+
+  String _helpMarkdown(RuleDescription desc) {
+    final hints = desc.refactorHints.map((String h) => '- $h').join('\n');
+    return '${desc.rationale}\n\n**Refactor hints:**\n\n$hints';
   }
 }

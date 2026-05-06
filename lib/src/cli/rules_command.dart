@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 
-import '../metrics/class/default_class_metrics.dart';
-import '../metrics/function/default_function_metrics.dart';
-import '../metrics/library/default_library_metrics.dart';
+import '../metrics/metric_catalogue.dart';
 import '../models/analysis_report.dart';
 import '../reporters/rules_reporter.dart';
+
+export '../metrics/metric_catalogue.dart'
+    show collectRuleDescriptions, defaultMetricThresholds, findRuleDescription;
 
 /// `dartrics rules` — emits a catalogue of every metric this build of
 /// dartrics ships, including its rationale and recommended refactors.
@@ -62,61 +63,6 @@ class RulesCommand extends Command<int> {
     }
     return ExitCode.success.code;
   }
-}
-
-/// Built-in default thresholds, mirroring the values baked into the
-/// analyzer-plugin rule classes. Keeping them here means the `rules`
-/// catalogue stays in sync without forcing the lint package onto
-/// embedders that only want the CLI metrics.
-const Map<String, num> defaultMetricThresholds = {
-  'cyclomatic-complexity': 10,
-  'cognitive-complexity': 15,
-  'maximum-nesting-level': 4,
-  'number-of-parameters': 4,
-  'boolean-trap': 2,
-};
-
-/// Aggregates every default metric calculator into a list of
-/// [RuleDescription]s.
-List<RuleDescription> collectRuleDescriptions() {
-  return [
-    for (final m in defaultFunctionMetrics)
-      RuleDescription(
-        id: m.id,
-        scope: 'function',
-        defaultEnabled: m.defaultEnabled,
-        defaultThreshold: defaultMetricThresholds[m.id],
-        rationale: m.rationale,
-        refactorHints: m.refactorHints,
-      ),
-    for (final m in defaultClassMetrics)
-      RuleDescription(
-        id: m.id,
-        scope: 'class',
-        defaultEnabled: m.defaultEnabled,
-        defaultThreshold: defaultMetricThresholds[m.id],
-        rationale: m.rationale,
-        refactorHints: m.refactorHints,
-      ),
-    for (final m in defaultLibraryMetrics)
-      RuleDescription(
-        id: m.id,
-        scope: 'library',
-        defaultEnabled: m.defaultEnabled,
-        defaultThreshold: defaultMetricThresholds[m.id],
-        rationale: m.rationale,
-        refactorHints: m.refactorHints,
-      ),
-  ];
-}
-
-/// Returns the [RuleDescription] for [metricId], or `null` if it is not
-/// among the built-in metrics.
-RuleDescription? findRuleDescription(String metricId) {
-  for (final r in collectRuleDescriptions()) {
-    if (r.id == metricId) return r;
-  }
-  return null;
 }
 
 /// Resolves the `--explain <metric-id>` option values to a list of
