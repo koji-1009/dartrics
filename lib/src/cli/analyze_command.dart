@@ -180,7 +180,7 @@ class AnalyzeCommand extends Command<int> {
   }
 
   Future<int> _emit(AnalysisReport report, CommonOptions options) async {
-    final reporter = pickReporter(options.reporter);
+    final reporter = pickReporter(options.reporter, limit: options.limit);
     final IOSink sink;
     final bool ownsSink;
     if (options.output == '-') {

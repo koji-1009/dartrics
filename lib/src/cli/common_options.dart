@@ -65,6 +65,14 @@ void addCommonOptions(ArgParser parser) {
           'Maximum number of files resolved in parallel. Defaults to '
           'the host CPU count clamped to 16.',
     )
+    ..addOption(
+      'limit',
+      help:
+          'Cap the number of violations + unused entries shown by the '
+          'ai and md reporters (after the priority sort). Useful when '
+          'feeding the report into an AI loop with a fixed token '
+          'budget. Truncated entries are summarised in the report.',
+    )
     ..addFlag(
       'auto-explain',
       help:
@@ -105,6 +113,7 @@ class CommonOptions {
     required this.strictDismiss,
     required this.concurrency,
     required this.autoExplain,
+    required this.limit,
     required this.fatalWarnings,
     required this.fatalStyle,
     required this.verbose,
@@ -129,6 +138,19 @@ class CommonOptions {
       }
       concurrency = parsed;
     }
+    final limitRaw = results['limit'] as String?;
+    final int? limit;
+    if (limitRaw == null) {
+      limit = null;
+    } else {
+      final parsed = int.tryParse(limitRaw);
+      if (parsed == null || parsed < 1) {
+        throw FormatException(
+          '--limit must be a positive integer (got "$limitRaw")',
+        );
+      }
+      limit = parsed;
+    }
     return CommonOptions(
       configPath: results['config'] as String,
       reporter: results['reporter'] as String,
@@ -141,6 +163,7 @@ class CommonOptions {
       strictDismiss: results['strict-dismiss'] as bool,
       concurrency: concurrency,
       autoExplain: results['auto-explain'] as bool,
+      limit: limit,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
       verbose: results['verbose'] as bool,
@@ -165,6 +188,11 @@ class CommonOptions {
   /// that produced at least one violation in the report. Toggleable via
   /// `--no-auto-explain`.
   final bool autoExplain;
+
+  /// `--limit <n>` override. `null` ⇒ no truncation; positive integer
+  /// caps the number of violations + unused entries shown by the
+  /// ai and md reporters.
+  final int? limit;
   final bool fatalWarnings;
   final bool fatalStyle;
   final bool verbose;

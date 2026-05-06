@@ -196,6 +196,31 @@ int f() { return 1; }
     );
   });
 
+  test('--limit rejects non-positive integers', () async {
+    expect(
+      () => buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--config',
+        '${dir.path}/no.yaml',
+        '--limit',
+        '0',
+      ]),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      () => buildCommandRunner().run([
+        'analyze',
+        '${dir.path}/lib',
+        '--config',
+        '${dir.path}/no.yaml',
+        '--limit',
+        'lots',
+      ]),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('analyze --since filters output to git-changed dart files', () async {
     final repo = await _initGitRepo('cli_flow_since_');
     addTearDown(() => repo.delete(recursive: true));

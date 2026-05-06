@@ -88,7 +88,7 @@ class UnusedCommand extends Command<int> {
       explanations: buildExplanations(options.explain),
     )..attachAnalyzedFileCount(units.length);
 
-    final reporter = pickReporter(options.reporter);
+    final reporter = pickReporter(options.reporter, limit: options.limit);
     final IOSink sink;
     final bool ownsSink;
     if (options.output == '-') {

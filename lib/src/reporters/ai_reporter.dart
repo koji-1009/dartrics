@@ -11,10 +11,17 @@ import 'reporter.dart';
 /// pretty-printed through `dapper`'s YAML formatter so column alignment
 /// stays predictable for downstream agents.
 class AiReporter implements Reporter {
-  AiReporter({Map<String, String> Function(String path)? sourceLoader})
-    : _sourceLoader = sourceLoader ?? _defaultSourceLoader;
+  AiReporter({
+    Map<String, String> Function(String path)? sourceLoader,
+    this.limit,
+  }) : _sourceLoader = sourceLoader ?? _defaultSourceLoader;
 
   final Map<String, String> Function(String path) _sourceLoader;
+
+  /// Cap on the number of violations + unused entries written. `null`
+  /// keeps every entry; a positive integer truncates after the priority
+  /// sort and adds a `truncated:` summary block.
+  final int? limit;
 
   /// Cache of file → lines so we don't re-read the same source repeatedly.
   final _lineCache = <String, List<String>>{};
@@ -23,8 +30,13 @@ class AiReporter implements Reporter {
   void report(AnalysisReport report, IOSink sink) {
     final buf = StringBuffer()..writeln('# dartrics ai-report v1');
     _writeExplanations(buf, report);
-    _writeViolations(buf, report);
-    _writeUnused(buf, report);
+    final dropped = _writeViolations(buf, report);
+    final unusedDropped = _writeUnused(buf, report);
+    if (dropped > 0 || unusedDropped > 0) {
+      buf.writeln('truncated:');
+      if (dropped > 0) buf.writeln('  violations: $dropped');
+      if (unusedDropped > 0) buf.writeln('  unused: $unusedDropped');
+    }
     sink.write(formatYaml(buf.toString()));
   }
 
@@ -50,15 +62,20 @@ class AiReporter implements Reporter {
     return value;
   }
 
-  void _writeViolations(StringBuffer buf, AnalysisReport report) {
+  /// Returns the number of violations dropped to honour [limit].
+  int _writeViolations(StringBuffer buf, AnalysisReport report) {
     final entries = <_ViolationEntry>[
       for (final m in report.metrics)
         for (final v in m.violations) _ViolationEntry(record: m, violation: v),
     ];
-    if (entries.isEmpty) return;
+    if (entries.isEmpty) return 0;
     entries.sort(_compareViolations);
+    final keep = limit == null || entries.length <= limit!
+        ? entries
+        : entries.sublist(0, limit!);
+    final dropped = entries.length - keep.length;
     buf.writeln('violations:');
-    for (final e in entries) {
+    for (final e in keep) {
       final m = e.record;
       final v = e.violation;
       buf.writeln('  - file: ${m.file}');
@@ -106,6 +123,7 @@ class AiReporter implements Reporter {
         buf.writeln('      $line');
       }
     }
+    return dropped;
   }
 
   /// Highest-severity, lowest-priority-key violations come first.
@@ -128,10 +146,15 @@ class AiReporter implements Reporter {
     return v.scopeCoverage ?? 0.5;
   }
 
-  void _writeUnused(StringBuffer buf, AnalysisReport report) {
-    if (report.unused.isEmpty) return;
+  /// Returns the number of unused entries dropped to honour [limit].
+  int _writeUnused(StringBuffer buf, AnalysisReport report) {
+    if (report.unused.isEmpty) return 0;
+    final keep = limit == null || report.unused.length <= limit!
+        ? report.unused
+        : report.unused.sublist(0, limit!);
+    final dropped = report.unused.length - keep.length;
     buf.writeln('unused:');
-    for (final u in report.unused) {
+    for (final u in keep) {
       buf
         ..writeln('  - file: ${u.location.path}')
         ..writeln('    line: ${u.location.line}')
@@ -142,6 +165,7 @@ class AiReporter implements Reporter {
         buf.writeln('      $line');
       }
     }
+    return dropped;
   }
 
   /// Returns up to 7 lines centered on [centerLine] (3 above, the line

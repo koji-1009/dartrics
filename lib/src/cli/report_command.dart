@@ -39,7 +39,7 @@ class ReportCommand extends Command<int> {
       return ExitCode.data.code;
     }
     final report = _decode(input.readAsStringSync());
-    final reporter = pickReporter(options.reporter);
+    final reporter = pickReporter(options.reporter, limit: options.limit);
     final IOSink sink;
     final bool ownsSink;
     if (options.output == '-') {

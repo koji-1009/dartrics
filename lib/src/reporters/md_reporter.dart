@@ -13,6 +13,14 @@ import 'reporter.dart';
 /// bullet indentation, and trailing newlines match the project's
 /// Prettier-style canonical formatting.
 class MdReporter implements Reporter {
+  MdReporter({this.limit});
+
+  /// Cap on the number of violation bullets rendered (after the
+  /// existing record order). `null` keeps every bullet; a positive
+  /// integer truncates and appends a `_+ N more violations_` line so
+  /// reviewers see what was hidden.
+  final int? limit;
+
   @override
   void report(AnalysisReport report, IOSink sink) {
     final buffer = StringBuffer()
@@ -71,15 +79,25 @@ class MdReporter implements Reporter {
         .where((m) => m.violations.isNotEmpty)
         .toList();
     if (withViolations.isEmpty) return;
+    final totalBullets = withViolations.fold<int>(
+      0,
+      (sum, m) => sum + m.violations.length,
+    );
+    final cap = limit;
+    var written = 0;
     buf
       ..writeln('## Violations')
       ..writeln();
     for (final m in withViolations) {
+      // Stop at the record level so we don't leave a dangling heading
+      // with no bullets under it.
+      if (cap != null && written >= cap) break;
       buf.writeln(
         '### `${m.file}:${m.scope.location.line}` — `${m.scope.name}`',
       );
       buf.writeln();
       for (final v in m.violations) {
+        if (cap != null && written >= cap) break;
         final cov = v.scopeCoverage;
         final justified = v.complexityJustified;
         final suffix = StringBuffer();
@@ -96,8 +114,15 @@ class MdReporter implements Reporter {
           '- ${v.metricId}: **${m.values[v.metricId]}** '
           '(${v.severity.name} at ${v.threshold})$suffix',
         );
+        written += 1;
       }
       buf.writeln();
+    }
+    final dropped = totalBullets - written;
+    if (dropped > 0) {
+      buf
+        ..writeln('_+ $dropped more violation(s) hidden by --limit_')
+        ..writeln();
     }
   }
 
