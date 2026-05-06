@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/koji-1009/dartrics/blob/main/schemas/dartrics-config.schema.json",
+  "title": "dartrics analysis_options.yaml configuration",
+  "description": "Schema for the `dartrics:` section of `analysis_options.yaml`. Drop a `# yaml-language-server: $schema=…` directive at the top of `analysis_options.yaml` to get IDE autocomplete + validation. Only the `dartrics:` key is covered; the surrounding `analyzer:` / `linter:` blocks belong to the Dart analyzer's own schema.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "dartrics": { "$ref": "#/$defs/Dartrics" }
+  },
+  "$defs": {
+    "Dartrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "metrics": {
+          "description": "Per-metric thresholds and toggles. Each value may be a long-form map, a number (warning shorthand), or a boolean (enabled shorthand).",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/MetricThresholds" }
+        },
+        "unused": { "$ref": "#/$defs/UnusedConfig" },
+        "exclude": {
+          "description": "Glob patterns excluded from analysis (relative to the analysis root).",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "flutter": {
+          "description": "When true, dartrics relaxes a small set of metrics that fire noisily on idiomatic Flutter widgets — `maximum-nesting-level` / `method-length` on `Widget.build()` and `number-of-parameters` on widget constructors.",
+          "type": "boolean",
+          "default": false
+        },
+        "snapshot": {
+          "description": "Snapshot mode — controls the per-file sha256 cache used to power diff-mode reports.",
+          "oneOf": [
+            { "$ref": "#/$defs/SnapshotMap" },
+            {
+              "type": "string",
+              "enum": ["cache", "baseline", "none", "off"]
+            },
+            { "type": "boolean" }
+          ]
+        },
+        "dismissals": { "$ref": "#/$defs/DismissalsConfig" }
+      }
+    },
+    "MetricThresholds": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Override the metric's default-on / default-off state.",
+              "type": "boolean"
+            },
+            "warning": { "type": "number" },
+            "error": { "type": "number" }
+          }
+        },
+        {
+          "description": "Shorthand: number ⇒ `warning: <value>`.",
+          "type": "number"
+        },
+        {
+          "description": "Shorthand: bool ⇒ `enabled: <value>`.",
+          "type": "boolean"
+        }
+      ]
+    },
+    "UnusedConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry-points": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["main", "@pragma:vm:entry-point", "test"]
+        },
+        "exclude-exported": {
+          "type": "boolean",
+          "default": true
+        },
+        "ignore-annotations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": ["visibleForTesting", "protected", "JsonSerializable"]
+        },
+        "presets": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "freezed",
+              "json_serializable",
+              "dart_mappable",
+              "go_router_builder",
+              "auto_route"
+            ]
+          }
+        }
+      }
+    },
+    "SnapshotMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": ["cache", "baseline", "none", "off"]
+        },
+        "path": {
+          "description": "Optional override for the snapshot file path. Resolved relative to the analysis root.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "DismissalsConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "comment": { "type": "boolean" },
+            "yaml": { "type": "boolean" }
+          }
+        },
+        "requireReason": {
+          "type": "boolean",
+          "default": true
+        },
+        "minReasonLength": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 20
+        },
+        "requireAuthor": {
+          "type": "boolean",
+          "default": false
+        },
+        "requireTimestamp": {
+          "type": "boolean",
+          "default": false
+        },
+        "yamlPath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Override for the YAML sidecar path (default: `dartrics-dismissals.yaml`)."
+        }
+      }
+    }
+  }
+}

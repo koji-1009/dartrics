@@ -194,6 +194,7 @@ When `--since` and snapshot are both active, the git ref wins for filtering; the
 ## Configuration
 
 ```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/koji-1009/dartrics/main/schemas/dartrics-config.schema.json
 # analysis_options.yaml
 analyzer:
   exclude:
@@ -244,6 +245,8 @@ dartrics:
 ```
 
 The `dartrics:` section is read by both the CLI and the analyzer plugin.
+
+The leading `# yaml-language-server: $schema=…` directive turns on autocomplete + typo detection in editors that integrate with [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) — VS Code (with the Red Hat YAML extension), JetBrains, Neovim, Helix. The schema also covers the `dismissals:` block; see [JSON Schema files](#json-schema-files) for the dismissal sidecar's own schema.
 
 ### Code-gen keep-alive presets
 
@@ -369,7 +372,7 @@ The JSON reporter emits the same logical model plus an `analyzedFiles` list that
 
 Machine-checkable schemas live under [`schemas/`](schemas/):
 
-- [`dartrics-report.schema.json`](schemas/dartrics-report.schema.json) — JSON reporter output (`dartrics analyze --reporter json`). Covers `version`, `analyzedFiles`, `metrics[].violations[]` (including the dismissal fields above), and `unused[]`.
+- [`dartrics-report.schema.json`](schemas/dartrics-report.schema.json) — JSON reporter output (`dartrics analyze --reporter json`). Covers `version`, `analyzedFiles`, `metrics[].violations[]` (including the stable `id`, coverage, and dismissal fields), and `unused[]`.
 - [`dartrics-dismissals.schema.json`](schemas/dartrics-dismissals.schema.json) — the YAML sidecar (`dartrics-dismissals.yaml`). Drop a `# yaml-language-server: $schema=…` directive at the top of your sidecar to get IDE autocomplete + validation:
 
   ```yaml
@@ -378,7 +381,9 @@ Machine-checkable schemas live under [`schemas/`](schemas/):
   dismissals: []
   ```
 
-Both schemas are draft-2020-12. Field additions are non-breaking; renames trigger a major version bump (`1` → `2` for the dismissals sidecar, `1.0` → `2.0` for the JSON report `version`).
+- [`dartrics-config.schema.json`](schemas/dartrics-config.schema.json) — the `dartrics:` block of `analysis_options.yaml` (metrics / unused / exclude / flutter / snapshot / dismissals). The example at the top of [Configuration](#configuration) wires it in.
+
+All three schemas are draft-2020-12. Field additions are non-breaking; renames trigger a major version bump (`1` → `2` for the dismissals sidecar, `1.0` → `2.0` for the JSON report `version`).
 
 ## Output formats
 
