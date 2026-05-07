@@ -78,22 +78,31 @@ class _ChainDepthVisitor extends RecursiveAstVisitor<void> {
 
   /// Walks the chain rooted at [tail] from leaf back to root, counting
   /// every `?.` operator. The Dart parser builds chains right-leaning
-  /// (`a.b.c.d` parses as `((a.b).c).d`), so iterating .target / .target
-  /// from the outermost node hits each link in turn.
+  /// (`a.b.c.d` parses as `((a.b).c).d`), so following `.target` from
+  /// the outermost node hits each link in turn.
   void _measureChain(Expression tail) {
     var depth = 0;
     Expression? cursor = tail;
-    while (cursor != null) {
-      if (cursor is PropertyAccess) {
-        if (cursor.isNullAware) depth++;
-        cursor = cursor.target;
-      } else if (cursor is MethodInvocation) {
-        if (cursor.isNullAware) depth++;
-        cursor = cursor.target;
-      } else {
-        break;
-      }
+    while (true) {
+      final step = _stepInChain(cursor);
+      if (step == null) break;
+      if (step.isNullAware) depth++;
+      cursor = step.target;
     }
     if (depth > maxDepth) maxDepth = depth;
+  }
+
+  /// Reads the chain link at [cursor] and returns its `?.` flag plus
+  /// the previous link (`target`). Returns `null` when [cursor] is not
+  /// a chainable expression — the caller treats that as the end of the
+  /// chain and stops walking.
+  ({bool isNullAware, Expression? target})? _stepInChain(Expression? cursor) {
+    if (cursor is PropertyAccess) {
+      return (isNullAware: cursor.isNullAware, target: cursor.target);
+    }
+    if (cursor is MethodInvocation) {
+      return (isNullAware: cursor.isNullAware, target: cursor.target);
+    }
+    return null;
   }
 }
