@@ -234,4 +234,74 @@ class C {
     // No leftover blank line where `drop` used to live.
     expect(after, 'void keep() {}\nint x = 0;\n');
   });
+
+  test('deletes a top-level typedef (generic alias form)', () {
+    // `typedef Foo = ...;` parses as `GenericTypeAlias`, distinct from
+    // the legacy `typedef int Cb(int);` form which parses as
+    // `FunctionTypeAlias`. Both kinds are supported by --apply.
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'void main() {}\n'
+      '\n'
+      'typedef Stale = int Function(int);\n'
+      '\n'
+      'int keep() => 0;\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.typedef,
+        name: 'Stale',
+        location: SourceLocation(path: f.path, line: 3, column: 1),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after.contains('typedef Stale'), isFalse);
+    expect(after.contains('int keep()'), isTrue);
+  });
+
+  test('deletes a top-level legacy typedef (function-type alias form)', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'void main() {}\n'
+      '\n'
+      'typedef int LegacyCb(int x);\n'
+      '\n'
+      'int keep() => 0;\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.typedef,
+        name: 'LegacyCb',
+        location: SourceLocation(path: f.path, line: 3, column: 1),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after.contains('LegacyCb'), isFalse);
+  });
+
+  test('deletes a top-level extension (named form)', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'void main() {}\n'
+      '\n'
+      'extension StringX on String {\n'
+      '  int get answer => 42;\n'
+      '}\n'
+      '\n'
+      'int keep() => 0;\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.extension,
+        name: 'StringX',
+        location: SourceLocation(path: f.path, line: 3, column: 1),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after.contains('StringX'), isFalse);
+    expect(after.contains('int keep()'), isTrue);
+  });
 }

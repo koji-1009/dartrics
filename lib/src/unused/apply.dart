@@ -69,8 +69,25 @@ List<ApplyResult> applyDeletions(
   required bool includeTests,
 }) {
   final results = <ApplyResult>[];
+  final byFile = _partitionTargets(
+    targets,
+    includeTests: includeTests,
+    results: results,
+  );
+  for (final entry in byFile.entries) {
+    _processFile(entry.key, entry.value, results);
+  }
+  return results;
+}
 
-  // Group by file so we parse each file once.
+/// Splits [targets] into the per-file delete pile plus immediately
+/// adds `unsupportedKind` / `skippedTest` outcomes to [results] for
+/// targets that never reach the AST pass.
+Map<String, List<UnusedDeclaration>> _partitionTargets(
+  List<UnusedDeclaration> targets, {
+  required bool includeTests,
+  required List<ApplyResult> results,
+}) {
   final byFile = <String, List<UnusedDeclaration>>{};
   for (final t in targets) {
     if (!_supportedKinds.contains(t.kind)) {
@@ -85,38 +102,38 @@ List<ApplyResult> applyDeletions(
     }
     byFile.putIfAbsent(t.location.path, () => <UnusedDeclaration>[]).add(t);
   }
+  return byFile;
+}
 
-  for (final entry in byFile.entries) {
-    final path = entry.key;
-    final fileTargets = entry.value;
-    final source = File(path).readAsStringSync();
-    final unit = parseString(content: source).unit;
+/// Parses [path] once, walks each [fileTargets] entry to its AST node,
+/// then deletes the resolved ranges in descending offset order so
+/// earlier deletions don't shift later ones.
+void _processFile(
+  String path,
+  List<UnusedDeclaration> fileTargets,
+  List<ApplyResult> results,
+) {
+  final source = File(path).readAsStringSync();
+  final unit = parseString(content: source).unit;
 
-    // Resolve each (name, line) to an actual AST node + range.
-    final ranges = <_DeleteRange>[];
-    for (final t in fileTargets) {
-      final node = _findTopLevel(unit, t.name, t.location.line);
-      if (node == null) {
-        results.add(ApplyResult(target: t, outcome: ApplyOutcome.notFound));
-        continue;
-      }
-      ranges.add(_DeleteRange(target: t, range: _rangeFor(node, source)));
+  final ranges = <_DeleteRange>[];
+  for (final t in fileTargets) {
+    final node = _findTopLevel(unit, t.name, t.location.line);
+    if (node == null) {
+      results.add(ApplyResult(target: t, outcome: ApplyOutcome.notFound));
+      continue;
     }
-
-    if (ranges.isEmpty) continue;
-
-    // Delete in descending start-offset order so earlier deletions
-    // don't shift later ones.
-    ranges.sort((a, b) => b.range.start.compareTo(a.range.start));
-    var rewritten = source;
-    for (final r in ranges) {
-      rewritten = rewritten.replaceRange(r.range.start, r.range.end, '');
-      results.add(ApplyResult(target: r.target, outcome: ApplyOutcome.deleted));
-    }
-    File(path).writeAsStringSync(rewritten);
+    ranges.add(_DeleteRange(target: t, range: _rangeFor(node, source)));
   }
+  if (ranges.isEmpty) return;
 
-  return results;
+  ranges.sort((a, b) => b.range.start.compareTo(a.range.start));
+  var rewritten = source;
+  for (final r in ranges) {
+    rewritten = rewritten.replaceRange(r.range.start, r.range.end, '');
+    results.add(ApplyResult(target: r.target, outcome: ApplyOutcome.deleted));
+  }
+  File(path).writeAsStringSync(rewritten);
 }
 
 /// `git status --porcelain` returns a non-empty body when there is any
@@ -147,14 +164,22 @@ bool _isTestPath(String path) {
 /// kept on [UnusedDeclaration] as a hint for the human-facing reporter.
 AstNode? _findTopLevel(CompilationUnit unit, String name, int line) {
   for (final d in unit.declarations) {
-    if (d is FunctionDeclaration && d.name.lexeme == name) return d;
-    if (d is ClassDeclaration && d.namePart.typeName.lexeme == name) {
-      return d;
-    }
-    if (d is GenericTypeAlias && d.name.lexeme == name) return d;
-    if (d is FunctionTypeAlias && d.name.lexeme == name) return d;
-    if (d is ExtensionDeclaration && d.name?.lexeme == name) return d;
+    if (_declarationName(d) == name) return d;
   }
+  return null;
+}
+
+/// Returns the declared simple-name for the top-level declaration kinds
+/// `--apply` knows how to delete, or `null` for kinds it does not. The
+/// caller does the equality check against the target's name; isolating
+/// the name accessor here keeps the per-kind branches out of the
+/// reachability lookup.
+String? _declarationName(CompilationUnitMember d) {
+  if (d is FunctionDeclaration) return d.name.lexeme;
+  if (d is ClassDeclaration) return d.namePart.typeName.lexeme;
+  if (d is GenericTypeAlias) return d.name.lexeme;
+  if (d is FunctionTypeAlias) return d.name.lexeme;
+  if (d is ExtensionDeclaration) return d.name?.lexeme;
   return null;
 }
 
@@ -169,23 +194,32 @@ AstNode? _findTopLevel(CompilationUnit unit, String name, int line) {
 /// producing a denser-than-intended file. The user can run
 /// `dart format` after `--apply` if they want to normalise.
 ({int start, int end}) _rangeFor(AstNode node, String source) {
+  return (start: _leadingStart(node), end: _trailingEnd(node.end, source));
+}
+
+/// Earliest offset that "belongs to" [node] for deletion purposes:
+/// the declaration's own offset, or — if [node] is annotated — the
+/// minimum across the doc comment and every metadata annotation.
+int _leadingStart(AstNode node) {
   var start = node.offset;
-  if (node is AnnotatedNode) {
-    final doc = node.documentationComment;
-    if (doc != null && doc.offset < start) start = doc.offset;
-    for (final meta in node.metadata) {
-      if (meta.offset < start) start = meta.offset;
-    }
+  if (node is! AnnotatedNode) return start;
+  final doc = node.documentationComment;
+  if (doc != null && doc.offset < start) start = doc.offset;
+  for (final meta in node.metadata) {
+    if (meta.offset < start) start = meta.offset;
   }
-  var end = node.end;
-  // Consume any trailing horizontal whitespace from this line, then
-  // one newline. Keeps the file from accumulating an empty line where
-  // the declaration's closing token used to sit.
+  return start;
+}
+
+/// Extends [end] forward through trailing horizontal whitespace and at
+/// most one newline so the file doesn't keep an empty line where the
+/// declaration's closing token used to sit.
+int _trailingEnd(int end, String source) {
   while (end < source.length && (source[end] == ' ' || source[end] == '\t')) {
     end++;
   }
   if (end < source.length && source[end] == '\n') end++;
-  return (start: start, end: end);
+  return end;
 }
 
 class _DeleteRange {
