@@ -106,6 +106,16 @@
           "description": "True when CC / Cognitive crossed threshold but coverage is high enough that the complexity is most likely earned. Only emitted when set.",
           "const": true
         },
+        "complexityJustifiedBy": {
+          "description": "Which coverage rule fired: `branch` when branch coverage data was available and crossed its threshold, or `line` when branch data was missing and line coverage was used as the more conservative fallback. Only emitted when `complexityJustified: true`.",
+          "enum": ["branch", "line"]
+        },
+        "complexityJustifiedThreshold": {
+          "description": "The literal threshold the rule named in `complexityJustifiedBy` had to cross. Currently 0.8 for `branch` and 0.95 for `line`. Surfaces the engine's decision so consumers don't have to look it up. Only emitted when `complexityJustified: true`.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
         "dismissed": {
           "description": "True when a `dartrics:dismiss` directive (comment or YAML) matched this violation and passed validation. Only emitted when set.",
           "const": true

@@ -109,6 +109,8 @@ void main() {
                   'scopeCoverage': 0.91,
                   'scopeBranchCoverage': 0.78,
                   'complexityJustified': true,
+                  'complexityJustifiedBy': 'branch',
+                  'complexityJustifiedThreshold': 0.8,
                   'dismissed': true,
                   'dismissReason': 'load-bearing state machine',
                   'dismissedFrom': 'yaml',
@@ -144,6 +146,8 @@ void main() {
       expect(entry['scopeCoverage'], 0.91);
       expect(entry['scopeBranchCoverage'], 0.78);
       expect(entry['complexityJustified'], isTrue);
+      expect(entry['complexityJustifiedBy'], 'branch');
+      expect(entry['complexityJustifiedThreshold'], 0.8);
       expect(entry['dismissed'], isTrue);
       expect(entry['dismissReason'], 'load-bearing state machine');
       expect(entry['dismissedBy'], 'claude-opus-4-7');

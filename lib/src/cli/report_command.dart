@@ -120,6 +120,9 @@ MetricViolation _decodeViolation(Map<String, Object?> json) {
     scopeCoverage: (json['scopeCoverage'] as num?)?.toDouble(),
     scopeBranchCoverage: (json['scopeBranchCoverage'] as num?)?.toDouble(),
     complexityJustified: json['complexityJustified'] as bool? ?? false,
+    complexityJustifiedBy: json['complexityJustifiedBy'] as String?,
+    complexityJustifiedThreshold: (json['complexityJustifiedThreshold'] as num?)
+        ?.toDouble(),
     dismissed: json['dismissed'] as bool? ?? false,
     dismissReason: json['dismissReason'] as String?,
     dismissedBy: json['dismissedBy'] as String?,

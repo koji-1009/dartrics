@@ -270,9 +270,9 @@ class MetricEngine {
     for (final entry in values.entries) {
       final t = thresholds[entry.key];
       if (t == null) continue;
-      final justified =
-          _justifiableMetrics.contains(entry.key) &&
-          _isJustified(branch: branchCoverage, line: lineCoverage);
+      final _Justification just = _justifiableMetrics.contains(entry.key)
+          ? _classifyJustification(branch: branchCoverage, line: lineCoverage)
+          : const _Justification.notApplicable();
       Severity? sev;
       num? thr;
       if (t.error != null && entry.value >= t.error!) {
@@ -292,7 +292,7 @@ class MetricEngine {
           scopeName: scopeName,
           lineCoverage: lineCoverage,
           branchCoverage: branchCoverage,
-          justified: justified,
+          justification: just,
         ),
       );
     }
@@ -311,7 +311,7 @@ class MetricEngine {
     required String scopeName,
     required double? lineCoverage,
     required double? branchCoverage,
-    required bool justified,
+    required _Justification justification,
   }) {
     final id = computeViolationId(
       file: path,
@@ -331,7 +331,9 @@ class MetricEngine {
         threshold: threshold,
         scopeCoverage: lineCoverage,
         scopeBranchCoverage: branchCoverage,
-        complexityJustified: justified,
+        complexityJustified: justification.justified,
+        complexityJustifiedBy: justification.by,
+        complexityJustifiedThreshold: justification.threshold,
       );
     }
     final check = validateDismissal(hit, dismissalConfig);
@@ -343,7 +345,9 @@ class MetricEngine {
         threshold: threshold,
         scopeCoverage: lineCoverage,
         scopeBranchCoverage: branchCoverage,
-        complexityJustified: justified,
+        complexityJustified: justification.justified,
+        complexityJustifiedBy: justification.by,
+        complexityJustifiedThreshold: justification.threshold,
         dismissed: true,
         dismissReason: hit.reason,
         dismissedBy: hit.by,
@@ -360,19 +364,63 @@ class MetricEngine {
       threshold: threshold,
       scopeCoverage: lineCoverage,
       scopeBranchCoverage: branchCoverage,
-      complexityJustified: justified,
+      complexityJustified: justification.justified,
+      complexityJustifiedBy: justification.by,
+      complexityJustifiedThreshold: justification.threshold,
       dismissalRejected: rejected.reason,
     );
   }
 
-  /// True when the scope's coverage is high enough to mark a high CC /
-  /// Cognitive value as "earned". Branch coverage wins when present;
-  /// line coverage is a more conservative fallback.
-  bool _isJustified({double? branch, double? line}) {
-    if (branch != null) return branch >= _branchJustifiedThreshold;
-    if (line != null) return line >= _lineJustifiedThreshold;
-    return false;
+  /// Decides which (if any) coverage rule justifies the violation.
+  /// Branch coverage wins when present; line coverage is a more
+  /// conservative fallback. Returns a `_Justification` carrying
+  /// whether the violation is justified, which rule fired
+  /// (`'branch'` / `'line'`), and the literal threshold the rule
+  /// used. Reporters surface the decision so AI loops see the
+  /// engine's basis instead of relying on documentation.
+  _Justification _classifyJustification({
+    required double? branch,
+    required double? line,
+  }) {
+    if (branch != null) {
+      return branch >= _branchJustifiedThreshold
+          ? const _Justification(
+              justified: true,
+              by: 'branch',
+              threshold: _branchJustifiedThreshold,
+            )
+          : const _Justification.notApplicable();
+    }
+    if (line != null) {
+      return line >= _lineJustifiedThreshold
+          ? const _Justification(
+              justified: true,
+              by: 'line',
+              threshold: _lineJustifiedThreshold,
+            )
+          : const _Justification.notApplicable();
+    }
+    return const _Justification.notApplicable();
   }
+}
+
+/// Internal record carrying the justification decision plus the
+/// metadata reporters surface alongside `complexityJustified`.
+class _Justification {
+  const _Justification({
+    required this.justified,
+    required this.by,
+    required this.threshold,
+  });
+
+  const _Justification.notApplicable()
+    : justified = false,
+      by = null,
+      threshold = null;
+
+  final bool justified;
+  final String? by;
+  final double? threshold;
 }
 
 /// Stable id for a `(file, scope, metric)` triple, suitable for AI

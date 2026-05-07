@@ -69,6 +69,12 @@ dartrics:
     );
     expect(v['scopeCoverage'], 1.0);
     expect(v['complexityJustified'], isTrue);
+    // Round 5 — engine surfaces which rule fired and the literal
+    // threshold so consumers don't have to look it up. This lcov
+    // ships only DA records, so the line-coverage fallback fires
+    // (≥ 0.95 threshold).
+    expect(v['complexityJustifiedBy'], 'line');
+    expect(v['complexityJustifiedThreshold'], 0.95);
   });
 
   test('analyze --coverage none disables coverage attachment', () async {

@@ -78,6 +78,8 @@ void main() {
               scopeCoverage: 0.95,
               scopeBranchCoverage: 0.92,
               complexityJustified: true,
+              complexityJustifiedBy: 'branch',
+              complexityJustifiedThreshold: 0.8,
             ),
           ],
         ),
@@ -94,6 +96,17 @@ void main() {
     expect(body, contains('coverage: 0.95'));
     expect(body, contains('branchCoverage: 0.92'));
     expect(body, contains('complexityJustified: true'));
+    expect(body, contains('complexityJustifiedBy: branch'));
+    // dapper's YAML formatter normalises numeric scalars and trims
+    // the trailing zero from `0.80` ⇒ `0.8`. We surfaced 0.80 from
+    // the engine; either rendering is correct.
+    expect(
+      body,
+      anyOf(
+        contains('complexityJustifiedThreshold: 0.80'),
+        contains('complexityJustifiedThreshold: 0.8'),
+      ),
+    );
   });
 
   test('orders uncovered errors before covered warnings', () async {

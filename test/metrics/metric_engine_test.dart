@@ -520,6 +520,8 @@ end_of_record
       expect(v.scopeCoverage, 1.0);
       expect(v.scopeBranchCoverage, 1.0);
       expect(v.complexityJustified, isTrue);
+      expect(v.complexityJustifiedBy, 'branch');
+      expect(v.complexityJustifiedThreshold, 0.8);
     });
 
     test('does not tag complexityJustified when coverage is low', () async {
@@ -549,6 +551,8 @@ end_of_record
         (v) => v.metricId == 'cyclomatic-complexity',
       );
       expect(v.complexityJustified, isFalse);
+      expect(v.complexityJustifiedBy, isNull);
+      expect(v.complexityJustifiedThreshold, isNull);
       expect(v.scopeCoverage, lessThan(0.95));
     });
 
@@ -581,6 +585,8 @@ end_of_record
       );
       expect(v.scopeBranchCoverage, isNull);
       expect(v.complexityJustified, isTrue);
+      expect(v.complexityJustifiedBy, 'line');
+      expect(v.complexityJustifiedThreshold, 0.95);
     });
 
     test('non-justifiable metrics never get the tag', () async {

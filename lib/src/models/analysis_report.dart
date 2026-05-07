@@ -44,6 +44,8 @@ class MetricViolation {
     this.scopeCoverage,
     this.scopeBranchCoverage,
     this.complexityJustified = false,
+    this.complexityJustifiedBy,
+    this.complexityJustifiedThreshold,
     this.dismissed = false,
     this.dismissReason,
     this.dismissedBy,
@@ -82,6 +84,23 @@ class MetricViolation {
   /// deprioritise refactoring these.
   final bool complexityJustified;
 
+  /// Which coverage rule triggered [complexityJustified]: `'branch'`
+  /// when branch coverage data was available and crossed its
+  /// threshold, or `'line'` when branch data was missing and line
+  /// coverage was used as the more conservative fallback. `null` when
+  /// [complexityJustified] is false. Surfaces the engine's decision
+  /// path so AI loops can override the heuristic with their own
+  /// thresholds, and so reports stay self-describing instead of relying
+  /// on documentation to explain how the bool was derived.
+  final String? complexityJustifiedBy;
+
+  /// The threshold that [complexityJustifiedBy]'s coverage value had
+  /// to cross. Currently 0.8 for branch and 0.95 for line — exposed
+  /// here so consumers see the literal value rather than reading it
+  /// out of the engine source. `null` when [complexityJustified] is
+  /// false.
+  final double? complexityJustifiedThreshold;
+
   /// True when a `dartrics:dismiss` entry — comment or YAML — matched
   /// this violation and passed the configured validation rules. The
   /// violation still appears in the report (so audits can review what
@@ -119,6 +138,10 @@ class MetricViolation {
     if (scopeCoverage != null) 'scopeCoverage': scopeCoverage,
     if (scopeBranchCoverage != null) 'scopeBranchCoverage': scopeBranchCoverage,
     if (complexityJustified) 'complexityJustified': true,
+    if (complexityJustifiedBy != null)
+      'complexityJustifiedBy': complexityJustifiedBy,
+    if (complexityJustifiedThreshold != null)
+      'complexityJustifiedThreshold': complexityJustifiedThreshold,
     if (dismissed) 'dismissed': true,
     if (dismissReason != null) 'dismissReason': dismissReason,
     if (dismissedBy != null) 'dismissedBy': dismissedBy,

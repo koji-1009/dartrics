@@ -167,6 +167,8 @@ Both default to on because the failure mode of "the lens fires on a healthy Flut
 
 If `--coverage <path>` is engaged (auto-detected from `coverage/lcov.info`) the report annotates each violation with `coverage` (line) and `branchCoverage` when the lcov has `BRDA:` records. CC and Cognitive violations whose scope is well-tested (branch ≥ 0.8, or line ≥ 0.95 when no branch data) get `complexityJustified: true`.
 
+When the flag fires, two sibling fields surface the engine's decision so you don't have to re-derive it: `complexityJustifiedBy` is `branch` or `line` (whichever rule won), and `complexityJustifiedThreshold` is the literal cutoff that rule used (`0.8` or `0.95`). Both fields are absent when `complexityJustified` is false. Reporters pass the trio through verbatim — JSON, AI / YAML, MD, SARIF, `dartrics explain`.
+
 **Read this as: "the human has already paid the price of branching with tests; refactor at your own risk."** AI loops should generally leave `complexityJustified` violations alone unless the metric is *catastrophically* over threshold (e.g. CC > 2× warning).
 
 The AI reporter sorts these to the bottom so they don't compete for token budget.

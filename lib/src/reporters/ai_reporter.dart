@@ -111,6 +111,15 @@ class AiReporter implements Reporter {
       }
       if (v.complexityJustified) {
         buf.writeln('    complexityJustified: true');
+        if (v.complexityJustifiedBy != null) {
+          buf.writeln('    complexityJustifiedBy: ${v.complexityJustifiedBy}');
+        }
+        if (v.complexityJustifiedThreshold != null) {
+          buf.writeln(
+            '    complexityJustifiedThreshold: '
+            '${v.complexityJustifiedThreshold!.toStringAsFixed(2)}',
+          );
+        }
       }
       if (v.dismissed) {
         buf.writeln('    dismissed: true');

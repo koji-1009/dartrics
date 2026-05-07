@@ -140,7 +140,7 @@ Eight flags compose into a tight refactor loop:
 - **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF.
 - **`--limit <n>`** caps violations + unused entries shown by the AI / md reporters after the priority sort. Token-budget control for context-bounded agents; truncated entries are summarised in a `truncated:` block (AI) or `_+ N more_` line (md).
 - **`--coverage <path>`** (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key — low-coverage / high-severity entries land first, `complexityJustified` ones at the bottom.
-- **`complexityJustified: true`** flags CC / Cognitive violations whose scope has branch coverage `≥ 0.8` (or line `≥ 0.95` when `BRDA:` records are absent). The intent is *earned complexity*: a function that's complex but exhaustively tested is probably complex on purpose, so AI loops should leave it alone.
+- **`complexityJustified: true`** flags CC / Cognitive violations whose scope has branch coverage `≥ 0.8` (or line `≥ 0.95` when `BRDA:` records are absent). The intent is *earned complexity*: a function that's complex but exhaustively tested is probably complex on purpose, so AI loops should leave it alone. Two sibling fields surface the engine's decision so consumers don't have to look it up: `complexityJustifiedBy` (`branch` or `line`) and `complexityJustifiedThreshold` (the literal cutoff that rule used). Both fields are absent when the flag is false.
 - **Deliberate dismissal** lets agents (and humans) suppress a specific `(file, scope, metric)` triple — see [Deliberate dismissal](#deliberate-dismissal) below.
 - **`--snapshot <mode>`** writes a per-file `sha256` after each run and emits only the records for files whose hash changed on the next invocation. Git-independent, so it works for AI loops, pre-commit hooks (dirty index), and non-git VCS (`jj`, `sapling`). `cache` (default) lands at `.dart_tool/dartrics/snapshot.json`; `baseline` at `dartrics-snapshot.json` for CI-shared baselines.
 - **`--since <git-ref>`** filters the output to declarations whose owning `.dart` file changed between `<ref>` and `HEAD` (per `git diff --name-only --diff-filter=AMR`). Cross-file analysis stays accurate; only the *emitted* records are filtered.
@@ -372,6 +372,8 @@ violations:
     coverage: 0.34              # only when --coverage is engaged
     branchCoverage: 0.20        # only when BRDA records exist
     complexityJustified: true   # only when set
+    complexityJustifiedBy: branch        # branch | line — which rule fired
+    complexityJustifiedThreshold: 0.80   # 0.8 for branch / 0.95 for line
     dismissed: true             # only when a dismissal accepted this violation
     dismissedFrom: yaml         # comment | yaml
     dismissReason: "…"          # carried verbatim from the dismissal
