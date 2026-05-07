@@ -55,12 +55,13 @@ Decades of software-engineering research has converted those felt reactions into
 
 ## The lens battery
 
-Nine lenses ship default-on. Five ship default-off:
+Nine lenses ship default-on. Six ship default-off:
 
 - **Halstead Volume** — predictive value over cyclomatic complexity hasn't held up empirically; opt in if you want a token-weighted "size" reading
 - **Method Length** — high correlation with SLOC in production code, so emitting both is redundant noise. Opt in when you specifically want screen-real-estate (counts blanks + comments) instead of pure code volume
 - **Abstractness** / **Distance from Main Sequence** — Martin's framing assumes "package = release unit"; Dart's 1-file-1-library granularity makes the per-file values brittle until aggregation lands
 - **Widget Tree Depth** — Flutter-specific; opt in for projects that want the deep-`Container(child: ...)` reading
+- **Null-Aware Chain Depth** / **Async Chain Depth** — Dart-3-idiom signals; opt in when project conventions on "too deep" `?.` chains or nested `await` calls are settled enough to threshold
 
 Halstead Difficulty / Effort and the Maintainability Index were dropped in 0.1.0: both are pure derivations of the underlying token counts and `CC + V + LOC` respectively — they add no orthogonal signal beyond what the underlying lenses already provide.
 
@@ -77,6 +78,7 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of *positional* `bool`-typed parameters. Named bool parameters are intentionally not counted because Dart's named call-site `foo(animated: true)` carries the intent on the spot. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
 | `widget-tree-depth` (off) | "This Flutter `build()` is six `Container(child: ...)` chains deep." | Deepest chain of nested constructor calls in the body. Complement to `maximum-nesting-level`, which only counts control-flow constructs and gives 0 on a healthy declarative tree. | opt-in (7) |
 | `null-aware-chain-depth` (off) | "I can't track `a?.b?.c?.d?.e` in my head." | Longest chain of `?.` operators in any expression. Each `?.` is an implicit non-null guard the reader holds in working memory; deep chains read as conditional dataflow. | opt-in (4) |
+| `async-chain-depth` (off) | "What's resolving when in `await foo(await bar(await baz()))`?" | Deepest *nesting* of `await` expressions on any path. Sequential awaits don't count — only nested ones, where each inner await suspends on the result of an outer await. | opt-in (3) |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
 | `method-length` (off) | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | opt-in |
 | `halstead-volume` (off) | — | `N · log₂(η)`. Token-based program "size". (Halstead 1977) | opt-in |

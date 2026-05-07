@@ -25,6 +25,7 @@
               "boolean-trap",
               "widget-tree-depth",
               "null-aware-chain-depth",
+              "async-chain-depth",
               "source-lines-of-code",
               "method-length",
               "halstead-volume",

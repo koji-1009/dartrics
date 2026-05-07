@@ -1,4 +1,5 @@
 import '../metric.dart';
+import 'async_chain_depth.dart';
 import 'boolean_trap.dart';
 import 'cognitive_complexity.dart';
 import 'cyclomatic_complexity.dart';
@@ -25,4 +26,5 @@ const List<FunctionMetric> defaultFunctionMetrics = [
   MethodLength(),
   WidgetTreeDepth(),
   NullAwareChainDepth(),
+  AsyncChainDepth(),
 ];
