@@ -96,6 +96,7 @@ DismissalConfig _parseDismissals(Object? node) {
       'dartrics.dismissals.requireTimestamp needs sources.yaml: true',
     );
   }
+  final warnStale = node['warnStale'] as bool? ?? true;
   final yamlPath = node['yamlPath'];
   return DismissalConfig(
     commentSource: comment,
@@ -104,6 +105,7 @@ DismissalConfig _parseDismissals(Object? node) {
     minReasonLength: minReason,
     requireAuthor: requireAuthor,
     requireTimestamp: requireTimestamp,
+    warnStale: warnStale,
     yamlPath: yamlPath is String ? yamlPath : null,
   );
 }

@@ -71,6 +71,7 @@ class DismissalConfig {
     this.minReasonLength = defaultDismissalMinReasonLength,
     this.requireAuthor = false,
     this.requireTimestamp = false,
+    this.warnStale = true,
     this.yamlPath,
   });
 
@@ -94,6 +95,15 @@ class DismissalConfig {
 
   /// When true, YAML entries without `at:` are rejected.
   final bool requireTimestamp;
+
+  /// When true, dismissals that never matched a live violation in the
+  /// analyzed file set are surfaced as a stderr WARNING and as a
+  /// `staleDismissals:` block in the AI report. Helps AI loops keep
+  /// the dismiss file from accumulating dead entries when scopes are
+  /// renamed / deleted or metrics drop below threshold. Default true;
+  /// disable via `dartrics: { dismissals: { warnStale: false } }` for
+  /// projects whose CI flow inspects the dismiss file separately.
+  final bool warnStale;
 
   /// Optional override for the YAML sidecar path. `null` ⇒ defaults to
   /// [defaultDismissalsYamlPath] under the analysis root.

@@ -173,6 +173,11 @@
           "type": "boolean",
           "default": false
         },
+        "warnStale": {
+          "type": "boolean",
+          "default": true,
+          "description": "Surface dismissals that never matched a live violation in the analyzed file set. Reports the stale entries via stderr WARNING and a `staleDismissals:` block on the AI / JSON reports."
+        },
         "yamlPath": {
           "type": "string",
           "minLength": 1,

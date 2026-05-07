@@ -33,6 +33,7 @@ class AiReporter implements Reporter {
     _writeExplanations(body, report);
     final dropped = _writeViolations(body, report);
     final unusedDropped = _writeUnused(body, report);
+    _writeStaleDismissals(body, report);
     if (dropped > 0 || unusedDropped > 0) {
       body.writeln('truncated:');
       if (dropped > 0) body.writeln('  violations: $dropped');
@@ -179,6 +180,27 @@ class AiReporter implements Reporter {
       }
     }
     return dropped;
+  }
+
+  /// Surfaces dismiss entries that never matched a live violation, so
+  /// AI loops can prune the dismiss file. Emitted as a flat list with
+  /// the source channel (`comment` / `yaml`) so the agent knows
+  /// whether the cleanup is a source edit or a YAML edit. Skipped
+  /// silently when the engine produced no stale entries (the typical
+  /// case once the dismiss file is fresh).
+  void _writeStaleDismissals(StringBuffer buf, AnalysisReport report) {
+    if (report.staleDismissals.isEmpty) return;
+    buf.writeln('staleDismissals:');
+    for (final s in report.staleDismissals) {
+      buf
+        ..writeln('  - file: ${s.file}')
+        ..writeln('    scope: ${s.scope}')
+        ..writeln('    metric: ${s.metricId}')
+        ..writeln('    source: ${s.source.name}');
+      if (s.reason != null && s.reason!.isNotEmpty) {
+        buf.writeln('    reason: ${_escape(s.reason!)}');
+      }
+    }
   }
 
   /// Returns up to 7 lines centered on [centerLine] (3 above, the line

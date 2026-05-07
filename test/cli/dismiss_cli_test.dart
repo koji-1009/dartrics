@@ -172,6 +172,98 @@ dartrics:
     expect(v.containsKey('dismissalRejected'), isFalse);
   });
 
+  test('stale YAML dismissal surfaces in JSON staleDismissals block', () async {
+    // Write a clean source file with no violations of any kind.
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+int simple() => 1;
+''');
+    await File('${dir.path}/dartrics-dismissals.yaml').writeAsString('''
+version: 1
+dismissals:
+  - file: ${dir.path}/lib/foo.dart
+    scope: gone
+    metric: cyclomatic-complexity
+    reason: "scope was renamed last refactor; keeping the entry by mistake"
+''');
+    final config = await writeConfig('''
+dartrics:
+  dismissals:
+    sources:
+      comment: false
+      yaml: true
+    yamlPath: ${dir.path}/dartrics-dismissals.yaml
+''');
+    final body = await runAnalyzeAsJson(config: config);
+    expect(body.containsKey('staleDismissals'), isTrue);
+    final stale =
+        (body['staleDismissals'] as List).single as Map<String, dynamic>;
+    expect(stale['scope'], 'gone');
+    expect(stale['metric'], 'cyclomatic-complexity');
+    expect(stale['source'], 'yaml');
+    expect(stale['reason'], contains('renamed'));
+  });
+
+  test('warnStale: false suppresses the staleDismissals block', () async {
+    await File(
+      '${dir.path}/lib/foo.dart',
+    ).writeAsString('int simple() => 1;\n');
+    await File('${dir.path}/dartrics-dismissals.yaml').writeAsString('''
+version: 1
+dismissals:
+  - file: ${dir.path}/lib/foo.dart
+    scope: gone
+    metric: cyclomatic-complexity
+    reason: "this entry is stale but the project disabled the warning"
+''');
+    final config = await writeConfig('''
+dartrics:
+  dismissals:
+    sources:
+      comment: false
+      yaml: true
+    warnStale: false
+    yamlPath: ${dir.path}/dartrics-dismissals.yaml
+''');
+    final body = await runAnalyzeAsJson(config: config);
+    expect(body.containsKey('staleDismissals'), isFalse);
+  });
+
+  test(
+    'stale entries for unanalyzed files (--since filter) are not reported',
+    () async {
+      // The dismiss target is for a file that wasn't actually analyzed
+      // because there's no source backing it; the engine never queries
+      // the index for that file, but the file path also isn't in the
+      // analyzedPaths set. The warning logic must skip it so AI loops
+      // don't get false-positive cleanup proposals on files outside
+      // the current diff scope.
+      await File(
+        '${dir.path}/lib/foo.dart',
+      ).writeAsString('int simple() => 1;\n');
+      await File('${dir.path}/dartrics-dismissals.yaml').writeAsString('''
+version: 1
+dismissals:
+  - file: lib/elsewhere.dart
+    scope: notAnalyzed
+    metric: cyclomatic-complexity
+    reason: "elsewhere.dart isn't in the analyzed file set this run"
+''');
+      final config = await writeConfig('''
+dartrics:
+  dismissals:
+    sources:
+      comment: false
+      yaml: true
+    yamlPath: ${dir.path}/dartrics-dismissals.yaml
+''');
+      final body = await runAnalyzeAsJson(config: config);
+      // The engine analyzed lib/foo.dart only — lib/elsewhere.dart was
+      // never measured, so the dismiss isn't actually stale, just not
+      // observed. The staleDismissals block stays empty.
+      expect(body.containsKey('staleDismissals'), isFalse);
+    },
+  );
+
   test('config error: both sources disabled exits with EX_CONFIG', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('void main() {}\n');
     final config = await writeConfig('''

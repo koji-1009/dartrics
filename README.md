@@ -164,6 +164,7 @@ dartrics:
     minReasonLength: 20
     requireAuthor: false        # YAML-only (`by:` field)
     requireTimestamp: false     # YAML-only (`at:` field)
+    warnStale: true             # surface dismissals that no longer match
     yamlPath: dartrics-dismissals.yaml
 ```
 
@@ -189,6 +190,8 @@ dismissals:
 ```
 
 Hits flow through the validator. Reasons that fall short of `minReasonLength` keep the violation **live** and stamp it with `dismissalRejected: <why>` (plus a stderr WARNING) so the agent can amend the entry. YAML always beats a colliding comment with the same key. `--strict-dismiss` makes the engine ignore every dismissal for that run — useful in CI / final review when the operator wants to see the raw triage list.
+
+**Stale-entry detection**: when `warnStale: true` (the default), dismissals that never matched a live violation in the analyzed file set are surfaced as a stderr WARNING and as a `staleDismissals:` block on the AI / JSON reports. This catches the case where a dismiss target was renamed, deleted, or refactored away — the engine can't quietly inherit a dead config forever. Entries whose file wasn't analyzed this run (filtered out by `--since` or snapshot) are not flagged as stale, since they simply weren't measured. Disable with `warnStale: false` if your CI inspects the dismiss file separately.
 
 ### Regression check
 

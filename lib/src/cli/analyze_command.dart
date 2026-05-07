@@ -153,13 +153,54 @@ class AnalyzeCommand extends Command<int> {
     final resolvedExplainIds = autoExplain
         ? _withAutoExplain(explicit: explainIds, records: filteredRecords)
         : explainIds;
+    final staleDismissals = _collectStaleDismissals(
+      dismissals: dismissals,
+      config: config.dismissals,
+      analyzedPaths: {for (final u in units) u.path},
+    );
     return AnalysisReport(
       version: '1.0',
       metrics: filteredRecords,
       unused: filteredUnused,
       analyzedFiles: hashes,
       explanations: buildExplanations(resolvedExplainIds),
+      staleDismissals: staleDismissals,
     )..attachAnalyzedFileCount(units.length);
+  }
+
+  /// Walks the dismissal index for entries that never matched a live
+  /// violation in [analyzedPaths]. The path filter ensures dismissals
+  /// for files that weren't measured this run (because of `--since` or
+  /// snapshot filtering) don't get falsely flagged as stale — they
+  /// just weren't measured. Returns an empty list when [config] has
+  /// `warnStale: false`, when dismissals are disabled, or when
+  /// `--strict-dismiss` produced an empty index.
+  List<StaleDismissal> _collectStaleDismissals({
+    required DismissalIndex dismissals,
+    required DismissalConfig config,
+    required Set<String> analyzedPaths,
+  }) {
+    if (!config.warnStale || !config.enabled) return const [];
+    if (dismissals.isEmpty) return const [];
+    final stale = <StaleDismissal>[];
+    for (final d in dismissals.staleEntries()) {
+      if (!analyzedPaths.contains(d.file)) continue;
+      stderr.writeln(
+        'dartrics: dismissal at ${d.file}::${d.scope} '
+        '[${d.metricId}] never matched a live violation — likely '
+        'stale, consider removing the entry.',
+      );
+      stale.add(
+        StaleDismissal(
+          file: d.file,
+          scope: d.scope,
+          metricId: d.metricId,
+          source: d.source,
+          reason: d.reason,
+        ),
+      );
+    }
+    return stale;
   }
 
   /// Unions [explicit] (`--explain`) with the metric ids that fired at

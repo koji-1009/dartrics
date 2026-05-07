@@ -424,4 +424,47 @@ void main() {
     expect(body, contains('Multi'));
     expect(body, contains('"Has: colon hint."'));
   });
+
+  test(
+    'emits staleDismissals block when the report carries stale entries',
+    () async {
+      final tmp = Directory.systemTemp.createTempSync();
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final temp = File('${tmp.path}/ai.yaml');
+      final sink = temp.openWrite();
+      AiReporter().report(
+        AnalysisReport(
+          version: '1.0',
+          metrics: const [],
+          unused: const [],
+          staleDismissals: const [
+            StaleDismissal(
+              file: 'lib/foo.dart',
+              scope: 'gone',
+              metricId: 'cyclomatic-complexity',
+              source: DismissalSource.yaml,
+              reason: 'scope was renamed; entry is left over',
+            ),
+            StaleDismissal(
+              file: 'lib/bar.dart',
+              scope: 'alsoGone',
+              metricId: 'method-length',
+              source: DismissalSource.comment,
+            ),
+          ],
+        ),
+        sink,
+      );
+      await sink.close();
+
+      final body = await temp.readAsString();
+      expect(body, contains('staleDismissals:'));
+      expect(body, contains('file: lib/foo.dart'));
+      expect(body, contains('scope: gone'));
+      expect(body, contains('metric: cyclomatic-complexity'));
+      expect(body, contains('source: yaml'));
+      expect(body, contains('source: comment'));
+      expect(body, contains('renamed'));
+    },
+  );
 }

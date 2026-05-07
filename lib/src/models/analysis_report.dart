@@ -197,6 +197,7 @@ class AnalysisReport {
     required this.unused,
     this.analyzedFiles = const [],
     this.explanations = const [],
+    this.staleDismissals = const [],
   });
 
   final String version;
@@ -211,6 +212,14 @@ class AnalysisReport {
   /// Optional list of rationale + hint blurbs to render alongside the
   /// per-violation output.
   final List<ExplainEntry> explanations;
+
+  /// Dismissals that were configured (in `dartrics-dismissals.yaml` or
+  /// as `// dartrics:dismiss` comments) but that never matched a live
+  /// violation in the analyzed file set. AI loops can use these to
+  /// clean the dismiss file before stale entries accumulate.
+  /// Populated only when `dartrics: { dismissals: { warnStale: true } }`
+  /// (the default) and the engine has finished walking violations.
+  final List<StaleDismissal> staleDismissals;
 
   int _analyzedFileCount = 0;
   int get analyzedFileCount => _analyzedFileCount;
@@ -230,5 +239,46 @@ class AnalysisReport {
       'analyzedFiles': analyzedFiles.map((f) => f.toJson()).toList(),
     'metrics': metrics.map((m) => m.toJson()).toList(),
     'unused': unused.map((u) => u.toJson()).toList(),
+    if (staleDismissals.isNotEmpty)
+      'staleDismissals': staleDismissals.map((s) => s.toJson()).toList(),
+  };
+}
+
+/// One dismissal entry that never matched a live violation. Surfaced
+/// in the report so AI loops can prune dead entries.
+class StaleDismissal {
+  const StaleDismissal({
+    required this.file,
+    required this.scope,
+    required this.metricId,
+    required this.source,
+    this.reason,
+  });
+
+  /// Project-relative file path the dismissal targeted.
+  final String file;
+
+  /// Scope name (`Foo.bar`) the dismissal targeted.
+  final String scope;
+
+  /// Metric id (`cyclomatic-complexity`) the dismissal targeted.
+  final String metricId;
+
+  /// Which channel the dismissal came from — comment or YAML. AI loops
+  /// use this to know whether the cleanup is a source edit or a YAML
+  /// edit.
+  final DismissalSource source;
+
+  /// Original `reason:` text from the dismissal, kept for context so
+  /// the cleanup decision can be informed. `null` when the dismissal
+  /// had no reason and `requireReason` was off.
+  final String? reason;
+
+  Map<String, Object?> toJson() => {
+    'file': file,
+    'scope': scope,
+    'metric': metricId,
+    'source': source.name,
+    if (reason != null) 'reason': reason,
   };
 }

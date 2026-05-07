@@ -166,6 +166,8 @@ dismissals:
 
 The validator will reject reasons shorter than `minReasonLength` (default 20 chars) and stamp the violation with `dismissalRejected: <why>`. Your dismiss is **not silent**: if it didn't take, the next pass will tell you why.
 
+Stale entries — dismissals that no longer match any live violation (scope renamed, function deleted, metric dropped below threshold) — appear in the report's `staleDismissals:` block, with a stderr WARNING per entry. Treat that as a cleanup candidate: the dismiss is doing nothing now, and leaving it in the file accumulates dead config. Files outside the analyzed set (filtered out by `--since` or snapshot) are not flagged as stale.
+
 ### Punt when…
 
 The lens reads it but you genuinely don't know whether the structure is load-bearing without project context the harness hasn't given you (domain rules, performance constraints, historical bug fixes baked into a function shape). Surface a specific question to the user instead of guessing.
