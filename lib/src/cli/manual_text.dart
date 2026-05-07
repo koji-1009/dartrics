@@ -131,7 +131,7 @@ The metric points at a real readability problem and the structure is **decomposa
 | `cyclomatic-complexity` | Extract Method · Replace Conditional with Polymorphism · Guard Clauses · Replace nested ternary with named branches |
 | `cognitive-complexity` | Extract the deepest branch · Replace `if/else if` chain with typed dispatch · Collapse boolean spaghetti via early returns |
 | `maximum-nesting-level` | Early return / continue · Extract inner block · Invert the condition to flatten the happy path |
-| `number-of-parameters` | Introduce Parameter Object · Builder for optional config · Split into two functions if half the params are unused on each call |
+| `number-of-parameters` | Promote positional parameters to named (`foo({required T a, …})`) — the call site reads as `foo(a: …)` and the metric drops to zero · Group related positional parameters into a record · Move method onto the type that owns most of the inputs |
 | `boolean-trap` | Split into intent-named methods (`show()` / `hide()`) · Replace bool flags with a typed enum · Promote an "options" record so the call site reads as named fields |
 | `method-length` | Extract Method along the comment seams · Move bookkeeping to a helper |
 | `lcom4` | Split the class along the connected components. The components are usually two responsibilities pretending to be one. |

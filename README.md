@@ -86,7 +86,9 @@ Common options:
   --[no-]auto-explain      auto-attach rationale + refactor hints for every
                            metric that fired (default: enabled)
   --fatal-warnings         exit non-zero if any warning is reported
-  --fatal-style            exit non-zero if any style violation is reported (reserved)
+  --fatal-style            exit non-zero if any info-level violation is reported
+                           (no built-in metric currently emits info; reserved for
+                           a future info-tier lens to land into)
   -v, --verbose            FINE-level logging
 ```
 
@@ -349,7 +351,7 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 
 | Target                           | Effect                                                                  |
 | -------------------------------- | ----------------------------------------------------------------------- |
-| Widget constructor               | `number-of-parameters` is skipped (`key:` + a long callback list is the cultural norm) |
+| Widget constructor               | `number-of-parameters` is skipped — a cushion for the rare positional-style widget constructor; idiomatic `MyWidget({super.key, ...})` already scores 0 from NOP's positional-only semantic |
 | `Widget.build()`                 | **Measured normally.** Control-flow nesting only counts `if/for/while/switch/try/closure`, so a healthy declarative tree gives 0; method length is informative even on declarative code |
 | Other methods on the same widget | Measured normally                                                       |
 
