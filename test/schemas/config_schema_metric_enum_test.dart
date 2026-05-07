@@ -43,17 +43,31 @@ void main() {
   );
 }
 
+/// Locates the schema file via `Platform.script`, which always points
+/// at the running test source even when the runner has chdir'd (e.g.
+/// under `coverage:test_with_coverage`). Walks up from the test file
+/// until a `schemas/` sibling appears.
 File _findSchemaFile() {
-  Directory dir = Directory.current;
-  for (var i = 0; i < 6; i++) {
+  Directory dir = File.fromUri(Platform.script).parent;
+  for (var i = 0; i < 8; i++) {
     final candidate = File('${dir.path}/schemas/dartrics-config.schema.json');
     if (candidate.existsSync()) return candidate;
     final parent = dir.parent;
     if (parent.path == dir.path) break;
     dir = parent;
   }
+  // Fall back to cwd-based search so a `dart test <file>` invocation
+  // still resolves when Platform.script is data: URI'd.
+  Directory cwd = Directory.current;
+  for (var i = 0; i < 8; i++) {
+    final candidate = File('${cwd.path}/schemas/dartrics-config.schema.json');
+    if (candidate.existsSync()) return candidate;
+    final parent = cwd.parent;
+    if (parent.path == cwd.path) break;
+    cwd = parent;
+  }
   fail(
-    'schemas/dartrics-config.schema.json not found from '
-    '${Directory.current.path}',
+    'schemas/dartrics-config.schema.json not found from script '
+    '${Platform.script} or cwd ${Directory.current.path}',
   );
 }

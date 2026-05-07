@@ -1,20 +1,20 @@
-/// Programmatic entry for embedding dartrics.
+/// Programmatic entry for embedding dartrics — the function-level metric
+/// calculators only.
 ///
-/// Exposes the function-level metric calculator types and the
-/// analysis-report shapes used by the CLI and by embedders. The
-/// analyzer-plugin entrypoint lives in `lib/main.dart`; consumers of the
+/// `lib/main.dart` is the analyzer-plugin entrypoint; consumers of the
 /// plugin do not need anything from this library.
 ///
-/// Class- and library-level metrics are intentionally CLI-only in 0.1.0
-/// — they depend on a project-wide index that's heavier to drive
-/// programmatically, and the embedder demand to do so hasn't surfaced
-/// yet. The CLI's `--reporter json` is the supported integration point
-/// for those scopes.
+/// Class- and library-level metrics, the report / regression / coverage
+/// / dismissal / unused-detector model shapes, and `MetricEngine` itself
+/// are intentionally **not** exported in 0.1.0. The supported integration
+/// point for those scopes is `dartrics analyze --reporter json`, parsed
+/// in your own pipeline. This keeps the public Dart API tight enough
+/// that internal evolution doesn't trigger breaking changes for
+/// consumers we don't yet have. If you need a Dart-level handle on a
+/// shape that isn't exported here, please file an issue describing the
+/// use case before reaching into `package:dartrics/src/`.
 library;
 
-export 'src/config/config.dart' show DismissalConfig;
-export 'src/coverage/lcov_reader.dart' show CoverageIndex, FileCoverage;
-export 'src/dismiss/dismissal.dart' show Dismissal, DismissalSource;
 export 'src/metrics/function/boolean_trap.dart' show BooleanTrap;
 export 'src/metrics/function/cognitive_complexity.dart'
     show CognitiveComplexity;
@@ -30,24 +30,4 @@ export 'src/metrics/function/number_of_parameters.dart' show NumberOfParameters;
 export 'src/metrics/function/source_lines_of_code.dart' show SourceLinesOfCode;
 export 'src/metrics/metric.dart'
     show FunctionMetric, FunctionMetricInput, MetricPolarity;
-export 'src/metrics/metric_engine.dart' show computeViolationId;
-export 'src/models/analysis_report.dart'
-    show
-        AnalysisReport,
-        AnalyzedFile,
-        ExplainEntry,
-        MetricRecord,
-        MetricViolation,
-        ScopeKind,
-        ScopeRef,
-        Severity;
-export 'src/models/regression_report.dart'
-    show
-        ChangeDirection,
-        CosmeticSignals,
-        MetricChange,
-        RegressionReport,
-        RegressionSummary;
-export 'src/models/source_location.dart' show SourceLocation;
-export 'src/models/unused_declaration.dart' show UnusedDeclaration, UnusedKind;
 export 'src/version.dart' show dartricsVersion;

@@ -430,18 +430,15 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 
 ## Embedding
 
-`lib/dartrics.dart` exposes the function-level metric calculators and the report shapes. The analyzer plugin entrypoint lives in `lib/main.dart`; embedders don't need anything from there.
+`lib/dartrics.dart` is intentionally tight — it exposes only the function-level metric calculators so a custom CI bot or editor extension can compute one metric on a parsed `CompilationUnit` without spinning up the full engine. Everything else (report shapes, regression diff, coverage attachment, dismissal, the unused detector, class- and library-level metrics, `MetricEngine` itself) is CLI-only in 0.1.0; the supported integration point is `dartrics analyze --reporter json` parsed in your own pipeline.
 
 | What you get | Names |
 | --- | --- |
 | Function-level metric calculators | `CyclomaticComplexity`, `CognitiveComplexity`, `MaxNestingLevel`, `NumberOfParameters`, `BooleanTrap`, `MethodLength`, `SourceLinesOfCode`, `HalsteadCounts` / `HalsteadVolume` / `HalsteadDifficulty` / `HalsteadEffort`, `MaintainabilityIndex` |
 | Calculator interface | `FunctionMetric`, `FunctionMetricInput`, `MetricPolarity` |
-| Report shapes | `AnalysisReport`, `MetricRecord`, `MetricViolation`, `MetricChange`, `RegressionReport`, `RegressionSummary`, `CosmeticSignals`, `AnalyzedFile`, `ExplainEntry` |
-| Metadata enums | `Severity`, `ScopeKind`, `ChangeDirection`, `DismissalSource` |
-| Supporting types | `CoverageIndex`, `FileCoverage`, `Dismissal`, `DismissalConfig`, `SourceLocation`, `UnusedDeclaration`, `UnusedKind` |
-| Helpers / version | `computeViolationId`, `dartricsVersion` |
+| Version string | `dartricsVersion` |
 
-**Class- and library-level metrics (LCOM4, CBO, RFC, weighted-methods-per-class, the Martin coupling family) are intentionally CLI-only in 0.1.0.** They need a project-wide index that's heavier to drive programmatically, and the supported integration point for them is the JSON reporter — `dartrics analyze --reporter json` plus your favourite JSON parser. If you have a use case that needs them as Dart classes, please file an issue.
+The library is deliberately *not* in charge of report assembly, regression diff, dismiss validation, snapshot persistence, or unused-API detection. Those features all ship through the CLI; their on-wire format is the JSON reporter, documented under [JSON Schema files](#json-schema-files). Reaching into `package:dartrics/src/` is unsupported — internals shift between minor versions. If a use case warrants exposing additional shapes, please file an issue describing the use case so the surface grows incrementally and keeps its stability commitment realistic.
 
 `example/main.dart` shows a 30-line standalone embedding against `CyclomaticComplexity`.
 
