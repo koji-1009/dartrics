@@ -123,6 +123,20 @@ The metric points at a real readability problem and the structure is **decomposa
 
 `dartrics rules --reporter ai` dumps the full per-metric `refactorHints` — keep that catalogue at hand or rely on auto-explain to inline it per run.
 
+### Before you dismiss — engage, don't escape
+
+The most common failure mode in this loop is **dismiss-as-escape**: silencing a violation not because the structure is genuinely load-bearing but because the refactor looks hard enough that dismiss becomes the productive-feeling next move. The signal that you are doing this is the *shape of your dismiss reason itself* — phrases like "the metric is technically right but…", "the threshold is too tight for this idiom", or "splitting wouldn't really help here" are not load-bearing reasons; they are exit phrases.
+
+Three checks before you reach for dismiss:
+
+1. **Have you read the function end-to-end?** Every branch, every condition, every nested helper. If you've only read the signature and the metric value, the dismiss is premature.
+2. **Have you tried a specific refactor and rejected it on a concrete structural reason?** "I didn't try" is not a reason. "I tried Extract Method on the deepest branch; the helper became a one-line passthrough that hid the per-case structure the reader needs to see" is a reason. The second sentence names a specific move and what its specific failure was.
+3. **Would a careful human reviewer agree the structure is load-bearing?** If you suspect a reviewer would refactor, so should you.
+
+Dismiss commits a `reason="…"` that future readers (human and AI) will rely on. Use it when it earns its weight. When you genuinely don't know, **punt** to the operator (the PUNT branch in the loop diagram above) instead of suppressing the signal — punt is cheap and recoverable, dismiss is sticky.
+
+There is one path that looks like dismiss but isn't: **threshold calibration**. When the same kind of violation fires across many sites on the same Dart idiom, the threshold may be wrong for the codebase, not the code. The right move there is `dartrics: { metrics: { <id>: { warning: <n> } } }` in `analysis_options.yaml` — one tracked, operator-audited decision instead of N parallel dismiss entries. Reach for calibration when the same dismiss reason would otherwise repeat 5+ times across the project.
+
 ### Dismiss when…
 
 The lens reads it correctly but the structure is **load-bearing**: a state machine the user calls into; a recursive descent parser whose grammar mirrors the function shape; an exhaustive switch over a sealed type; a decoder fan-out where every branch is a real protocol case. Splitting it would hide intent, not clarify it.
