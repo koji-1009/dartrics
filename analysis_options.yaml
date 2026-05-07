@@ -1,9 +1,5 @@
 include: package:lints/recommended.yaml
 
-plugins:
-  dartrics:
-    path: .
-
 analyzer:
   exclude:
     - tmp/**
