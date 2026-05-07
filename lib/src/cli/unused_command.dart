@@ -10,6 +10,7 @@ import '../models/analysis_report.dart';
 import '../models/unused_declaration.dart';
 import '../reporters/reporters.dart';
 import '../unused/apply.dart';
+import '../unused/resolved_reachability.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
@@ -48,6 +49,16 @@ class UnusedCommand extends Command<int> {
             'You usually want to commit or stash first so the deletions '
             'land in their own diff.',
         negatable: false,
+      )
+      ..addMultiOption(
+        'filter',
+        help:
+            'Narrow the report to specific UnusedKind names. Repeat or '
+            'comma-separate (e.g. --filter method,field). Valid kinds: '
+            'function, method, klass, field, typedef, enumValue, '
+            'extension. Defaults to every kind. CLI value overrides any '
+            '`unused: { filter: [...] }` block in analysis_options.yaml.',
+        splitCommas: true,
       );
   }
 
@@ -64,6 +75,16 @@ class UnusedCommand extends Command<int> {
     final paths = options.rest.isNotEmpty
         ? options.rest
         : <String>[options.root];
+    final unusedConfig = mergeUnusedFilterFromCli(
+      base: config.unused,
+      cliFilter: argResults!['filter'] as List<String>,
+    );
+    try {
+      parseUnusedFilter(unusedConfig.filter);
+    } on FormatException catch (e) {
+      DartricsIO.stderrSink.writeln('dartrics unused: ${e.message}');
+      return ExitCode.usage.code;
+    }
     final Set<String>? changed;
     try {
       changed = options.since == null
@@ -79,10 +100,9 @@ class UnusedCommand extends Command<int> {
       concurrency: options.concurrency,
     );
     final units = await runner.resolveAll();
-    final unused = await const UnusedDetector().detect([
-      for (final u in units)
-        (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
-    ], config.unused);
+    final unused = await const UnusedDetector().detectResolved([
+      for (final u in units) (path: u.path, unit: u.unit),
+    ], unusedConfig);
 
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),

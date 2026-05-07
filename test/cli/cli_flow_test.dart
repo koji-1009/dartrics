@@ -43,6 +43,66 @@ class UnusedThing {}
     },
   );
 
+  test('unused --filter narrows the report to the requested kind', () async {
+    final outFile = File('${dir.path}/u-filter.json');
+    final code = await runQuietly([
+      'unused',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      outFile.path,
+      '--filter',
+      'klass',
+      '--snapshot',
+      'none',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(code, 0);
+    final body = jsonDecode(outFile.readAsStringSync()) as Map<String, Object?>;
+    final entries = body['unused']! as List<Object?>;
+    for (final e in entries) {
+      expect((e! as Map<String, Object?>)['kind'], 'klass');
+    }
+    // The fixture's UnusedThing class still surfaces under --filter klass.
+    expect(
+      entries.map((e) => (e! as Map<String, Object?>)['name']),
+      contains('UnusedThing'),
+    );
+  });
+
+  test(
+    'unused --filter rejects unknown kind names with usage exit code',
+    () async {
+      final code = await runQuietly([
+        'unused',
+        '${dir.path}/lib',
+        '--filter',
+        'nope',
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      // ExitCode.usage.code == 64
+      expect(code, 64);
+    },
+  );
+
+  test(
+    'analyze --filter rejects unknown kind names with usage exit code',
+    () async {
+      final code = await runQuietly([
+        'analyze',
+        '${dir.path}/lib',
+        '--filter',
+        'nope',
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      expect(code, 64);
+    },
+  );
+
   test('unused --output writes to a file', () async {
     final out = File('${dir.path}/u.json');
     final code = await runQuietly([

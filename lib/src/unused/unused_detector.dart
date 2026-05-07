@@ -8,6 +8,7 @@ import '../models/unused_declaration.dart';
 import 'declaration_record.dart';
 import 'entry_points.dart';
 import 'reachability_graph.dart';
+import 'resolved_reachability.dart';
 
 /// Input record accepted by [UnusedDetector]. Both `ResolvedUnitResult` and
 /// `parseString`-style results fit this shape, so tests can drive the
@@ -49,6 +50,26 @@ class UnusedDetector {
     ));
     final reachable = reachableFrom(roots, byName);
     return _selectUnused(declarations, reachable);
+  }
+
+  /// Resolved-AST entry point. Reachability is computed over canonical
+  /// [Element] ids rather than simple names, so homonym methods on
+  /// different classes are independent nodes and SDK / dependency
+  /// symbols never accidentally keep project declarations alive.
+  ///
+  /// Reportable kinds expand to `method`, `field`, `enumValue`, and
+  /// `extension` members in addition to the parse-only top-level kinds —
+  /// use [UnusedConfig.filter] (or `--filter` on the CLI) to narrow the
+  /// emitted set.
+  ///
+  /// CLI commands route through this entry point; the parse-only
+  /// [detect] above stays as a fallback for tests / embedders that
+  /// don't want a real `AnalysisContextCollection`.
+  Future<List<UnusedDeclaration>> detectResolved(
+    List<ResolvedUnusedSource> sources,
+    UnusedConfig config,
+  ) async {
+    return detectUnusedResolved(sources, config);
   }
 
   List<DeclarationRecord> _collectAll(List<UnusedSource> sources) {

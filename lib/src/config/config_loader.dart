@@ -222,6 +222,7 @@ UnusedConfig _parseUnused(Object? node) {
       fallback: const ['visibleForTesting', 'protected', 'JsonSerializable'],
     ),
     presets: _parseStringList(node['presets']),
+    filter: _parseStringList(node['filter']),
   );
 }
 

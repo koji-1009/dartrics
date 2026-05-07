@@ -2,6 +2,8 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:logging/logging.dart';
 
+import '../config/config.dart';
+
 /// Adds the option set shared by every dartrics subcommand.
 void addCommonOptions(ArgParser parser) {
   parser
@@ -197,4 +199,21 @@ class CommonOptions {
   final bool fatalStyle;
   final bool verbose;
   final List<String> rest;
+}
+
+/// Returns a copy of [base] with `filter` overridden by [cliFilter] when
+/// the CLI supplied any value. An empty CLI list is treated as "no
+/// override" so a user who omits `--filter` keeps the YAML setting.
+UnusedConfig mergeUnusedFilterFromCli({
+  required UnusedConfig base,
+  required List<String> cliFilter,
+}) {
+  if (cliFilter.isEmpty) return base;
+  return UnusedConfig(
+    entryPoints: base.entryPoints,
+    excludeExported: base.excludeExported,
+    ignoreAnnotations: base.ignoreAnnotations,
+    presets: base.presets,
+    filter: cliFilter,
+  );
 }
