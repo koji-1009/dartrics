@@ -46,7 +46,8 @@ enum MetricPolarity {
   /// Lower values are healthier (e.g. cyclomatic complexity, SLOC).
   down,
 
-  /// Higher values are healthier (e.g. maintainability index).
+  /// Higher values are healthier. No built-in metric uses this in
+  /// 0.1.0; reserved for custom embedder metrics.
   up,
 
   /// Either direction can be a sign of improvement depending on the
@@ -78,7 +79,7 @@ abstract class FunctionMetric {
   List<String> get refactorHints;
 
   /// Direction in which the value moves when the code gets healthier.
-  /// Override to `up` for inverse metrics (maintainability index) and
+  /// Override to `up` for custom metrics where higher is better, or
   /// `neutral` for metrics where neither direction is universally good.
   MetricPolarity get polarity => MetricPolarity.down;
 

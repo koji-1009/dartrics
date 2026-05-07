@@ -39,11 +39,10 @@ Future<void> runApp(List<String> arguments) async {
         exitCode = ExitCode.usage.code;
       }
     } finally {
-      // Cancel the listener before returning so its captured zone
-      // (which holds the test's redirected sinks via `runWithIOSinks`)
-      // is released. Each `runApp` call thus owns its own listener
-      // lifecycle, which keeps multi-run test suites from writing log
-      // records into a sink the previous run already closed.
+      // Cancel the listener before returning so each `runApp` call owns
+      // its own listener lifecycle. Without this, multi-run test suites
+      // would stack listeners on `Logger.root` — every record would fire
+      // N times, once per attached subscription.
       await logSub.cancel();
     }
   }, handleUncaughtZoneError);
@@ -73,8 +72,9 @@ bool isVersionRequest(List<String> arguments) {
 }
 
 /// Installs a logger listener that routes records to
-/// [resolveStdoutSink] / [resolveStderrSink] via [routeLogRecord].
-/// Returns the subscription so [runApp] can cancel it on exit.
+/// [DartricsIO.stdoutSink] / [DartricsIO.stderrSink] via
+/// [routeLogRecord]. Returns the subscription so [runApp] can cancel
+/// it on exit.
 ///
 /// Marked `@visibleForTesting` so tests can call it directly to verify
 /// the wiring without spinning up the full [runApp].
