@@ -43,15 +43,6 @@ class HalsteadCounts {
     return length * (math.log(vocabulary) / math.ln2);
   }
 
-  /// Halstead Difficulty `D = (n1 / 2) · (N2 / n2)`.
-  double get difficulty {
-    if (uniqueOperands == 0) return 0;
-    return (uniqueOperators / 2) * (totalOperands / uniqueOperands);
-  }
-
-  /// Halstead Effort `E = D · V`.
-  double get effort => difficulty * volume;
-
   static HalsteadCounts fromBody(FunctionBody body) {
     final operators = <String, int>{};
     final operands = <String, int>{};
@@ -88,7 +79,12 @@ bool _isOperand(Token token) =>
 /// Halstead Volume — `N · log2(η)`. (Halstead, 1977.)
 ///
 /// Off by default: a half-century of empirical research has not shown a
-/// predictive advantage over cyclomatic complexity. Opt in via
+/// predictive advantage over cyclomatic complexity, and modern Dart's
+/// codegen output / record literals / freezed-style boilerplate inflate
+/// the token counts in ways that don't track human reading effort.
+/// Halstead Difficulty and Halstead Effort were both removed in 0.1.0
+/// because they are pure derivations of the same `(n1, n2, N1, N2)`
+/// counts and add no orthogonal signal over Volume itself. Opt in via
 /// `dartrics: { metrics: { halstead-volume: { enabled: true } } }`.
 class HalsteadVolume extends FunctionMetric {
   const HalsteadVolume();
@@ -106,8 +102,10 @@ class HalsteadVolume extends FunctionMetric {
       '`N` (total operators + operands) and vocabulary `η` (distinct '
       'operators + operands). Off by default — a half century of '
       'empirical follow-up has not shown a predictive advantage over '
-      'cyclomatic complexity, but it is sometimes useful inside the '
-      'maintainability index.';
+      'cyclomatic complexity. Halstead Difficulty and Halstead Effort '
+      'were dropped because both are derivations of the same '
+      '`(n₁, n₂, N₁, N₂)` counts and add no orthogonal signal over '
+      'Volume.';
 
   @override
   List<String> get refactorHints => const [
@@ -118,60 +116,4 @@ class HalsteadVolume extends FunctionMetric {
   @override
   num compute(FunctionMetricInput input) =>
       HalsteadCounts.fromBody(input.body).volume;
-}
-
-/// Halstead Difficulty — `(n1/2) · (N2/n2)`. (Halstead, 1977.) Off by
-/// default; see [HalsteadVolume].
-class HalsteadDifficulty extends FunctionMetric {
-  const HalsteadDifficulty();
-  @override
-  String get id => 'halstead-difficulty';
-  @override
-  bool get defaultEnabled => false;
-  @override
-  MetricPolarity get polarity => MetricPolarity.neutral;
-  @override
-  String get rationale =>
-      'Halstead Difficulty `D = (n₁ / 2) · (N₂ / n₂)` (Halstead, 1977) '
-      'attempts to quantify how error-prone a function is to write, by '
-      'weighting the number of distinct operators against the average '
-      'reuse of each operand. Off by default for the same reason as '
-      '`halstead-volume`.';
-
-  @override
-  List<String> get refactorHints => const [
-    'Reuse the same variable name for the same logical value rather than introducing fresh names per branch.',
-    'Replace recurring symbolic operators (e.g. repeated bit-shifts) with a helper that names what they compute.',
-  ];
-  @override
-  num compute(FunctionMetricInput input) =>
-      HalsteadCounts.fromBody(input.body).difficulty;
-}
-
-/// Halstead Effort — `D · V`. (Halstead, 1977.) Off by default; see
-/// [HalsteadVolume].
-class HalsteadEffort extends FunctionMetric {
-  const HalsteadEffort();
-  @override
-  String get id => 'halstead-effort';
-  @override
-  bool get defaultEnabled => false;
-  @override
-  MetricPolarity get polarity => MetricPolarity.neutral;
-  @override
-  String get rationale =>
-      'Halstead Effort `E = D · V` (Halstead, 1977) is the product of '
-      'difficulty and volume; the original conjecture is that it scales '
-      'with the number of mental "elementary discriminations" a reader '
-      'must make. Off by default for the same reason as the other '
-      'Halstead metrics.';
-
-  @override
-  List<String> get refactorHints => const [
-    'Apply both the volume and difficulty hints — effort drops multiplicatively when either factor goes down.',
-    'Consider whether the function should be split into pieces with individually low effort scores.',
-  ];
-  @override
-  num compute(FunctionMetricInput input) =>
-      HalsteadCounts.fromBody(input.body).effort;
 }

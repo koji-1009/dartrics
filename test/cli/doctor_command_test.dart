@@ -62,23 +62,27 @@ void main() {
     });
 
     test('up-polarity metric with error > warning is flagged', () {
-      const config = Config(
-        metricThresholds: {
-          'maintainability-index': MetricThresholds(warning: 50, error: 80),
-        },
+      // No built-in metric currently uses up polarity (MI was retired
+      // in 0.1.0). The path stays live for custom embedder metrics —
+      // exercise it directly via the public helper.
+      final issue = checkThresholdOrdering(
+        'custom-up-metric',
+        const MetricThresholds(warning: 50, error: 80),
+        'up',
       );
-      final issues = diagnose(config);
-      expect(issues, hasLength(1));
-      expect(issues.single.message, contains('"up"'));
+      expect(issue, isNotNull);
+      expect(issue!.message, contains('"up"'));
     });
 
     test('up-polarity with error < warning is allowed', () {
-      const config = Config(
-        metricThresholds: {
-          'maintainability-index': MetricThresholds(warning: 80, error: 50),
-        },
+      expect(
+        checkThresholdOrdering(
+          'custom-up-metric',
+          const MetricThresholds(warning: 80, error: 50),
+          'up',
+        ),
+        isNull,
       );
-      expect(diagnose(config), isEmpty);
     });
 
     test('partial threshold (warning only) skips ordering check', () {

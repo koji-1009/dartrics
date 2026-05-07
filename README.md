@@ -74,7 +74,7 @@ Common options:
 
 ## Provided metrics
 
-dartrics ships a curated set; metrics that don't fit Dart's idioms (single inheritance, mixin / composition culture) are deliberately omitted, and metrics whose predictive value over CC has not held up empirically (Halstead V/D/E, Maintainability Index) ship **off by default** and must be opted into via `dartrics: { metrics: { <id>: { enabled: true } } }`.
+dartrics ships a curated set; metrics that don't fit Dart's idioms (single inheritance, mixin / composition culture) are deliberately omitted, and metrics whose predictive value over cyclomatic complexity has not held up empirically (Halstead Volume) ship **off by default** and must be opted into via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index were dropped in 0.1.0 — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal beyond what the underlying metrics already provide.
 
 ### Function / method level
 
@@ -88,8 +88,7 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 | Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects via `dartrics: { metrics: { widget-tree-depth: { enabled: true } } }` |
 | Source Lines Of Code                  | on      | —                | non-blank, non-comment-only lines                                           |
 | Method Length                         | on      | —                | total source lines spanned by the body                                      |
-| Halstead Volume / Difficulty / Effort | **off** | Halstead 1977    | token-based n1/n2/N1/N2 classification — historical                         |
-| Maintainability Index                 | **off** | Oman 1992        | `171 − 5.2·ln(V) − 0.23·CC − 16.2·ln(LOC)`, clamped — composite, MS retired |
+| Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size" |
 
 ### Class level
 
@@ -233,7 +232,6 @@ dartrics:
     halstead-volume:         # opt into a metric that's off by default
       enabled: true
       warning: 1000
-    maintainability-index: true        # bare-bool short form
     response-for-class: false          # disable a default-on metric
 
   unused:
@@ -441,7 +439,7 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 
 | What you get | Names |
 | --- | --- |
-| Function-level metric calculators | `CyclomaticComplexity`, `CognitiveComplexity`, `MaxNestingLevel`, `NumberOfParameters`, `BooleanTrap`, `MethodLength`, `SourceLinesOfCode`, `HalsteadCounts` / `HalsteadVolume` / `HalsteadDifficulty` / `HalsteadEffort`, `MaintainabilityIndex` |
+| Function-level metric calculators | `CyclomaticComplexity`, `CognitiveComplexity`, `MaxNestingLevel`, `NumberOfParameters`, `BooleanTrap`, `MethodLength`, `SourceLinesOfCode`, `HalsteadCounts` / `HalsteadVolume` |
 | Calculator interface | `FunctionMetric`, `FunctionMetricInput`, `MetricPolarity` |
 | Version string | `dartricsVersion` |
 
@@ -470,7 +468,7 @@ What's wired up for that use case:
 - **Cross-run memory is out of scope.** dartrics doesn't remember "this dismiss was rejected last iteration; don't propose it again." Stay session-local.
 - **Performance is modest.** `--concurrency` parallelises file resolution but the analyzer driver itself is single-isolate; expect ~10 % wall-time wins on small trees, more on large ones. CPU-bound.
 - **`package:analyzer` 13.x moves fast.** Major Dart SDK or analyzer bumps may require dartrics updates before they ship cleanly.
-- **Built-in metric set is not exhaustive.** The catalogue deliberately omits metrics whose predictive value over CC has not held up empirically (DIT, NOC) and ships Halstead V/D/E + Maintainability Index off-by-default. Bring your own opt-in.
+- **Built-in metric set is not exhaustive.** The catalogue deliberately omits metrics whose predictive value over CC has not held up empirically (DIT, NOC) and ships Halstead Volume off-by-default. Halstead Difficulty / Effort and the Maintainability Index were removed in 0.1.0 because they're pure derivations of the underlying counts and add no orthogonal signal. Bring your own opt-in for niche signals.
 
 ### Who should not adopt 0.1.0 yet
 

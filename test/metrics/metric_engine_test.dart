@@ -140,9 +140,9 @@ enum Color {
       final records = MetricEngine().analyzeResolved(units);
       final keys = records.expand((r) => r.values.keys).toSet();
       expect(keys, isNot(contains('halstead-volume')));
-      expect(keys, isNot(contains('halstead-difficulty')));
-      expect(keys, isNot(contains('halstead-effort')));
-      expect(keys, isNot(contains('maintainability-index')));
+      // halstead-difficulty / halstead-effort / maintainability-index
+      // were removed in 0.1.0 — they're derivations of halstead-volume +
+      // CC + LOC and added no orthogonal signal.
       // Sanity: the core metrics still land.
       expect(keys, contains('cyclomatic-complexity'));
     },

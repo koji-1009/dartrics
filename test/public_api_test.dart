@@ -24,9 +24,6 @@ void main() {
       const MethodLength(),
       const SourceLinesOfCode(),
       const HalsteadVolume(),
-      const HalsteadDifficulty(),
-      const HalsteadEffort(),
-      const MaintainabilityIndex(),
     ];
     final ids = metrics.map((m) => m.id).toSet();
     // Each calculator declares a unique id.
@@ -36,14 +33,16 @@ void main() {
     expect(ids, contains('boolean-trap'));
   });
 
-  test('FunctionMetric polarity values are reachable', () {
+  test('FunctionMetric polarity enum values are reachable', () {
+    // MetricPolarity.up has no built-in metric in 0.1.0 (the
+    // maintainability index was retired). The enum value stays
+    // exported so custom embedder metrics can register with up
+    // polarity; the regression-diff and doctor up-polarity branches
+    // are tested directly via their public helpers.
     expect(MetricPolarity.down.name, 'down');
     expect(MetricPolarity.up.name, 'up');
     expect(MetricPolarity.neutral.name, 'neutral');
-    // MaintainabilityIndex is the only "up" polarity metric in the
-    // built-in catalogue; keep that pinned so polarity wiring doesn't
-    // silently flip.
-    expect(const MaintainabilityIndex().polarity, MetricPolarity.up);
+    expect(const HalsteadVolume().polarity, MetricPolarity.neutral);
   });
 
   test('dartricsVersion is a non-empty semver-like string', () {

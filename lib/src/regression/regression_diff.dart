@@ -116,25 +116,13 @@ class RegressionDiff {
     required MetricPolarity polarity,
     required bool scopeAdded,
     required bool scopeRemoved,
-  }) {
-    if (scopeAdded) return ChangeDirection.added;
-    if (scopeRemoved) return ChangeDirection.removed;
-    if (before == null || after == null || before == after) {
-      return ChangeDirection.unchanged;
-    }
-    switch (polarity) {
-      case MetricPolarity.down:
-        return after < before
-            ? ChangeDirection.improved
-            : ChangeDirection.regressed;
-      case MetricPolarity.up:
-        return after > before
-            ? ChangeDirection.improved
-            : ChangeDirection.regressed;
-      case MetricPolarity.neutral:
-        return ChangeDirection.neutralDelta;
-    }
-  }
+  }) => classifyChange(
+    before: before,
+    after: after,
+    polarity: polarity,
+    scopeAdded: scopeAdded,
+    scopeRemoved: scopeRemoved,
+  );
 
   CosmeticSignals _cosmeticSignals({
     required Map<_ScopeKey, MetricRecord> beforeIndex,
@@ -236,4 +224,36 @@ class _ScopeKey {
 
   @override
   int get hashCode => Object.hash(file, kind, name);
+}
+
+/// Pure classifier extracted so up-polarity behaviour stays testable
+/// even when no built-in metric currently uses [MetricPolarity.up]. The
+/// up branch is dormant for now (the maintainability index was the
+/// only `up` metric and was retired in 0.1.0 because it adds no signal
+/// over CC + Halstead Volume + LOC), but custom embedder metrics may
+/// still register with up polarity, so the path stays live.
+ChangeDirection classifyChange({
+  required num? before,
+  required num? after,
+  required MetricPolarity polarity,
+  required bool scopeAdded,
+  required bool scopeRemoved,
+}) {
+  if (scopeAdded) return ChangeDirection.added;
+  if (scopeRemoved) return ChangeDirection.removed;
+  if (before == null || after == null || before == after) {
+    return ChangeDirection.unchanged;
+  }
+  switch (polarity) {
+    case MetricPolarity.down:
+      return after < before
+          ? ChangeDirection.improved
+          : ChangeDirection.regressed;
+    case MetricPolarity.up:
+      return after > before
+          ? ChangeDirection.improved
+          : ChangeDirection.regressed;
+    case MetricPolarity.neutral:
+      return ChangeDirection.neutralDelta;
+  }
 }

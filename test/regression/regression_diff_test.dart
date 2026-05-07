@@ -1,3 +1,4 @@
+import 'package:dartrics/src/metrics/metric.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:dartrics/src/models/regression_report.dart';
 import 'package:dartrics/src/models/source_location.dart';
@@ -76,31 +77,34 @@ void main() {
     expect(report.changes.single.direction, ChangeDirection.regressed);
   });
 
-  test('classifies an MI drop as regressed (polarity = up)', () {
-    // MI is the only `up` metric: lower value = worse.
-    final before = [
-      record(
-        file: 'lib/foo.dart',
-        kind: ScopeKind.function,
-        name: 'foo',
-        values: const {'maintainability-index': 120},
+  test('classifyChange treats up-polarity drops as regressed', () {
+    // No built-in metric uses up polarity in 0.1.0 (the maintainability
+    // index was retired). The path stays live for custom embedder
+    // metrics; exercise it directly via the public helper instead of
+    // relying on a built-in.
+    expect(
+      classifyChange(
+        before: 120,
+        after: 100,
+        polarity: MetricPolarity.up,
+        scopeAdded: false,
+        scopeRemoved: false,
       ),
-    ];
-    final after = [
-      record(
-        file: 'lib/foo.dart',
-        kind: ScopeKind.function,
-        name: 'foo',
-        values: const {'maintainability-index': 100},
-      ),
-    ];
-    final report = const RegressionDiff().compute(
-      beforeLabel: 'b',
-      afterLabel: 'a',
-      beforeRecords: before,
-      afterRecords: after,
+      ChangeDirection.regressed,
     );
-    expect(report.changes.single.direction, ChangeDirection.regressed);
+  });
+
+  test('classifyChange treats up-polarity rises as improved', () {
+    expect(
+      classifyChange(
+        before: 100,
+        after: 120,
+        polarity: MetricPolarity.up,
+        scopeAdded: false,
+        scopeRemoved: false,
+      ),
+      ChangeDirection.improved,
+    );
   });
 
   test('flags neutral-polarity metric deltas without classifying them', () {

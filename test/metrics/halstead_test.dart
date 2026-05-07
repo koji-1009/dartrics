@@ -20,24 +20,31 @@ int f() {
     expect(v2, greaterThan(v1));
   });
 
-  test('difficulty grows with operator variety', () {
-    final input = inputFor('''
-int f(int x) {
-  return x + x * x - x ~/ 2;
-}
-''', name: 'f');
-    expect(const HalsteadDifficulty().compute(input), greaterThan(0));
+  test('vocabulary <= 1 short-circuits to 0', () {
+    // The volume formula has log2(vocabulary), which is 0 at
+    // vocabulary=1 and undefined at 0. The metric guards against both
+    // by returning 0 directly.
+    expect(
+      HalsteadCounts(
+        uniqueOperators: 0,
+        uniqueOperands: 0,
+        totalOperators: 0,
+        totalOperands: 0,
+      ).volume,
+      0,
+    );
   });
 
-  test('effort = difficulty · volume', () {
+  test('exposes raw n1/n2/N1/N2 counts for embedders', () {
     final input = inputFor('''
 int f(int x) {
-  return x + x * 3;
+  return x + x;
 }
 ''', name: 'f');
-    final v = const HalsteadVolume().compute(input);
-    final d = const HalsteadDifficulty().compute(input);
-    final e = const HalsteadEffort().compute(input);
-    expect(e, closeTo(v * d, 1e-9));
+    final counts = HalsteadCounts.fromBody(input.body);
+    expect(counts.uniqueOperators, greaterThan(0));
+    expect(counts.uniqueOperands, greaterThan(0));
+    expect(counts.length, greaterThan(0));
+    expect(counts.vocabulary, greaterThan(1));
   });
 }

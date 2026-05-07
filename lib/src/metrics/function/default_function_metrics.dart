@@ -3,7 +3,6 @@ import 'boolean_trap.dart';
 import 'cognitive_complexity.dart';
 import 'cyclomatic_complexity.dart';
 import 'halstead.dart';
-import 'maintainability_index.dart';
 import 'max_nesting_level.dart';
 import 'method_length.dart';
 import 'number_of_parameters.dart';
@@ -18,9 +17,6 @@ const List<FunctionMetric> defaultFunctionMetrics = [
   CyclomaticComplexity(),
   CognitiveComplexity(),
   HalsteadVolume(),
-  HalsteadDifficulty(),
-  HalsteadEffort(),
-  MaintainabilityIndex(),
   MaxNestingLevel(),
   NumberOfParameters(),
   BooleanTrap(),

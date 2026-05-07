@@ -99,7 +99,7 @@ List<DoctorIssue> diagnose(Config config) {
       );
       continue;
     }
-    final orderingIssue = _checkThresholdOrdering(id, t, polarityById[id]!);
+    final orderingIssue = checkThresholdOrdering(id, t, polarityById[id]!);
     if (orderingIssue != null) issues.add(orderingIssue);
   }
 
@@ -119,10 +119,18 @@ List<DoctorIssue> diagnose(Config config) {
 }
 
 /// For polarity=down (lower-is-better) metrics, error must be ≥ warning.
-/// For polarity=up (higher-is-better, i.e. maintainability index), error
-/// must be ≤ warning. neutral metrics skip the ordering check — there is
-/// no universally healthier direction.
-DoctorIssue? _checkThresholdOrdering(
+/// For polarity=up (higher-is-better) metrics, error must be ≤ warning.
+/// neutral metrics skip the ordering check — there is no universally
+/// healthier direction.
+///
+/// The up-polarity branch is currently dormant for built-in metrics
+/// (the maintainability index was the only `up` metric and was retired
+/// in 0.1.0 because it adds no signal over CC + Halstead Volume + LOC).
+/// The path stays live because custom embedder metrics can register
+/// with up polarity. Exposed as a public top-level so tests can verify
+/// the up branch via a synthetic polarity string without depending on
+/// a built-in metric.
+DoctorIssue? checkThresholdOrdering(
   String id,
   MetricThresholds t,
   String polarity,

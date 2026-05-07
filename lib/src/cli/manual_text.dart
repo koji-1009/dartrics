@@ -55,7 +55,9 @@ Decades of software-engineering research has converted those felt reactions into
 
 ## The lens battery
 
-Twelve lenses ship default-on. Five ship default-off — four because their predictive value over cyclomatic complexity has not held up empirically (Halstead V/D/E, Maintainability Index), one (`widget-tree-depth`) because it's a Flutter-specific signal that wouldn't fire on most non-Flutter Dart code anyway. They remain available but you must opt them in.
+Twelve lenses ship default-on. Two ship default-off — Halstead Volume because its predictive value over cyclomatic complexity has not held up empirically, and `widget-tree-depth` because it's a Flutter-specific signal that wouldn't fire on most non-Flutter Dart code. They remain available but you must opt them in.
+
+Halstead Difficulty / Effort and the Maintainability Index were dropped in 0.1.0: both are pure derivations of the underlying token counts and `CC + V + LOC` respectively — they add no orthogonal signal beyond what the underlying lenses already provide.
 
 Each entry below names: **the felt reaction** it captures, **what the lens computes**, the **default warning threshold**, and **when to refactor vs. dismiss**.
 
@@ -71,10 +73,7 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | `widget-tree-depth` (off) | "This Flutter `build()` is six `Container(child: ...)` chains deep." | Deepest chain of nested constructor calls in the body. Complement to `maximum-nesting-level`, which only counts control-flow constructs and gives 0 on a healthy declarative tree. | opt-in (7) |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
 | `method-length` | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | — |
-| `halstead-volume` (off) | — | `(N1+N2) · log₂(n1+n2)`. Token-based historical metric. (Halstead 1977) | opt-in |
-| `halstead-difficulty` (off) | — | `(n1/2) · (N2/n2)`. (Halstead 1977) | opt-in |
-| `halstead-effort` (off) | — | `volume · difficulty`. (Halstead 1977) | opt-in |
-| `maintainability-index` (off) | — | `171 − 5.2·ln(V) − 0.23·CC − 16.2·ln(LOC)`, clamped. Composite. (Oman 1992; Microsoft retired it from Visual Studio.) | opt-in |
+| `halstead-volume` (off) | — | `N · log₂(η)`. Token-based program "size". (Halstead 1977) | opt-in |
 
 ### Class lenses
 
@@ -104,8 +103,8 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 Each lens declares a `polarity`:
 
 - `down` — lower is better. The default. (CC, Cognitive, nesting, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC, Ce, Ca, instability, distance.)
-- `up` — higher is better. (Maintainability index.)
-- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead V/D/E, abstractness in isolation.)
+- `up` — higher is better. No built-in metric uses this in 0.1.0; reserved for custom embedder metrics that want it.
+- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume, abstractness in isolation.)
 
 You read this off the regression diff so you don't accidentally celebrate a metric that drifted the wrong way.
 
