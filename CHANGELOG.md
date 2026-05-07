@@ -95,5 +95,5 @@ The metric set, the thresholds, and the Flutter / test relaxations below are cal
 
 ### Tooling
 
-- `.github/workflows/ci.yaml` runs format, analyze, test, and `coverage:test_with_coverage` on Ubuntu and macOS for every push and PR.
+- `.github/workflows/analyze.yaml` runs format / analyze / test on Ubuntu for every push and PR, then uploads `coverage:test_with_coverage` output to Codecov where per-PR coverage gating happens.
 - 100% line coverage on `lib/` is treated as a correctness signal — uncovered lines are read as evidence of dead code, not as a coverage gap.
