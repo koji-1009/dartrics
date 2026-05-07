@@ -281,6 +281,8 @@ The `dartrics: { unused: { presets: [...] } }` config field is still parsed for 
 
 Periphery-style BFS reachability over a name-based reference graph, rooted at `main`, declarations annotated with `@pragma('vm:entry-point')`, and (when `excludeExported` is enabled) declarations under `lib/` outside `lib/src/`. The detector follows `export ... show ...` clauses so re-exported `lib/src/` symbols stay reachable. Reports unused public functions, classes, mixins, extensions, typedefs, enums, and top-level fields.
 
+`dartrics unused --apply` deletes detected top-level declarations (functions / classes / typedefs / extensions) from disk in place — analogous to `dart fix --apply`. Refuses to run on a dirty git tree (override with `--force`), and skips files under `test/` / `integration_test/` by default (override with `--include-tests`). Methods, fields, and enum values are reported but not yet auto-deletable; the summary names how many were skipped for that reason. After applying, run `dart fix --apply` to clean up imports that became unused.
+
 Private (underscore-prefixed) names are intentionally skipped — `dart analyze`'s `dead_code` lint already covers them.
 
 Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`, `*.mocks.dart`, `*.pb*.dart`, `*.gen.dart`) are skipped during file collection; override with `AnalyzerRunner(includeGenerated: true)` if you really want metrics on them.

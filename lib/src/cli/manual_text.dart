@@ -306,6 +306,7 @@ There is no third option of "ignore it again."
 | Verify a refactor | `dartrics regression` | Runs `git worktree` for the historical side |
 | Audit your config | `dartrics doctor` | Flags unknown metric ids, unknown presets, threshold mis-ordering. Read-only |
 | Reverse-lookup a violation | `dartrics explain <id>` | Pipe a JSON report in or use `--input <path>`. Returns rationale + refactor hints for one violation |
+| Delete unused public-API declarations | `dartrics unused --apply` | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
 
 ## Exit codes
 

@@ -50,6 +50,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 - Code-gen keep-alive annotations are **always on**: `freezed`, `json_serializable`, `dart_mappable`, `go_router_builder`, `auto_route`, `riverpod_generator`, `injectable`, `hive`, `drift`. Listing `presets:` in `analysis_options.yaml` is no longer required (the field is still parsed for backward compatibility with older configs but no longer narrows the keep-alive set). The simple-name match means an annotation from a package you don't use simply never fires, so there's no per-project cost to leaving every preset on.
 - Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`, `*.mocks.dart`, `*.pb*.dart`, `*.gen.dart`) are skipped during file collection. Override with `AnalyzerRunner(includeGenerated: true)` if you really want them.
 - Private (underscore-prefixed) names are intentionally skipped — `dart analyze`'s `dead_code` lint already covers them.
+- `dartrics unused --apply` deletes detected top-level declarations from disk (analogous to `dart fix --apply`). Refuses to run on a dirty git tree without `--force`. Files under `test/` or `integration_test/` are excluded by default; pass `--include-tests` to include them. Supports function / class / typedef / extension deletion; method / field / enum-value deletion is reported as `unsupported` because the range computation needs containing-declaration awareness that is deferred. Imports left unused after deletion can be cleaned up with `dart fix --apply`.
 
 ### Analyzer plugin
 
