@@ -80,7 +80,7 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 
 | Metric                                | Default | Reference        | Notes                                                                       |
 | ------------------------------------- | ------- | ---------------- | --------------------------------------------------------------------------- |
-| Cyclomatic Complexity                 | on      | McCabe 1976      | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`     |
+| Cyclomatic Complexity                 | on      | McCabe 1976      | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`. Sealed-aware: a `switch` whose subject is a sealed class doesn't count its case arms — the compiler enforces exhaustiveness so the reader carries no "did I forget a case?" load. |
 | Cognitive Complexity                  | on      | SonarSource 2018 | B1 control-flow + B2 nesting penalty + B3 logical-op sequences              |
 | Maximum Nesting Level                 | on      | —                | depth of `if/for/while/do/switch/try/closure` blocks                        |
 | Number Of Parameters                  | on      | —                | positional + named + optional                                               |

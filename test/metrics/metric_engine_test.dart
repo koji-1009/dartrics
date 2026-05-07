@@ -267,6 +267,74 @@ class Hello extends StatelessWidget {
     },
   );
 
+  test('CC discounts case arms when the switch subject is sealed', () async {
+    // A switch over a sealed type is exhaustive at compile time, so
+    // the case arms shouldn't inflate CC the way arbitrary
+    // if/else-if branching does. The discount only fires on
+    // resolved input — exercise it through the full engine so
+    // staticType is available.
+    final dir = await Directory.systemTemp.createTemp('sealed_cc_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/lib').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/lib/state.dart').writeAsString('''
+sealed class State {}
+class Idle extends State {}
+class Loading extends State {}
+class Failure extends State {}
+
+String describe(State s) {
+  switch (s) {
+    case Idle(): return 'idle';
+    case Loading(): return 'loading';
+    case Failure(): return 'failure';
+  }
+}
+
+String describeOpen(Object o) {
+  switch (o) {
+    case int x when x > 0: return 'pos';
+    case String s: return s;
+  }
+  return '';
+}
+
+// Switch *expression* form (Dart 3 syntax) over a sealed type —
+// the discount must apply here too.
+String describeExpr(State s) => switch (s) {
+  Idle() => 'idle',
+  Loading() => 'loading',
+  Failure() => 'failure',
+};
+''');
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
+    final records = MetricEngine().analyzeResolved(units);
+
+    // describe() switches over sealed `State` — three case arms
+    // should not contribute to CC. Expected: 1 (base).
+    final sealedCc = records
+        .firstWhere((r) => r.scope.name == 'describe')
+        .values['cyclomatic-complexity'];
+    expect(sealedCc, 1);
+
+    // describeOpen() switches over `Object` (non-sealed). The two
+    // pattern cases each add 1. Expected: 1 + 2 = 3.
+    final openCc = records
+        .firstWhere((r) => r.scope.name == 'describeOpen')
+        .values['cyclomatic-complexity'];
+    expect(openCc, 3);
+
+    // describeExpr() uses the switch-expression form over the sealed
+    // type. The visitor must apply the discount on this form too.
+    final exprCc = records
+        .firstWhere((r) => r.scope.name == 'describeExpr')
+        .values['cyclomatic-complexity'];
+    expect(exprCc, 1);
+  });
+
   test('widget-tree-depth fires on a deep build() when opted in', () async {
     final dir = await Directory.systemTemp.createTemp('wtd_engine_');
     addTearDown(() => dir.delete(recursive: true));

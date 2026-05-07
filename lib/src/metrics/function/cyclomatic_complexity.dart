@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/element/element.dart';
 
 import '../metric.dart';
 
@@ -10,6 +11,19 @@ import '../metric.dart';
 /// `switch case` (one per non-default arm), `catch`, ternary `?:`, and the
 /// short-circuit operators `&&` / `||`. Nested closures are measured
 /// separately and do **not** contribute to the enclosing function's value.
+///
+/// **Sealed-aware discount:** when a `switch` or `switch` expression
+/// dispatches over a value whose static type is a sealed class, the
+/// case arms are **not** counted toward CC. The Dart compiler enforces
+/// exhaustiveness on sealed-typed subjects, so the reader carries no
+/// "did I forget a case?" cognitive burden — the cases dispatch is
+/// closer to a typed if/else over a fixed-size domain than to arbitrary
+/// branching. Counting them like ordinary `case` arms over-reports CC
+/// on the modern Dart sealed-state pattern. Detection requires
+/// resolution: the metric checks `switch.expression.staticType.element`
+/// for the `isSealed` flag. On unresolved AST input (e.g. `parseString`
+/// in tests) the static type is `null` and the discount falls back to
+/// the original "every case adds 1" rule.
 ///
 /// Reference: McCabe, T.J. *A Complexity Measure*, IEEE TSE, 1976.
 class CyclomaticComplexity extends FunctionMetric {
@@ -49,6 +63,15 @@ class CyclomaticComplexity extends FunctionMetric {
 class _CyclomaticVisitor extends RecursiveAstVisitor<void> {
   int count = 0;
   bool _enteredRootBody = false;
+
+  /// Stack of "are we inside a sealed-dispatch switch right now" flags.
+  /// The visitor pushes `true` on entry to a switch whose subject is a
+  /// resolved sealed type and pops on exit. Nested switches over
+  /// sealed types (rare) handle the stack correctly.
+  final List<bool> _insideSealedSwitch = <bool>[];
+
+  bool get _currentSwitchIsSealed =>
+      _insideSealedSwitch.isNotEmpty && _insideSealedSwitch.last;
 
   // Skip nested closures: only descend into the first body we encounter.
   @override
@@ -90,8 +113,22 @@ class _CyclomaticVisitor extends RecursiveAstVisitor<void> {
   }
 
   @override
+  void visitSwitchStatement(SwitchStatement node) {
+    _insideSealedSwitch.add(_isSealedDispatch(node.expression));
+    super.visitSwitchStatement(node);
+    _insideSealedSwitch.removeLast();
+  }
+
+  @override
+  void visitSwitchExpression(SwitchExpression node) {
+    _insideSealedSwitch.add(_isSealedDispatch(node.expression));
+    super.visitSwitchExpression(node);
+    _insideSealedSwitch.removeLast();
+  }
+
+  @override
   void visitSwitchPatternCase(SwitchPatternCase node) {
-    count++;
+    if (!_currentSwitchIsSealed) count++;
     super.visitSwitchPatternCase(node);
   }
 
@@ -112,5 +149,18 @@ class _CyclomaticVisitor extends RecursiveAstVisitor<void> {
     final op = node.operator.lexeme;
     if (op == '&&' || op == '||') count++;
     super.visitBinaryExpression(node);
+  }
+
+  /// Returns true when [subject] resolves to a sealed-class type. The
+  /// Dart compiler enforces exhaustiveness on switches over sealed
+  /// types, so the case arms aren't a "did I forget one?" cognitive
+  /// load and shouldn't inflate CC. Falls through to `false` on
+  /// unresolved AST input (no `staticType`).
+  bool _isSealedDispatch(Expression subject) {
+    final type = subject.staticType;
+    if (type == null) return false;
+    final element = type.element;
+    if (element is ClassElement) return element.isSealed;
+    return false;
   }
 }

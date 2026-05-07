@@ -70,7 +70,7 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 
 | Lens | "Hard to read" feeling | What it measures | Default warning |
 | --- | --- | --- | --- |
-| `cyclomatic-complexity` | "I'd have to trace too many paths to know this is correct." | `1 + d` decision points: `if`, `for`, `while`, `do`, `switch case`, `&&`, `\|\|`, `?:`, `catch`. (McCabe 1976) | 10 |
+| `cyclomatic-complexity` | "I'd have to trace too many paths to know this is correct." | `1 + d` decision points: `if`, `for`, `while`, `do`, `switch case`, `&&`, `\|\|`, `?:`, `catch`. (McCabe 1976) **Sealed-aware**: case arms of a switch whose subject is a sealed class don't count — exhaustiveness is compiler-enforced so the reader carries no "did I forget a case" cognitive load. | 10 |
 | `cognitive-complexity` | "It's not just branchy, it's *tangled*." | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (Sonar 2018) | 15 |
 | `maximum-nesting-level` | "I can't tell which scope I'm in." | Max depth of `if`, `for`, `while`, `do`, `switch`, `try`, closure blocks. | 4 |
 | `number-of-parameters` | "Too many knobs at the call site." | Positional + named + optional. | 4 |
