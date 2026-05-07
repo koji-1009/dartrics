@@ -4,6 +4,7 @@ import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 
 import '../analyzer_runner.dart';
+import '../config/config.dart';
 import '../config/config_loader.dart';
 import '../models/analysis_report.dart';
 import '../models/unused_declaration.dart';
@@ -82,33 +83,15 @@ class UnusedCommand extends Command<int> {
         (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
     ], config.unused);
 
-    final snapshotConfig = resolveSnapshotConfig(
-      config.snapshot,
-      options.snapshot,
-    );
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),
     ]);
-    final snapshotPath = snapshotPathFor(snapshotConfig, options.root);
-    Set<String>? snapshotChanged;
-    if (snapshotPath != null && options.since == null) {
-      snapshotChanged = Snapshot.read(snapshotPath).changedPaths(hashes);
-    }
-    if (snapshotPath != null) {
-      writeSnapshot(snapshotPath, hashes);
-    }
-
-    // `--since` and snapshot diffs are mutually exclusive — see the
-    // matching note in `analyze_command.dart`.
-    final allowed = changed ?? snapshotChanged;
-    final List<UnusedDeclaration> filtered;
-    if (allowed == null) {
-      filtered = unused;
-    } else {
-      filtered = unused
-          .where((u) => allowed.contains(u.location.path))
-          .toList();
-    }
+    final snapshotChanged = _maybeApplySnapshot(
+      config: config,
+      options: options,
+      hashes: hashes,
+    );
+    final filtered = _filterUnused(unused, changed ?? snapshotChanged);
     final report = AnalysisReport(
       version: '1.0',
       metrics: const [],
@@ -117,6 +100,49 @@ class UnusedCommand extends Command<int> {
       explanations: buildExplanations(options.explain),
     )..attachAnalyzedFileCount(units.length);
 
+    await _emit(report, options);
+
+    final applyExit = await _maybeApply(options, filtered);
+    if (applyExit != null) return applyExit;
+
+    if (options.fatalWarnings && unused.isNotEmpty) return 1;
+    return ExitCode.success.code;
+  }
+
+  /// Reads + writes the snapshot file when one is configured. Returns
+  /// the set of paths whose hash changed since the previous run, or
+  /// `null` when snapshots are disabled or `--since` is doing the
+  /// filtering work instead. `--since` and snapshot diffs are mutually
+  /// exclusive — see the matching note in `analyze_command.dart`.
+  Set<String>? _maybeApplySnapshot({
+    required Config config,
+    required CommonOptions options,
+    required List<AnalyzedFile> hashes,
+  }) {
+    final snapshotConfig = resolveSnapshotConfig(
+      config.snapshot,
+      options.snapshot,
+    );
+    final snapshotPath = snapshotPathFor(snapshotConfig, options.root);
+    Set<String>? snapshotChanged;
+    if (snapshotPath != null && options.since == null) {
+      snapshotChanged = Snapshot.read(snapshotPath).changedPaths(hashes);
+    }
+    if (snapshotPath != null) {
+      writeSnapshot(snapshotPath, hashes);
+    }
+    return snapshotChanged;
+  }
+
+  List<UnusedDeclaration> _filterUnused(
+    List<UnusedDeclaration> unused,
+    Set<String>? allowed,
+  ) {
+    if (allowed == null) return unused;
+    return unused.where((u) => allowed.contains(u.location.path)).toList();
+  }
+
+  Future<void> _emit(AnalysisReport report, CommonOptions options) async {
     final reporter = pickReporter(options.reporter, limit: options.limit);
     final IOSink sink;
     final bool ownsSink;
@@ -134,28 +160,29 @@ class UnusedCommand extends Command<int> {
         await sink.close();
       }
     }
-
-    final applyMode = argResults!['apply'] as bool;
-    if (applyMode) {
-      final force = argResults!['force'] as bool;
-      final includeTests = argResults!['include-tests'] as bool;
-      if (!force && !isGitTreeClean(options.root)) {
-        stderr.writeln(
-          'dartrics unused: refusing to apply on a dirty git tree. '
-          'Commit or stash first, or pass --force.',
-        );
-        return ExitCode.usage.code;
-      }
-      final outcomes = applyDeletions(filtered, includeTests: includeTests);
-      _printApplySummary(outcomes);
-    }
-
-    if (options.fatalWarnings && unused.isNotEmpty) return 1;
-    return ExitCode.success.code;
   }
 
-  void _printApplySummary(List<ApplyResult> outcomes) {
+  /// Runs the `--apply` deletion pass when requested. Returns a
+  /// non-null exit code when the run should abort (dirty git tree
+  /// without `--force`); `null` otherwise.
+  Future<int?> _maybeApply(
+    CommonOptions options,
+    List<UnusedDeclaration> filtered,
+  ) async {
+    final applyMode = argResults!['apply'] as bool;
+    if (!applyMode) return null;
+    final force = argResults!['force'] as bool;
+    final includeTests = argResults!['include-tests'] as bool;
+    if (!force && !isGitTreeClean(options.root)) {
+      stderr.writeln(
+        'dartrics unused: refusing to apply on a dirty git tree. '
+        'Commit or stash first, or pass --force.',
+      );
+      return ExitCode.usage.code;
+    }
+    final outcomes = applyDeletions(filtered, includeTests: includeTests);
     stderr.write(buildApplySummary(outcomes));
+    return null;
   }
 }
 

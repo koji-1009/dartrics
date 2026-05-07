@@ -259,28 +259,50 @@ ExplainHit? findViolation(Map<String, Object?> raw, String id) {
     if (entry is! Map<String, Object?>) continue;
     final violations = entry['violations'];
     if (violations is! List) continue;
-    final scope = entry['scope'];
-    final values = entry['values'];
     for (final v in violations) {
       if (v is! Map<String, Object?>) continue;
       if (v['id'] != id) continue;
-      final metricId = v['metric'] as String? ?? '';
-      return ExplainHit(
-        id: id,
-        file: entry['file'] as String? ?? '',
-        scopeName: scope is Map ? scope['name'] as String? ?? '' : '',
-        line: scope is Map ? (scope['line'] as int?) ?? 0 : 0,
-        metricId: metricId,
-        value: values is Map ? values[metricId] as num? : null,
-        threshold: v['threshold'] as num? ?? 0,
-        severity: v['level'] as String? ?? 'warning',
-        scopeCoverage: v['scopeCoverage'] as num?,
-        scopeBranchCoverage: v['scopeBranchCoverage'] as num?,
-        complexityJustified: v['complexityJustified'] as bool? ?? false,
-        dismissed: v['dismissed'] as bool? ?? false,
-        dismissalRejected: v['dismissalRejected'] as String?,
-      );
+      return _hitFromEntry(id: id, entry: entry, violation: v);
     }
   }
   return null;
 }
+
+ExplainHit _hitFromEntry({
+  required String id,
+  required Map<String, Object?> entry,
+  required Map<String, Object?> violation,
+}) {
+  final scope = _asMap(entry['scope']);
+  final values = _asMap(entry['values']);
+  final metricId = _strOr(violation['metric'], '');
+  return ExplainHit(
+    id: id,
+    file: _strOr(entry['file'], ''),
+    scopeName: scope == null ? '' : _strOr(scope['name'], ''),
+    line: scope == null ? 0 : _intOr(scope['line'], 0),
+    metricId: metricId,
+    value: values == null ? null : _asNum(values[metricId]),
+    threshold: _asNum(violation['threshold']) ?? 0,
+    severity: _strOr(violation['level'], 'warning'),
+    scopeCoverage: _asNum(violation['scopeCoverage']),
+    scopeBranchCoverage: _asNum(violation['scopeBranchCoverage']),
+    complexityJustified: _boolOr(violation['complexityJustified'], false),
+    dismissed: _boolOr(violation['dismissed'], false),
+    dismissalRejected: _asStringOrNull(violation['dismissalRejected']),
+  );
+}
+
+/// The `_*` helpers below absorb the "absent-or-wrong-type ⇒ fallback"
+/// pattern `findViolation` repeats once per ExplainHit field. Pulling
+/// the type-check + fallback out into a tiny DSL means each call site
+/// reads as the field's source plus its default, instead of yet another
+/// `… as String? ?? ''` clause where the cast risks silently masking a
+/// real schema regression.
+String _strOr(Object? raw, String fallback) => raw is String ? raw : fallback;
+int _intOr(Object? raw, int fallback) => raw is int ? raw : fallback;
+bool _boolOr(Object? raw, bool fallback) => raw is bool ? raw : fallback;
+num? _asNum(Object? raw) => raw is num ? raw : null;
+String? _asStringOrNull(Object? raw) => raw is String ? raw : null;
+Map<String, Object?>? _asMap(Object? raw) =>
+    raw is Map<String, Object?> ? raw : null;

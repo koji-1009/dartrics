@@ -67,19 +67,14 @@ class AnalyzeCommand extends Command<int> {
       stderr.writeln('coverage parse error: ${e.message}');
       return ExitCode.data.code;
     }
-    final report = await _analyze(
-      paths,
-      config,
-      changed,
-      options.explain,
-      snapshotConfig,
-      options.root,
-      options.since != null,
-      coverage,
-      options.strictDismiss,
-      options.concurrency,
-      options.autoExplain,
-    );
+    final report = await _analyze((
+      paths: paths,
+      config: config,
+      options: options,
+      changed: changed,
+      snapshotConfig: snapshotConfig,
+      coverage: coverage,
+    ));
     return _emit(report, options);
   }
 
@@ -88,52 +83,40 @@ class AnalyzeCommand extends Command<int> {
     return (await changedDartFilesSince(since)).toSet();
   }
 
-  Future<AnalysisReport> _analyze(
-    List<String> paths,
-    Config config,
-    Set<String>? changed,
-    List<String> explainIds,
-    SnapshotConfig snapshotConfig,
-    String root,
-    bool sinceActive,
-    CoverageIndex? coverage,
-    bool strictDismiss,
-    int? concurrency,
-    bool autoExplain,
-  ) async {
+  Future<AnalysisReport> _analyze(_AnalyzeRequest req) async {
     final runner = AnalyzerRunner(
-      roots: paths,
-      exclude: config.exclude,
-      concurrency: concurrency,
+      roots: req.paths,
+      exclude: req.config.exclude,
+      concurrency: req.options.concurrency,
     );
     final units = await runner.resolveAll();
     final dismissals = _buildDismissalIndex(
-      strictDismiss: strictDismiss,
-      config: config.dismissals,
-      root: root,
+      strictDismiss: req.options.strictDismiss,
+      config: req.config.dismissals,
+      root: req.options.root,
       units: units,
     );
     final engine = MetricEngine(
-      thresholds: config.metricThresholds,
-      flutter: config.flutter,
-      test: config.test,
-      coverage: coverage,
+      thresholds: req.config.metricThresholds,
+      flutter: req.config.flutter,
+      test: req.config.test,
+      coverage: req.coverage,
       dismissals: dismissals,
-      dismissalConfig: config.dismissals,
+      dismissalConfig: req.config.dismissals,
       onDismissalRejection: _logDismissalRejection,
     );
     final records = engine.analyzeResolved(units);
     final unused = await const UnusedDetector().detect([
       for (final u in units)
         (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
-    ], config.unused);
+    ], req.config.unused);
 
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),
     ]);
-    final snapshotPath = snapshotPathFor(snapshotConfig, root);
+    final snapshotPath = snapshotPathFor(req.snapshotConfig, req.options.root);
     Set<String>? snapshotChanged;
-    if (snapshotPath != null && !sinceActive) {
+    if (snapshotPath != null && req.options.since == null) {
       snapshotChanged = Snapshot.read(snapshotPath).changedPaths(hashes);
     }
     if (snapshotPath != null) {
@@ -143,19 +126,22 @@ class AnalyzeCommand extends Command<int> {
     // `--since` and snapshot diffs are mutually exclusive (snapshotChanged
     // is only computed when `--since` isn't active), so a coalescing read
     // is enough — no need to intersect.
-    final allowed = changed ?? snapshotChanged;
+    final allowed = req.changed ?? snapshotChanged;
     final filteredRecords = allowed == null
         ? records
         : records.where((r) => allowed.contains(r.file)).toList();
     final filteredUnused = allowed == null
         ? unused
         : unused.where((u) => allowed.contains(u.location.path)).toList();
-    final resolvedExplainIds = autoExplain
-        ? _withAutoExplain(explicit: explainIds, records: filteredRecords)
-        : explainIds;
+    final resolvedExplainIds = req.options.autoExplain
+        ? _withAutoExplain(
+            explicit: req.options.explain,
+            records: filteredRecords,
+          )
+        : req.options.explain;
     final staleDismissals = _collectStaleDismissals(
       dismissals: dismissals,
-      config: config.dismissals,
+      config: req.config.dismissals,
       analyzedPaths: {for (final u in units) u.path},
     );
     return AnalysisReport(
@@ -291,3 +277,16 @@ class AnalyzeCommand extends Command<int> {
     );
   }
 }
+
+/// Bundle of inputs `_analyze` needs. Collected into a single record so
+/// the orchestrator's signature stays at one parameter even as the set
+/// of inputs grows (coverage, snapshot, dismissal config, `--since`,
+/// `--strict-dismiss`, `--auto-explain`, …). All fields are read-only.
+typedef _AnalyzeRequest = ({
+  List<String> paths,
+  Config config,
+  CommonOptions options,
+  Set<String>? changed,
+  SnapshotConfig snapshotConfig,
+  CoverageIndex? coverage,
+});
