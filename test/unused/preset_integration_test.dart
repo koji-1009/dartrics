@@ -9,10 +9,18 @@ UnusedSource _src(String path, String content) {
 }
 
 void main() {
-  test('enabling the freezed preset keeps `@freezed`-annotated classes alive '
-      'even with excludeExported: false', () async {
-    final unused = await const UnusedDetector().detect([
-      _src('/proj/lib/src/model.dart', '''
+  // Every codegen-keep-alive annotation is always honoured as of 0.1.0
+  // — the per-package opt-in via `presets:` was dropped because the cost
+  // of leaving an annotation in the keep-alive set when the project
+  // doesn't use that package is essentially zero (a PascalCase name
+  // from an external package never appears in source you didn't write).
+  // These tests pin that always-on behaviour for each ecosystem.
+
+  test(
+    '@freezed-annotated classes stay alive without explicit opt-in',
+    () async {
+      final unused = await const UnusedDetector().detect([
+        _src('/proj/lib/src/model.dart', '''
 class Freezed { const Freezed(); }
 const freezed = Freezed();
 
@@ -23,18 +31,18 @@ class Bar {}
 
 void main() {}
 '''),
-    ], const UnusedConfig(excludeExported: false, presets: ['freezed']));
-    final names = unused.map((u) => u.name).toSet();
-    expect(names, isNot(contains('Foo')));
-    expect(names, contains('Bar'));
-  });
+      ], const UnusedConfig(excludeExported: false));
+      final names = unused.map((u) => u.name).toSet();
+      expect(names, isNot(contains('Foo')));
+      expect(names, contains('Bar'));
+    },
+  );
 
   test(
-    'go_router_builder preset keeps @TypedGoRoute-annotated classes alive',
+    '@TypedGoRoute-annotated classes stay alive without explicit opt-in',
     () async {
-      final unused = await const UnusedDetector().detect(
-        [
-          _src('/proj/lib/src/router.dart', '''
+      final unused = await const UnusedDetector().detect([
+        _src('/proj/lib/src/router.dart', '''
 class TypedGoRoute<T> { const TypedGoRoute(); }
 
 @TypedGoRoute<HomeScreen>()
@@ -46,31 +54,103 @@ class UnusedScreen {}
 
 void main() {}
 '''),
-        ],
-        const UnusedConfig(
-          excludeExported: false,
-          presets: ['go_router_builder'],
-        ),
-      );
+      ], const UnusedConfig(excludeExported: false));
       final names = unused.map((u) => u.name).toSet();
       expect(names, isNot(contains('HomeScreenRoute')));
       expect(names, contains('UnusedScreen'));
     },
   );
 
-  test('without the matching preset, the class is reported unused', () async {
+  test('@MappableClass stays alive (dart_mappable)', () async {
     final unused = await const UnusedDetector().detect([
       _src('/proj/lib/src/model.dart', '''
 class MappableClass { const MappableClass(); }
-const _kAnnotation = MappableClass();
 
-@_kAnnotation
+@MappableClass()
 class Foo {}
 
 void main() {}
 '''),
     ], const UnusedConfig(excludeExported: false));
-    final names = unused.map((u) => u.name).toSet();
-    expect(names, contains('Foo'));
+    expect(unused.map((u) => u.name).toSet(), isNot(contains('Foo')));
   });
+
+  test('@riverpod-annotated providers stay alive', () async {
+    final unused = await const UnusedDetector().detect([
+      _src('/proj/lib/src/providers.dart', '''
+class Riverpod { const Riverpod(); }
+const riverpod = Riverpod();
+
+@riverpod
+class Counter {}
+
+void main() {}
+'''),
+    ], const UnusedConfig(excludeExported: false));
+    expect(unused.map((u) => u.name).toSet(), isNot(contains('Counter')));
+  });
+
+  test('@injectable-annotated classes stay alive', () async {
+    final unused = await const UnusedDetector().detect([
+      _src('/proj/lib/src/services.dart', '''
+class Injectable { const Injectable(); }
+const injectable = Injectable();
+
+@injectable
+class AuthService {}
+
+void main() {}
+'''),
+    ], const UnusedConfig(excludeExported: false));
+    expect(unused.map((u) => u.name).toSet(), isNot(contains('AuthService')));
+  });
+
+  test('@HiveType-annotated models stay alive', () async {
+    final unused = await const UnusedDetector().detect([
+      _src('/proj/lib/src/models.dart', '''
+class HiveType { const HiveType({required this.typeId}); final int typeId; }
+
+@HiveType(typeId: 0)
+class UserBox {}
+
+void main() {}
+'''),
+    ], const UnusedConfig(excludeExported: false));
+    expect(unused.map((u) => u.name).toSet(), isNot(contains('UserBox')));
+  });
+
+  test('@DriftDatabase-annotated classes stay alive', () async {
+    final unused = await const UnusedDetector().detect([
+      _src('/proj/lib/src/database.dart', '''
+class DriftDatabase { const DriftDatabase({this.tables}); final List? tables; }
+
+@DriftDatabase()
+class AppDatabase {}
+
+void main() {}
+'''),
+    ], const UnusedConfig(excludeExported: false));
+    expect(unused.map((u) => u.name).toSet(), isNot(contains('AppDatabase')));
+  });
+
+  test(
+    'legacy `presets:` field is accepted but no longer narrows the set',
+    () async {
+      // Even with an empty (or wrong) `presets:` list, freezed-annotated
+      // classes still stay alive — the preset-opt-in mechanism is a no-op
+      // for backward compatibility only.
+      final unused = await const UnusedDetector().detect([
+        _src('/proj/lib/src/model.dart', '''
+class Freezed { const Freezed(); }
+const freezed = Freezed();
+
+@freezed
+class Foo {}
+
+void main() {}
+'''),
+      ], const UnusedConfig(excludeExported: false, presets: []));
+      expect(unused.map((u) => u.name).toSet(), isNot(contains('Foo')));
+    },
+  );
 }

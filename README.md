@@ -242,12 +242,8 @@ dartrics:
       - "visibleForTesting"
       - "protected"
       - "JsonSerializable"
-    presets:                # opt-in code-gen keep-alive sets
-      - freezed
-      - json_serializable
-      - dart_mappable
-      - go_router_builder
-      - auto_route
+    # presets: kept for backward compat; every codegen preset is
+    # always on as of 0.1.0, listing them here is no longer required.
 
   snapshot:
     mode: baseline           # cache | baseline | none
@@ -260,19 +256,25 @@ The `dartrics:` section is read by both the CLI and the analyzer plugin.
 
 The leading `# yaml-language-server: $schema=…` directive turns on autocomplete + typo detection in editors that integrate with [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) — VS Code (with the Red Hat YAML extension), JetBrains, Neovim, Helix. The schema also covers the `dismissals:` block; see [JSON Schema files](#json-schema-files) for the dismissal sidecar's own schema.
 
-### Code-gen keep-alive presets
+### Code-gen keep-alive annotations
 
-The `presets:` list expands to extra `ignoreAnnotations` so that classes annotated for popular code-generation packages aren't flagged as unused on a fresh checkout (before `dart run build_runner build`):
+Every codegen-related annotation listed here is **always** treated as a reachability root for the unused detector, so source classes that depend on a yet-to-be-generated `.g.dart` / `.freezed.dart` / `.config.dart` partner aren't flagged as unused on a fresh checkout (before `dart run build_runner build` has run). No opt-in is required:
 
-| preset              | annotations                                                  |
-| ------------------- | ------------------------------------------------------------ |
-| `freezed`           | `freezed`, `Freezed`, `unfreezed`                            |
-| `json_serializable` | `JsonSerializable`, `JsonEnum`                               |
-| `dart_mappable`     | `MappableClass`, `MappableEnum`, `MappableLib`               |
-| `go_router_builder` | `TypedGoRoute`, `TypedShellRoute`, `TypedStatefulShellRoute` |
-| `auto_route`        | `RoutePage`, `AutoRouterConfig`                              |
+| Package                                                       | Annotations                                                                                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| [freezed](https://pub.dev/packages/freezed)                   | `freezed`, `Freezed`, `unfreezed`                                                                                                          |
+| [json_serializable](https://pub.dev/packages/json_serializable) | `JsonSerializable`, `JsonEnum`                                                                                                             |
+| [dart_mappable](https://pub.dev/packages/dart_mappable)       | `MappableClass`, `MappableEnum`, `MappableLib`                                                                                             |
+| [go_router_builder](https://pub.dev/packages/go_router_builder) | `TypedGoRoute`, `TypedShellRoute`, `TypedStatefulShellRoute`                                                                               |
+| [auto_route](https://pub.dev/packages/auto_route)             | `RoutePage`, `AutoRouterConfig`                                                                                                            |
+| [riverpod_generator](https://pub.dev/packages/riverpod_generator) | `riverpod`, `Riverpod`                                                                                                                     |
+| [injectable](https://pub.dev/packages/injectable)             | `injectable`, `Injectable`, `singleton`, `Singleton`, `lazySingleton`, `LazySingleton`, `factoryMethod`, `FactoryMethod`, `module`, `Module`, `InjectableInit` |
+| [hive](https://pub.dev/packages/hive) / [hive_ce](https://pub.dev/packages/hive_ce) | `HiveType`, `HiveField`                                                                                                                    |
+| [drift](https://pub.dev/packages/drift)                       | `DriftDatabase`, `DriftAccessor`, `DataClassName`, `TableIndex`, `UseRowClass`                                                             |
 
-Unknown preset names are silently ignored, so adding a preset never breaks an older dartrics version.
+The annotations are looked up by **simple name only** (`@Freezed()` matches via the simple name `Freezed`). If your project doesn't use a given package, the corresponding annotation never appears in source and the entry has no effect — there's no per-project cost to leaving every preset on.
+
+The `dartrics: { unused: { presets: [...] } }` config field is still parsed for backward compatibility with older configs, but its value is ignored. If you need to keep additional annotations alive (e.g. an in-house codegen package), list them explicitly under `dartrics: { unused: { ignore-annotations: [...] } }`.
 
 ## Public-API unused-code detection
 

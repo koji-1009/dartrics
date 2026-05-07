@@ -156,9 +156,11 @@ class UnusedConfig {
   final bool excludeExported;
   final List<String> ignoreAnnotations;
 
-  /// Opt-in keep-alive annotation presets for popular code-generation
-  /// packages (`freezed`, `json_serializable`, `dart_mappable`,
-  /// `go_router_builder`, `auto_route`). See `keep_alive_presets.dart`
-  /// for the contents shipped with each preset.
+  /// **Deprecated since 0.1.0** — every codegen preset is always on
+  /// (freezed, json_serializable, dart_mappable, go_router_builder,
+  /// auto_route, riverpod, injectable, hive, drift). The field is
+  /// still parsed for backward compatibility with older configs, but
+  /// the value no longer narrows the keep-alive set. See
+  /// `keep_alive_presets.dart` for the full annotation list.
   final List<String> presets;
 }

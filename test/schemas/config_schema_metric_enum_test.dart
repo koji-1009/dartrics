@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:dartrics/src/metrics/metric_catalogue.dart'
     show collectRuleDescriptions;
@@ -8,10 +9,10 @@ import 'package:test/test.dart';
 void main() {
   test(
     'config schema metrics.propertyNames.enum matches the runtime catalogue',
-    () {
-      // Walk up to the repo root to find the schema file. Tests can run
-      // from cwd or a workspace package; both paths should resolve.
-      final schemaFile = _findSchemaFile();
+    () async {
+      // Resolve the schema file via the package URI rather than
+      // Directory.current — concurrent tests can chdir.
+      final schemaFile = await _findSchemaFile();
       final schema =
           jsonDecode(schemaFile.readAsStringSync()) as Map<String, Object?>;
       // The schema's actual `dartrics:` shape lives in `$defs.Dartrics`
@@ -43,31 +44,35 @@ void main() {
   );
 }
 
-/// Locates the schema file via `Platform.script`, which always points
-/// at the running test source even when the runner has chdir'd (e.g.
-/// under `coverage:test_with_coverage`). Walks up from the test file
-/// until a `schemas/` sibling appears.
-File _findSchemaFile() {
-  Directory dir = File.fromUri(Platform.script).parent;
-  for (var i = 0; i < 8; i++) {
-    final candidate = File('${dir.path}/schemas/dartrics-config.schema.json');
-    if (candidate.existsSync()) return candidate;
-    final parent = dir.parent;
-    if (parent.path == dir.path) break;
-    dir = parent;
-  }
-  // Fall back to cwd-based search so a `dart test <file>` invocation
-  // still resolves when Platform.script is data: URI'd.
-  Directory cwd = Directory.current;
-  for (var i = 0; i < 8; i++) {
-    final candidate = File('${cwd.path}/schemas/dartrics-config.schema.json');
-    if (candidate.existsSync()) return candidate;
-    final parent = cwd.parent;
-    if (parent.path == cwd.path) break;
-    cwd = parent;
-  }
-  fail(
-    'schemas/dartrics-config.schema.json not found from script '
-    '${Platform.script} or cwd ${Directory.current.path}',
+/// Locates the schema file relative to the *package root*, anchored on
+/// the resolved location of `package:dartrics/src/metrics/metric_catalogue.dart`.
+/// `Directory.current` is process-wide and another test (e.g.
+/// `cli_flow_test`'s `runIn` extension) may have chdir'd into a temp
+/// directory while running concurrently — the parent isolate sees that
+/// changed cwd, so any cwd-relative path resolution flakes. Walking up
+/// from a `package:` URI is immune to that.
+Future<File> _findSchemaFile() async {
+  final libUri = await Isolate.resolvePackageUri(
+    Uri.parse('package:dartrics/src/metrics/metric_catalogue.dart'),
   );
+  if (libUri == null) {
+    fail(
+      'Could not resolve package:dartrics/... — '
+      'package_config.json missing?',
+    );
+  }
+  // libUri points at <pkg>/lib/src/metrics/metric_catalogue.dart.
+  // Walk up four parents: src/metrics → src → lib → <pkg>.
+  final packageRoot = File.fromUri(libUri).parent.parent.parent.parent;
+  final candidate = File(
+    '${packageRoot.path}/schemas/dartrics-config.schema.json',
+  );
+  if (!candidate.existsSync()) {
+    fail(
+      'schemas/dartrics-config.schema.json not found at expected '
+      'path ${candidate.path} (package root resolved to '
+      '${packageRoot.path}).',
+    );
+  }
+  return candidate;
 }

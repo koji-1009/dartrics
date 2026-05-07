@@ -15,17 +15,25 @@ List<DeclarationRecord> resolveEntryPoints(
   }
   final keepAliveAnnotations = <String>{
     ...config.ignoreAnnotations,
-    ...expandPresets(config.presets),
+    // Every codegen preset is always on as of 0.1.0 — the per-package
+    // opt-in via `presets:` was dropped because the cost of including
+    // an annotation name your project doesn't use is essentially zero
+    // (a PascalCase identifier from a specific external package will
+    // never appear in source you didn't write). `config.presets` is
+    // kept on the schema for backward compat but no longer narrows
+    // the keep-alive set.
+    ...allKeepAliveAnnotations,
   };
   for (final d in declarations) {
     if (entrySimpleNames.contains(d.name)) roots.add(d);
     if (d.hasVmEntryPointPragma) roots.add(d);
     if (keepAliveAnnotations.any(d.annotations.contains)) {
-      // Annotations from `ignore-annotations` plus the union of every
-      // opted-in preset (e.g. `freezed`, `json_serializable`) keep their
-      // declarations alive even if nothing references them — useful when
-      // the matching `.g.dart` / `.freezed.dart` partner hasn't been
-      // generated yet.
+      // Annotations from `ignore-annotations` plus every codegen preset
+      // (freezed / json_serializable / dart_mappable / go_router_builder /
+      // auto_route / riverpod / injectable / hive / drift) keep their
+      // declarations alive even when nothing references them — useful
+      // when the matching `.g.dart` / `.freezed.dart` partner hasn't
+      // been generated yet.
       roots.add(d);
     }
     if (config.excludeExported && _isLibraryPublic(d.location.path)) {

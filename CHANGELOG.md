@@ -47,7 +47,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 ### Public-API unused-code detection
 
 - Periphery-style BFS reachability over a name-based reference graph rooted at `main`, declarations annotated with `@pragma('vm:entry-point')`, and (when `excludeExported` is enabled) `lib/` exports outside `lib/src/`. Follows `export ... show ...` clauses so re-exported `lib/src/` symbols stay reachable. Reports unused public functions, classes, mixins, extensions, typedefs, enums, and top-level fields.
-- Opt-in code-gen presets (`freezed`, `json_serializable`, `dart_mappable`, `go_router_builder`, `auto_route`) seed the keep-alive annotation list so source classes aren't flagged on a fresh checkout before `dart run build_runner build`.
+- Code-gen keep-alive annotations are **always on**: `freezed`, `json_serializable`, `dart_mappable`, `go_router_builder`, `auto_route`, `riverpod_generator`, `injectable`, `hive`, `drift`. Listing `presets:` in `analysis_options.yaml` is no longer required (the field is still parsed for backward compatibility with older configs but no longer narrows the keep-alive set). The simple-name match means an annotation from a package you don't use simply never fires, so there's no per-project cost to leaving every preset on.
 - Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`, `*.mocks.dart`, `*.pb*.dart`, `*.gen.dart`) are skipped during file collection. Override with `AnalyzerRunner(includeGenerated: true)` if you really want them.
 - Private (underscore-prefixed) names are intentionally skipped — `dart analyze`'s `dead_code` lint already covers them.
 
