@@ -57,8 +57,7 @@ class MetricEngine {
 
   /// Optional lcov coverage data. When supplied, every emitted
   /// [MetricViolation] is annotated with the scope's line / branch
-  /// coverage and a `complexityJustified` flag (see C2/C3 in
-  /// `tmp/v0.1.0_round2_plan.md`).
+  /// coverage and a `complexityJustified` flag.
   final CoverageIndex? coverage;
 
   /// Pre-built lookup for `// dartrics:dismiss` comments + the YAML
