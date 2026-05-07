@@ -174,18 +174,9 @@ class C {
   });
 
   group('buildApplySummary', () {
-    UnusedDeclaration mk(UnusedKind kind, String name) => UnusedDeclaration(
-      kind: kind,
-      name: name,
-      location: const SourceLocation(path: 'lib/x.dart', line: 1, column: 1),
-    );
-
     test('summary names unsupported addendum when relevant', () {
       final body = buildApplySummary([
-        ApplyResult(
-          target: mk(UnusedKind.field, 'F'),
-          outcome: ApplyOutcome.unsupportedKind,
-        ),
+        ApplyResult(outcome: ApplyOutcome.unsupportedKind),
       ]);
       expect(body, contains('deleted 0'));
       expect(body, contains('unsupported 1'));
@@ -194,10 +185,7 @@ class C {
 
     test('summary names notFound addendum when relevant', () {
       final body = buildApplySummary([
-        ApplyResult(
-          target: mk(UnusedKind.function, 'f'),
-          outcome: ApplyOutcome.notFound,
-        ),
+        ApplyResult(outcome: ApplyOutcome.notFound),
       ]);
       expect(body, contains('not found 1'));
       expect(body, contains('"not found" entries indicate the source changed'));
@@ -205,10 +193,7 @@ class C {
 
     test('summary omits both addenda when totals are zero', () {
       final body = buildApplySummary([
-        ApplyResult(
-          target: mk(UnusedKind.function, 'f'),
-          outcome: ApplyOutcome.deleted,
-        ),
+        ApplyResult(outcome: ApplyOutcome.deleted),
       ]);
       expect(body, isNot(contains('unsupported kinds')));
       expect(body, isNot(contains('"not found"')));

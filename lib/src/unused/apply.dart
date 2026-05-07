@@ -28,9 +28,8 @@ enum ApplyOutcome {
 
 /// Per-entry record produced by [applyDeletions].
 class ApplyResult {
-  ApplyResult({required this.target, required this.outcome});
+  ApplyResult({required this.outcome});
 
-  final UnusedDeclaration target;
   final ApplyOutcome outcome;
 }
 
@@ -91,13 +90,11 @@ Map<String, List<UnusedDeclaration>> _partitionTargets(
   final byFile = <String, List<UnusedDeclaration>>{};
   for (final t in targets) {
     if (!_supportedKinds.contains(t.kind)) {
-      results.add(
-        ApplyResult(target: t, outcome: ApplyOutcome.unsupportedKind),
-      );
+      results.add(ApplyResult(outcome: ApplyOutcome.unsupportedKind));
       continue;
     }
     if (!includeTests && _isTestPath(t.location.path)) {
-      results.add(ApplyResult(target: t, outcome: ApplyOutcome.skippedTest));
+      results.add(ApplyResult(outcome: ApplyOutcome.skippedTest));
       continue;
     }
     byFile.putIfAbsent(t.location.path, () => <UnusedDeclaration>[]).add(t);
@@ -120,10 +117,10 @@ void _processFile(
   for (final t in fileTargets) {
     final node = _findTopLevel(unit, t.name, t.location.line);
     if (node == null) {
-      results.add(ApplyResult(target: t, outcome: ApplyOutcome.notFound));
+      results.add(ApplyResult(outcome: ApplyOutcome.notFound));
       continue;
     }
-    ranges.add(_DeleteRange(target: t, range: _rangeFor(node, source)));
+    ranges.add(_DeleteRange(range: _rangeFor(node, source)));
   }
   if (ranges.isEmpty) return;
 
@@ -131,7 +128,7 @@ void _processFile(
   var rewritten = source;
   for (final r in ranges) {
     rewritten = rewritten.replaceRange(r.range.start, r.range.end, '');
-    results.add(ApplyResult(target: r.target, outcome: ApplyOutcome.deleted));
+    results.add(ApplyResult(outcome: ApplyOutcome.deleted));
   }
   File(path).writeAsStringSync(rewritten);
 }
@@ -223,7 +220,6 @@ int _trailingEnd(int end, String source) {
 }
 
 class _DeleteRange {
-  _DeleteRange({required this.target, required this.range});
-  final UnusedDeclaration target;
+  _DeleteRange({required this.range});
   final ({int start, int end}) range;
 }

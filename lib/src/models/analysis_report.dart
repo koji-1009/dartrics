@@ -15,7 +15,7 @@ enum Severity {
 }
 
 /// What kind of program element a metric describes.
-enum ScopeKind { function, method, klass, file, library }
+enum ScopeKind { function, method, klass, library }
 
 class ScopeRef {
   const ScopeRef({
