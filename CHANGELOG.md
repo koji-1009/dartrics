@@ -20,7 +20,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 - `dartrics regression [--before <ref>] [--after <ref>]` compares metrics between two git states (default: `HEAD~1` vs the working tree). Uses git worktrees for the historical side. Diff entries are classified as `improved` / `regressed` / `unchanged` / `added` / `removed` per `MetricPolarity`. A built-in cosmetic-split heuristic flags refactors that look like AI just shuffled complexity into one-line helpers without actually reducing it.
 - `dartrics manual` prints the AI-facing operator's manual to stdout. The content is a mirror of [`doc/manual.md`](doc/manual.md) embedded as a const string in the executable, so it travels with `dart pub global activate dartrics` and is reachable from any agent loop without a separate doc download. A parity test enforces byte-equality with the markdown source so the two cannot drift.
 - `dartrics doctor` validates the `dartrics:` block in `analysis_options.yaml`. Surfaces unknown metric ids (with did-you-mean suggestions via Levenshtein distance ≤ 2), unknown unused presets, and threshold orderings inconsistent with each metric's polarity (e.g. `cyclomatic-complexity: { warning: 20, error: 10 }` is flagged because lower-is-better metrics need `error ≥ warning`). Read-only — never edits the config. Exit codes: 0 clean, 1 warnings, 78 invalid YAML / `ConfigException`.
-- `dartrics explain <id>` reverse-looks-up a violation by its stable 16-hex-char id and prints the matching entry plus the metric's rationale + refactor hints. Reads a JSON report (the format produced by `dartrics analyze --reporter json`) from stdin or `--input <path>`. Closes the loop on Round 4's stable id: AI agents that see the same id reappear across runs ("my fix didn't take") get a one-shot way to retrieve full context for that id without re-reading the entire report.
+- `dartrics explain <id>` reverse-looks-up a violation by its stable 16-hex-char id and prints the matching entry plus the metric's rationale + refactor hints. Reads a JSON report (the format produced by `dartrics analyze --reporter json`) from stdin or `--input <path>`. AI agents that see the same id reappear across runs ("my fix didn't take") can retrieve full context for that id without re-reading the entire report.
 
 ### AI integration (`--reporter ai`)
 
@@ -61,8 +61,8 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Flutter-aware mode
 
-- `dartrics: { flutter: true }` is the default. As of 0.1.0 the only thing it does is **skip `number-of-parameters` on widget constructors**: `key:` plus a long callback list is the idiom and shouldn't fire the parameter-count lens. `Widget.build()` is now measured normally — `maximum-nesting-level` only counts control-flow constructs (`if`/`for`/`while`/`switch`/`try`/closure), so a healthy declarative tree produces a depth of 0 without any special-casing, and `method-length` is informative even on declarative trees.
-- Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the new `widget-tree-depth` lens — opt-in for Flutter authors that want this signal, default warning 7 (matching Flutter community practice of ~5–7 before extracting a sub-widget).
+- `dartrics: { flutter: true }` is the default. The single thing it does in 0.1.0 is **skip `number-of-parameters` on widget constructors**: `key:` plus a long callback list is the idiom and shouldn't fire the parameter-count lens. `Widget.build()` is measured normally — `maximum-nesting-level` only counts control-flow constructs (`if`/`for`/`while`/`switch`/`try`/closure), so a healthy declarative tree produces a depth of 0 without any special-casing, and `method-length` is informative even on declarative trees.
+- Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the `widget-tree-depth` lens — opt-in for Flutter authors that want this signal, default warning 7 (matching Flutter community practice of ~5–7 before extracting a sub-widget).
 - Detection is AST-only across `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`. Set `flutter: false` to force `number-of-parameters` on widget constructors too.
 
 ### Test-aware mode
@@ -83,7 +83,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Performance
 
-- File resolution in `AnalyzerRunner.resolveAll` now uses `package:pool` to run up to `--concurrency` resolves in flight at once. Default mirrors the host CPU count (clamped to 16). Output ordering remains alphabetical so reports stay deterministic across runs. The win on smaller trees (≈50 files) is ≈10 % wall-time; larger codebases get more.
+- File resolution in `AnalyzerRunner.resolveAll` uses `package:pool` to run up to `--concurrency` resolves in flight at once. Default mirrors the host CPU count (clamped to 16). Output ordering remains alphabetical so reports stay deterministic across runs. The win on smaller trees (≈50 files) is ≈10 % wall-time; larger codebases get more.
 
 ### Tooling
 

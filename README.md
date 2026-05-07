@@ -4,11 +4,11 @@ Dart code-quality metrics and unused public-API detection, designed as the AI-lo
 
 ## In five lines
 
-- **What it does.** Computes a battery of code-quality metrics (CK, Halstead-volume, McCabe, Martin, Cognitive Complexity, plus Dart-3-idiom lenses) on top of `package:analyzer` and detects unreachable public API à la Periphery.
+- **What it does.** Computes a battery of code-quality metrics (CK, Halstead, McCabe, Martin, Cognitive Complexity, plus Dart-3-idiom lenses) on top of `package:analyzer` and detects unreachable public API à la Periphery.
 - **Who it's for.** AI agents and the humans driving them. Every report mode is shaped to be *consumed*, not just read — most prominently `--reporter ai` (token-efficient YAML-ish, sorted by actionability).
 - **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons. The CLI ships the manual (`dartrics manual`), an explain-by-id (`dartrics explain`), and a regression diff (`dartrics regression`) — designed for a *see → understand → fix → verify* loop.
 - **Quick start.** `dart pub global activate dartrics` then `dartrics analyze lib/ --reporter ai`. JSON Schemas for `analysis_options.yaml` and the report payload live under `schemas/`.
-- **Status.** `0.x` — all output formats and CLI flags are still subject to refinement; pin a version if you depend on the JSON shape.
+- **Status.** `0.x` — field names in the JSON / AI / SARIF outputs are stable (renames trigger a new header), but the surface has not yet been stress-tested by external users; pin a version in CI.
 
 `dartrics` re-implements the academically-grounded metric suite (CK, Halstead, McCabe, Martin, Cognitive Complexity) on top of `package:analyzer`, augments `dart analyze`'s `dead_code` lint with a Periphery-style public-API reachability pass, and ships a `--reporter ai` output plus a `regression` subcommand that gives AI agents a tight refactor loop: **see violations → understand them → fix → verify the fix actually improved things**.
 
@@ -75,6 +75,10 @@ Common options:
                            (comment + YAML); useful in CI / final review
   --concurrency <n>        max files resolved in parallel (default: host
                            CPU count, clamped to 16)
+  --limit <n>              cap violations + unused entries shown by the ai
+                           and md reporters (after the priority sort)
+  --[no-]auto-explain      auto-attach rationale + refactor hints for every
+                           metric that fired (default: enabled)
   --fatal-warnings         exit non-zero if any warning is reported
   --fatal-style            exit non-zero if any style violation is reported (reserved)
   -v, --verbose            FINE-level logging
@@ -141,7 +145,7 @@ The CLI's `--reporter ai` is the primary integration point for AI tooling. The o
 - [`doc/manual.md`](doc/manual.md) — operator's manual. Each metric framed as a lens on "hard to read", with the accept-or-reject decision step made explicit. Also reachable from inside an agent loop as `dartrics manual`, which prints the same content to stdout (the manual ships with the executable so `dart pub global activate dartrics` is enough — no separate doc download needed).
 - [`doc/ai-loop.md`](doc/ai-loop.md) — end-to-end loop walkthrough (setup → propose → apply → verify) with sample prompts.
 
-Eight flags compose into a tight refactor loop:
+These knobs compose into a tight refactor loop:
 
 - **`--explain <metric-id>`** (repeatable) injects the metric's paragraph rationale and concrete refactor hints alongside the violations. The catalogue lives in `dartrics rules` so you can also feed it once and have agents reference it.
 - **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints for every metric that produced at least one violation. Most loops never need the explicit `--explain` flag.
@@ -309,7 +313,7 @@ Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`
 
 ## Analyzer plugin
 
-`dartrics` ships its own analyzer plugin so the four lightweight function-level rules surface inline in `dart analyze` and the IDE.
+`dartrics` ships its own analyzer plugin so the five lightweight function-level rules surface inline in `dart analyze` and the IDE.
 
 ```yaml
 # analysis_options.yaml in your project
@@ -505,7 +509,7 @@ What's wired up for that use case:
 ```bash
 dart pub get
 dart format lib test example
-dart analyze
+dart analyze lib test example   # `dart analyze` (no path) loads the plugin isolate and may flake
 dart test
 dart pub run coverage:test_with_coverage  # 100% line coverage is required
 ```

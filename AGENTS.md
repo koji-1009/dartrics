@@ -72,7 +72,7 @@ The CLI and analyzer plugin both read from a `dartrics:` section inside `analysi
 - Conventional Commits 1.0.0 — `<type>[scope]: <description>` plus body and footers when needed. Common types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `build`, `ci`, `perf`, `style`.
 - One commit per logical unit. Don't bundle reformatting with feature work; the `style: apply dart format` commit pattern is reserved for cases where formatter drift slipped through and needs catching up.
 - All commits must be SSH-signed in this repo. The 1Password SSH agent isn't reachable from inside the Claude Code sandbox; sign-requesting `git commit` / `git rebase` invocations need `dangerouslyDisableSandbox: true`. If signing has to be deferred (agent unavailable), commit with `--no-gpg-sign` and re-sign later with `git rebase --exec 'git commit --amend --no-edit -S' <base>`.
-- Co-author Claude commits with the `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>` footer.
+- Co-author Claude commits with a `Co-Authored-By: <model name> <noreply@anthropic.com>` footer (existing history uses `Claude Opus 4.7 (1M context)`; match the model the session is actually running).
 - Local `git log --show-signature` may print "No signature" because `gpg.ssh.allowedSignersFile` isn't configured in this repo; that's a verification-config issue, not a signing failure. Confirm by checking for `gpgsig -----BEGIN SSH SIGNATURE-----` via `git cat-file -p HEAD`.
 
 ## Markdown style

@@ -193,7 +193,7 @@ dartrics analyze --strict-dismiss --fatal-warnings
 | Cap output for token budget | `--limit <n>` | Applied after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
 | Force rationale | `--explain <id>` | Repeatable; unions with auto-explain |
-| Drop auto-explain | `--no-auto-explain` | Recovers pre-0.1.0 silence |
+| Drop auto-explain | `--no-auto-explain` | Lean reports without rationale + refactor hints attached |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
 

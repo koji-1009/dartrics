@@ -55,7 +55,7 @@ Decades of software-engineering research has converted those felt reactions into
 
 ## The lens battery
 
-Nine lenses ship default-on. Six ship default-off:
+These lenses ship default-off (everything else in the catalogue below is on by default):
 
 - **Halstead Volume** — predictive value over cyclomatic complexity hasn't held up empirically; opt in if you want a token-weighted "size" reading
 - **Method Length** — high correlation with SLOC in production code, so emitting both is redundant noise. Opt in when you specifically want screen-real-estate (counts blanks + comments) instead of pure code volume
@@ -310,7 +310,7 @@ There is no third option of "ignore it again."
 | Cap output for token budget | `--limit <n>` | Applied after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
 | Force rationale | `--explain <id>` | Repeatable; unions with auto-explain |
-| Drop auto-explain | `--no-auto-explain` | Recovers pre-0.1.0 silence |
+| Drop auto-explain | `--no-auto-explain` | Lean reports without rationale + refactor hints attached |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
 | Inject metric catalogue once | `dartrics rules --reporter ai` | Feed once into a system prompt |
