@@ -87,74 +87,89 @@ class AiReporter implements Reporter {
     final keep = limit == null || entries.length <= limit!
         ? entries
         : entries.sublist(0, limit!);
-    final dropped = entries.length - keep.length;
     buf.writeln('violations:');
     for (final e in keep) {
-      final m = e.record;
-      final v = e.violation;
-      buf.writeln('  - file: ${m.file}');
-      if (v.id.isNotEmpty) buf.writeln('    id: ${v.id}');
-      buf
-        ..writeln('    line: ${m.scope.location.line}')
-        ..writeln('    scope: ${m.scope.name}')
-        ..writeln('    metric: ${v.metricId}')
-        ..writeln('    value: ${m.values[v.metricId]}')
-        ..writeln('    threshold: ${v.threshold}')
-        ..writeln('    severity: ${v.severity.name}');
-      if (v.scopeCoverage != null) {
-        buf.writeln('    coverage: ${v.scopeCoverage!.toStringAsFixed(2)}');
-      }
-      if (v.scopeBranchCoverage != null) {
-        buf.writeln(
-          '    branchCoverage: ${v.scopeBranchCoverage!.toStringAsFixed(2)}',
-        );
-      }
-      if (v.complexityJustified) {
-        buf.writeln('    complexityJustified: true');
-        if (v.complexityJustifiedBy != null) {
-          buf.writeln('    complexityJustifiedBy: ${v.complexityJustifiedBy}');
-        }
-        if (v.complexityJustifiedThreshold != null) {
-          buf.writeln(
-            '    complexityJustifiedThreshold: '
-            '${v.complexityJustifiedThreshold!.toStringAsFixed(2)}',
-          );
-        }
-      }
-      if (v.dismissed) {
-        buf.writeln('    dismissed: true');
-        if (v.dismissedFrom != null) {
-          buf.writeln('    dismissedFrom: ${v.dismissedFrom!.name}');
-        }
-        if (v.dismissReason != null && v.dismissReason!.isNotEmpty) {
-          buf.writeln('    dismissReason: ${_escape(v.dismissReason!)}');
-        }
-        if (v.dismissedBy != null) {
-          buf.writeln('    dismissedBy: ${_escape(v.dismissedBy!)}');
-        }
-        if (v.dismissedAt != null) {
-          buf.writeln(
-            '    dismissedAt: ${_escape(v.dismissedAt!.toIso8601String())}',
-          );
-        }
-      }
-      if (v.dismissalRejected != null) {
-        buf.writeln('    dismissalRejected: ${_escape(v.dismissalRejected!)}');
-      }
-      // `|2` pins the literal-block baseline to the parent indent + 2
-      // spaces. Without it, YAML auto-detects the indent from the first
-      // non-empty content line — a snippet whose centered line is
-      // deeper-indented than later lines (e.g. `}` closing an outer
-      // scope) makes the parser end the block early on the dedent.
-      // dapper round-trips the output through `package:yaml`, so the
-      // pin keeps the report parseable regardless of the source's
-      // indentation shape.
-      buf.writeln('    snippet: |2');
-      for (final line in _snippetFor(m.file, m.scope.location.line)) {
-        buf.writeln('      $line');
-      }
+      _writeViolation(buf, e);
     }
-    return dropped;
+    return entries.length - keep.length;
+  }
+
+  void _writeViolation(StringBuffer buf, _ViolationEntry e) {
+    final m = e.record;
+    final v = e.violation;
+    buf.writeln('  - file: ${m.file}');
+    if (v.id.isNotEmpty) buf.writeln('    id: ${v.id}');
+    buf
+      ..writeln('    line: ${m.scope.location.line}')
+      ..writeln('    scope: ${m.scope.name}')
+      ..writeln('    metric: ${v.metricId}')
+      ..writeln('    value: ${m.values[v.metricId]}')
+      ..writeln('    threshold: ${v.threshold}')
+      ..writeln('    severity: ${v.severity.name}');
+    _writeCoverage(buf, v);
+    _writeJustification(buf, v);
+    _writeDismiss(buf, v);
+    if (v.dismissalRejected != null) {
+      buf.writeln('    dismissalRejected: ${_escape(v.dismissalRejected!)}');
+    }
+    _writeSnippet(buf, m.file, m.scope.location.line);
+  }
+
+  void _writeCoverage(StringBuffer buf, MetricViolation v) {
+    if (v.scopeCoverage != null) {
+      buf.writeln('    coverage: ${v.scopeCoverage!.toStringAsFixed(2)}');
+    }
+    if (v.scopeBranchCoverage != null) {
+      buf.writeln(
+        '    branchCoverage: ${v.scopeBranchCoverage!.toStringAsFixed(2)}',
+      );
+    }
+  }
+
+  void _writeJustification(StringBuffer buf, MetricViolation v) {
+    if (!v.complexityJustified) return;
+    buf.writeln('    complexityJustified: true');
+    if (v.complexityJustifiedBy != null) {
+      buf.writeln('    complexityJustifiedBy: ${v.complexityJustifiedBy}');
+    }
+    if (v.complexityJustifiedThreshold != null) {
+      buf.writeln(
+        '    complexityJustifiedThreshold: '
+        '${v.complexityJustifiedThreshold!.toStringAsFixed(2)}',
+      );
+    }
+  }
+
+  void _writeDismiss(StringBuffer buf, MetricViolation v) {
+    if (!v.dismissed) return;
+    buf.writeln('    dismissed: true');
+    if (v.dismissedFrom != null) {
+      buf.writeln('    dismissedFrom: ${v.dismissedFrom!.name}');
+    }
+    if (v.dismissReason != null && v.dismissReason!.isNotEmpty) {
+      buf.writeln('    dismissReason: ${_escape(v.dismissReason!)}');
+    }
+    if (v.dismissedBy != null) {
+      buf.writeln('    dismissedBy: ${_escape(v.dismissedBy!)}');
+    }
+    if (v.dismissedAt != null) {
+      buf.writeln(
+        '    dismissedAt: ${_escape(v.dismissedAt!.toIso8601String())}',
+      );
+    }
+  }
+
+  /// Emits the snippet block. `|2` pins the literal-block baseline to
+  /// the parent indent + 2 spaces; without it, YAML auto-detect picks
+  /// the indent off the first non-empty content line and a snippet
+  /// whose centred line is deeper than later lines (e.g. closing `}`
+  /// at column 0) makes dapper's re-parse pass abort. See
+  /// `test/reporters/ai_reporter_test.dart` "round-trips through dapper".
+  void _writeSnippet(StringBuffer buf, String path, int line) {
+    buf.writeln('    snippet: |2');
+    for (final l in _snippetFor(path, line)) {
+      buf.writeln('      $l');
+    }
   }
 
   /// Highest-severity, lowest-priority-key violations come first.

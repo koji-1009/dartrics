@@ -98,22 +98,7 @@ class MdReporter implements Reporter {
       buf.writeln();
       for (final v in m.violations) {
         if (cap != null && written >= cap) break;
-        final cov = v.scopeCoverage;
-        final justified = v.complexityJustified;
-        final suffix = StringBuffer();
-        if (v.id.isNotEmpty) suffix.write(' · `${v.id}`');
-        if (cov != null) {
-          suffix.write(' · coverage ${(cov * 100).toStringAsFixed(0)}%');
-        }
-        if (justified) suffix.write(' · _earned_');
-        if (v.dismissed) suffix.write(' · _dismissed_');
-        if (v.dismissalRejected != null) {
-          suffix.write(' · _dismissal-rejected_');
-        }
-        buf.writeln(
-          '- ${v.metricId}: **${m.values[v.metricId]}** '
-          '(${v.severity.name} at ${v.threshold})$suffix',
-        );
+        _writeViolationBullet(buf, m, v);
         written += 1;
       }
       buf.writeln();
@@ -124,6 +109,30 @@ class MdReporter implements Reporter {
         ..writeln('_+ $dropped more violation(s) hidden by --limit_')
         ..writeln();
     }
+  }
+
+  void _writeViolationBullet(
+    StringBuffer buf,
+    MetricRecord m,
+    MetricViolation v,
+  ) {
+    buf.writeln(
+      '- ${v.metricId}: **${m.values[v.metricId]}** '
+      '(${v.severity.name} at ${v.threshold})${_bulletSuffix(v)}',
+    );
+  }
+
+  String _bulletSuffix(MetricViolation v) {
+    final suffix = StringBuffer();
+    if (v.id.isNotEmpty) suffix.write(' · `${v.id}`');
+    final cov = v.scopeCoverage;
+    if (cov != null) {
+      suffix.write(' · coverage ${(cov * 100).toStringAsFixed(0)}%');
+    }
+    if (v.complexityJustified) suffix.write(' · _earned_');
+    if (v.dismissed) suffix.write(' · _dismissed_');
+    if (v.dismissalRejected != null) suffix.write(' · _dismissal-rejected_');
+    return suffix.toString();
   }
 
   void _writeUnused(StringBuffer buf, AnalysisReport report) {
