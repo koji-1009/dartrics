@@ -81,17 +81,22 @@ List<UnusedDeclaration> detectUnusedResolved(
 /// Throws [FormatException] for unknown names so the caller (CLI /
 /// config loader) can surface a usage error rather than silently
 /// dropping every entry.
+///
+/// Accepted names are exactly [unusedFilterKindNames] — the same
+/// canonical strings the JSON `kind` field uses. The two Dart-keyword
+/// quirks (`klass`, `enumValue`) are translated through
+/// [unusedKindFromJsonName].
 Set<UnusedKind>? parseUnusedFilter(List<String> filter) {
   if (filter.isEmpty) return null;
   final out = <UnusedKind>{};
   for (final raw in filter) {
     final name = raw.trim();
     if (name.isEmpty) continue;
-    final match = _kindByName(name);
+    final match = unusedKindFromJsonName(name);
     if (match == null) {
       throw FormatException(
         'unused.filter: unknown kind "$raw". valid kinds: '
-        '${UnusedKind.values.map((k) => k.name).join(", ")}',
+        '${unusedFilterKindNames.join(", ")}',
       );
     }
     out.add(match);
@@ -99,12 +104,18 @@ Set<UnusedKind>? parseUnusedFilter(List<String> filter) {
   return out.isEmpty ? null : out;
 }
 
-UnusedKind? _kindByName(String name) {
-  for (final k in UnusedKind.values) {
-    if (k.name == name) return k;
-  }
-  return null;
-}
+/// Kind names accepted by `--filter`, in the order they should appear
+/// in `--help` text. Identical to the JSON `kind` field's value
+/// space — `unusedKindJsonName(kind)` returns one of these.
+const List<String> unusedFilterKindNames = [
+  'function',
+  'method',
+  'class',
+  'field',
+  'typedef',
+  'enum',
+  'extension',
+];
 
 Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
   final visited = <int>{};
@@ -646,11 +657,10 @@ void _emitFields(
 }
 
 /// Outgoing-edge collection for a single variable inside a
-/// [VariableDeclarationList]. The list-level shared type annotation and
-/// the parent declaration's metadata sit on the parent, not on each
-/// [VariableDeclaration], so per-variable emission has to walk them
-/// explicitly to avoid losing edges (e.g. `final UnitContext x;` would
-/// otherwise miss the reference to `UnitContext`).
+/// [VariableDeclarationList]. The list-level shared type annotation
+/// and the parent declaration's metadata sit on the parent, not on
+/// each [VariableDeclaration], so per-variable emission walks them
+/// explicitly to keep references on those nodes in scope.
 Set<int> _collectVariableOutgoing({
   required VariableDeclaration variable,
   required TypeAnnotation? sharedType,
@@ -887,8 +897,8 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
   @override
   void visitPatternField(PatternField node) {
     // Object-pattern destructuring (`case Foo(:final bar)`) accesses
-    // the field via the synthetic getter. Without this hook the
-    // detector misses the read and reports the field as unused.
+    // the field via [PatternField.element]; the synthetic accessor
+    // doesn't show up through any other AST hook.
     _record(node.element);
     super.visitPatternField(node);
   }
@@ -901,13 +911,9 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
 /// generics) — every member declaration registers its own edges on a
 /// separate node, so re-walking the body would double-count and, more
 /// importantly, make the container's reachability transitively root
-/// every member it owns.
-///
-/// The four overrides below are intentionally empty (no `super` call):
-/// each member kind has its own [_ResolvedDeclaration] tracking its
-/// own outgoing set, so the outer pass must stop at the member's
-/// boundary. They're collapsed onto single lines so the coverage tool
-/// doesn't surface the empty-body comment lines as uncovered.
+/// every member it owns. The four overrides below are intentionally
+/// empty (no `super` call) so the outer pass stops at each member's
+/// boundary.
 class _OuterOutgoingCollector extends _OutgoingCollector {
   _OuterOutgoingCollector(super.out, {required super.ownElementId});
 

@@ -324,7 +324,7 @@ To keep per-member reports actionable, the detector auto-roots:
 - the Object dunder names (`toString`, `hashCode`, `==`, `noSuchMethod`, `runtimeType`),
 - every public member of a class that carries a keep-alive annotation (`@JsonSerializable`, `@reflectiveTest`, every codegen preset). The reasoning: those annotations signal generator / reflective consumers that read members by name, which static analysis can't see.
 
-Use `--filter <kinds>` (or `unused: { filter: [...] }` in `analysis_options.yaml`) to narrow the report to specific `UnusedKind` names — `function`, `method`, `klass`, `field`, `typedef`, `enumValue`, `extension`. Unknown names exit with a usage error so a typo doesn't silently drop every entry. Repeat the flag or comma-separate (`--filter method,field`).
+Use `--filter <kinds>` (or `unused: { filter: [...] }` in `analysis_options.yaml`) to narrow the report to specific declaration kinds — `function`, `method`, `class`, `field`, `typedef`, `enum`, `extension`. `enum` targets individual enum constants; enum *type* declarations are filtered with `class`. Unknown names exit with a usage error so a typo doesn't silently drop every entry. Repeat the flag or comma-separate (`--filter method,field`).
 
 `dartrics unused --apply` deletes detected top-level declarations (functions / classes / typedefs / extensions) from disk in place — analogous to `dart fix --apply`. Refuses to run on a dirty git tree (override with `--force`), and skips files under `test/` / `integration_test/` by default (override with `--include-tests`). Instance methods, fields, and enum values are reported but not yet auto-deletable; the summary names how many were skipped for that reason. After applying, run `dart fix --apply` to clean up imports that became unused.
 

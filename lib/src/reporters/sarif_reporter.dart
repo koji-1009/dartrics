@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../metrics/metric_catalogue.dart';
 import '../models/analysis_report.dart';
+import '../models/unused_declaration.dart';
 import 'reporter.dart';
 import 'rules_reporter.dart';
 
@@ -46,7 +47,7 @@ class SarifReporter implements Reporter {
         'level': 'warning',
         'message': {
           'text':
-              'Public ${u.kind.name} `${u.name}` is never reached '
+              'Public ${unusedKindJsonName(u.kind)} `${u.name}` is never reached '
               'from any entry point.',
         },
         'locations': [

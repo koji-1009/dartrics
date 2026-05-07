@@ -150,11 +150,7 @@ void _processFile(
 /// without each replaceRange call having to know about its siblings.
 List<({int start, int end})> _mergeRanges(List<({int start, int end})> input) {
   if (input.isEmpty) return input;
-  final sorted = [...input]
-    ..sort((a, b) {
-      if (a.start != b.start) return a.start.compareTo(b.start);
-      return b.end.compareTo(a.end);
-    });
+  final sorted = [...input]..sort((a, b) => a.start.compareTo(b.start));
   final out = <({int start, int end})>[];
   var current = sorted.first;
   for (var i = 1; i < sorted.length; i++) {

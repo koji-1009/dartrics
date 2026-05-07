@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../models/analysis_report.dart';
+import '../models/unused_declaration.dart';
 import 'reporter.dart';
 
 /// Default reporter — prints a one-line summary plus per-violation entries.
@@ -27,7 +28,7 @@ class ConsoleReporter implements Reporter {
     for (final u in report.unused) {
       sink.writeln(
         '${u.location.path}:${u.location.line} '
-        '[unused] ${u.kind.name} ${u.name}',
+        '[unused] ${unusedKindJsonName(u.kind)} ${u.name}',
       );
     }
   }

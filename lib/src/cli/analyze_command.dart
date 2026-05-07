@@ -33,11 +33,12 @@ class AnalyzeCommand extends Command<int> {
     argParser.addMultiOption(
       'filter',
       help:
-          'Narrow the unused-declaration report to specific UnusedKind '
-          'names (function, method, klass, field, typedef, enumValue, '
-          'extension). Repeat or comma-separate. Defaults to every '
-          'kind. CLI value overrides any `unused: { filter: [...] }` '
-          'block in analysis_options.yaml.',
+          'Narrow the unused-declaration report to specific declaration '
+          'kinds (function, method, class, field, typedef, enum, '
+          'extension). `enum` targets individual enum constants; enum '
+          'type declarations are filtered with `class`. Repeat or '
+          'comma-separate. Defaults to every kind. CLI value overrides '
+          'any `unused: { filter: [...] }` block in analysis_options.yaml.',
       splitCommas: true,
     );
   }

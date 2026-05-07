@@ -361,10 +361,7 @@ enum E {
         location: SourceLocation(path: f.path, line: 6, column: 3),
       ),
     ], includeTests: false);
-    expect(
-      results.map((r) => r.outcome),
-      everyElement(ApplyOutcome.deleted),
-    );
+    expect(results.map((r) => r.outcome), everyElement(ApplyOutcome.deleted));
     final after = f.readAsStringSync();
     expect(after, isNot(contains('mMethod')));
     expect(after, isNot(contains('exMethod')));
@@ -393,10 +390,7 @@ void main() {}
         location: SourceLocation(path: f.path, line: 1, column: 1),
       ),
     ], includeTests: false);
-    expect(
-      results.map((r) => r.outcome),
-      everyElement(ApplyOutcome.deleted),
-    );
+    expect(results.map((r) => r.outcome), everyElement(ApplyOutcome.deleted));
     final after = f.readAsStringSync();
     expect(after, isNot(contains('class Drop')));
     expect(after, isNot(contains('inner')));
@@ -423,10 +417,7 @@ void main() {}
         location: SourceLocation(path: f.path, line: 2, column: 1),
       ),
     ], includeTests: false);
-    expect(
-      results.map((r) => r.outcome),
-      everyElement(ApplyOutcome.deleted),
-    );
+    expect(results.map((r) => r.outcome), everyElement(ApplyOutcome.deleted));
     final after = f.readAsStringSync();
     expect(after, 'void main() {}\n');
   });

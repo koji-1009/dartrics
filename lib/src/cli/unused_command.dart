@@ -53,11 +53,13 @@ class UnusedCommand extends Command<int> {
       ..addMultiOption(
         'filter',
         help:
-            'Narrow the report to specific UnusedKind names. Repeat or '
+            'Narrow the report to specific declaration kinds. Repeat or '
             'comma-separate (e.g. --filter method,field). Valid kinds: '
-            'function, method, klass, field, typedef, enumValue, '
-            'extension. Defaults to every kind. CLI value overrides any '
-            '`unused: { filter: [...] }` block in analysis_options.yaml.',
+            'function, method, class, field, typedef, enum, extension. '
+            '`enum` targets individual enum constants; enum type '
+            'declarations are filtered with `class`. Defaults to every '
+            'kind. CLI value overrides any `unused: { filter: [...] }` '
+            'block in analysis_options.yaml.',
         splitCommas: true,
       );
   }

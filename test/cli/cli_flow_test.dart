@@ -43,34 +43,39 @@ class UnusedThing {}
     },
   );
 
-  test('unused --filter narrows the report to the requested kind', () async {
-    final outFile = File('${dir.path}/u-filter.json');
-    final code = await runQuietly([
-      'unused',
-      '${dir.path}/lib',
-      '--reporter',
-      'json',
-      '--output',
-      outFile.path,
-      '--filter',
-      'klass',
-      '--snapshot',
-      'none',
-      '--config',
-      '${dir.path}/no.yaml',
-    ]);
-    expect(code, 0);
-    final body = jsonDecode(outFile.readAsStringSync()) as Map<String, Object?>;
-    final entries = body['unused']! as List<Object?>;
-    for (final e in entries) {
-      expect((e! as Map<String, Object?>)['kind'], 'klass');
-    }
-    // The fixture's UnusedThing class still surfaces under --filter klass.
-    expect(
-      entries.map((e) => (e! as Map<String, Object?>)['name']),
-      contains('UnusedThing'),
-    );
-  });
+  test(
+    'unused --filter narrows the report via the user-facing `class` alias',
+    () async {
+      final outFile = File('${dir.path}/u-filter.json');
+      final code = await runQuietly([
+        'unused',
+        '${dir.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        outFile.path,
+        '--filter',
+        'class',
+        '--snapshot',
+        'none',
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      expect(code, 0);
+      final body =
+          jsonDecode(outFile.readAsStringSync()) as Map<String, Object?>;
+      final entries = body['unused']! as List<Object?>;
+      // JSON output uses the same canonical spelling as `--filter`
+      // so the user-facing names line up everywhere.
+      for (final e in entries) {
+        expect((e! as Map<String, Object?>)['kind'], 'class');
+      }
+      expect(
+        entries.map((e) => (e! as Map<String, Object?>)['name']),
+        contains('UnusedThing'),
+      );
+    },
+  );
 
   test(
     'unused --filter rejects unknown kind names with usage exit code',

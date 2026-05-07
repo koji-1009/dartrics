@@ -210,6 +210,32 @@ class UnusedClass {}
     expect(() => parseUnusedFilter(['bogus']), throwsA(isA<FormatException>()));
   });
 
+  test('parseUnusedFilter maps `class` / `enum` to the corresponding '
+      'kinds and rejects the internal Dart-only spellings', () {
+    expect(parseUnusedFilter(['class']), {UnusedKind.klass});
+    expect(parseUnusedFilter(['enum']), {UnusedKind.enumValue});
+    expect(() => parseUnusedFilter(['klass']), throwsA(isA<FormatException>()));
+    expect(
+      () => parseUnusedFilter(['enumValue']),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('unusedFilterKindNames is the canonical kind name set', () {
+    expect(
+      unusedFilterKindNames,
+      equals([
+        'function',
+        'method',
+        'class',
+        'field',
+        'typedef',
+        'enum',
+        'extension',
+      ]),
+    );
+  });
+
   test('export show: re-exported class and its public members are roots '
       'under excludeExported', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''
@@ -542,18 +568,16 @@ class Point {
     expect(names, contains('y'));
   });
 
-  test(
-    'field metadata annotations contribute outgoing edges, so '
-    '`@annot final Marker x;` keeps both the typedef and the '
-    'annotation class alive',
-    () async {
-      await File('${dir.path}/lib/foo.dart').writeAsString('''
+  test('field metadata annotations contribute outgoing edges, so '
+      '`@annot final Marker x;` keeps both the typedef and the '
+      'annotation class alive', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
 import 'src/a.dart';
 void main() {
   print(Holder().label);
 }
 ''');
-      await File('${dir.path}/lib/src/a.dart').writeAsString('''
+    await File('${dir.path}/lib/src/a.dart').writeAsString('''
 typedef Marker = String;
 class Annot {
   const Annot();
@@ -565,19 +589,16 @@ class Holder {
   final Marker label = 'x';
 }
 ''');
-      final unused = await detectIn(
-        const UnusedConfig(excludeExported: false),
-      );
-      final names = unused.map((u) => u.name).toList();
-      // The shared type `Marker` is on the parent FieldDeclaration; the
-      // annotation `@annot` (and its element `Annot`) live in
-      // metadata. Both must reach through the field's outgoing set so
-      // they don't get reported as unused.
-      expect(names, isNot(contains('Marker')));
-      expect(names, isNot(contains('Annot')));
-      expect(names, isNot(contains('annot')));
-    },
-  );
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final names = unused.map((u) => u.name).toList();
+    // The shared type `Marker` is on the parent FieldDeclaration; the
+    // annotation `@annot` (and its element `Annot`) live in
+    // metadata. Both must reach through the field's outgoing set so
+    // they don't get reported as unused.
+    expect(names, isNot(contains('Marker')));
+    expect(names, isNot(contains('Annot')));
+    expect(names, isNot(contains('annot')));
+  });
 
   test(
     'explicit constructor declarations are walked but not separately '

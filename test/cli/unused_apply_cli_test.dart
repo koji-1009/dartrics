@@ -150,35 +150,32 @@ class Unused {
       },
     );
 
-    test(
-      'top-level const fields are now deletable through the CLI',
-      () async {
-        // The 0.2.0 detector flags `const FOO = 42;` as
-        // UnusedKind.field; apply now handles fields end-to-end so
-        // the source is rewritten on success.
-        await File('${dir.path}/lib/src/sample.dart').writeAsString('''
+    test('top-level const fields are now deletable through the CLI', () async {
+      // The 0.2.0 detector flags `const FOO = 42;` as
+      // UnusedKind.field; apply now handles fields end-to-end so
+      // the source is rewritten on success.
+      await File('${dir.path}/lib/src/sample.dart').writeAsString('''
 const FOO = 42;
 ''');
-        final code = await runQuietly([
-          'unused',
-          '--root',
-          dir.path,
-          '--reporter',
-          'json',
-          '--output',
-          '${dir.path}/r.json',
-          '--config',
-          '${dir.path}/no.yaml',
-          '--apply',
-          '--force',
-        ]);
-        expect(code, 0);
-        final after = await File(
-          '${dir.path}/lib/src/sample.dart',
-        ).readAsString();
-        expect(after.contains('FOO'), isFalse);
-      },
-    );
+      final code = await runQuietly([
+        'unused',
+        '--root',
+        dir.path,
+        '--reporter',
+        'json',
+        '--output',
+        '${dir.path}/r.json',
+        '--config',
+        '${dir.path}/no.yaml',
+        '--apply',
+        '--force',
+      ]);
+      expect(code, 0);
+      final after = await File(
+        '${dir.path}/lib/src/sample.dart',
+      ).readAsString();
+      expect(after.contains('FOO'), isFalse);
+    });
 
     test(
       '`--filter method --apply` deletes only methods, leaves other kinds',
