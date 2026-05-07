@@ -5,6 +5,7 @@ import 'cyclomatic_complexity.dart';
 import 'halstead.dart';
 import 'max_nesting_level.dart';
 import 'method_length.dart';
+import 'null_aware_chain_depth.dart';
 import 'number_of_parameters.dart';
 import 'source_lines_of_code.dart';
 import 'widget_tree_depth.dart';
@@ -23,4 +24,5 @@ const List<FunctionMetric> defaultFunctionMetrics = [
   SourceLinesOfCode(),
   MethodLength(),
   WidgetTreeDepth(),
+  NullAwareChainDepth(),
 ];

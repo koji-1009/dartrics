@@ -15,6 +15,7 @@ const Map<String, num> defaultMetricThresholds = {
   'number-of-parameters': 4,
   'boolean-trap': 2,
   'widget-tree-depth': 7,
+  'null-aware-chain-depth': 4,
 };
 
 /// Aggregates every default metric calculator into a list of

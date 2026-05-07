@@ -74,8 +74,9 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | `cognitive-complexity` | "It's not just branchy, it's *tangled*." | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (Sonar 2018) | 15 |
 | `maximum-nesting-level` | "I can't tell which scope I'm in." | Max depth of `if`, `for`, `while`, `do`, `switch`, `try`, closure blocks. | 4 |
 | `number-of-parameters` | "Too many knobs at the call site." | Positional + named + optional. | 4 |
-| `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of `bool`-typed parameters. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
+| `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of *positional* `bool`-typed parameters. Named bool parameters are intentionally not counted because Dart's named call-site `foo(animated: true)` carries the intent on the spot. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
 | `widget-tree-depth` (off) | "This Flutter `build()` is six `Container(child: ...)` chains deep." | Deepest chain of nested constructor calls in the body. Complement to `maximum-nesting-level`, which only counts control-flow constructs and gives 0 on a healthy declarative tree. | opt-in (7) |
+| `null-aware-chain-depth` (off) | "I can't track `a?.b?.c?.d?.e` in my head." | Longest chain of `?.` operators in any expression. Each `?.` is an implicit non-null guard the reader holds in working memory; deep chains read as conditional dataflow. | opt-in (4) |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
 | `method-length` (off) | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | opt-in |
 | `halstead-volume` (off) | — | `N · log₂(η)`. Token-based program "size". (Halstead 1977) | opt-in |

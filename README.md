@@ -86,6 +86,7 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 | Number Of Parameters                  | on      | —                | positional + named + optional                                               |
 | Boolean Trap                          | on      | McConnell 2004; Bloch 2018 | count of `bool`-typed parameters; default warning 2                       |
 | Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects via `dartrics: { metrics: { widget-tree-depth: { enabled: true } } }` |
+| Null-Aware Chain Depth                | **off** | —                | longest chain of `?.` operators; default warning 4. Each `?.` step is an implicit non-null guard the reader holds in working memory — `a?.b?.c?.d?.e` reads at depth 5 |
 | Source Lines Of Code                  | on      | —                | non-blank, non-comment-only lines                                           |
 | Method Length                         | **off** | —                | total source lines spanned by the body. Off by default — high correlation with SLOC in production code |
 | Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size" |

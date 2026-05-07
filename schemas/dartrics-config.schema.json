@@ -24,6 +24,7 @@
               "number-of-parameters",
               "boolean-trap",
               "widget-tree-depth",
+              "null-aware-chain-depth",
               "source-lines-of-code",
               "method-length",
               "halstead-volume",
