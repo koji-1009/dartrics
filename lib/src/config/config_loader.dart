@@ -53,62 +53,79 @@ DismissalConfig _parseDismissals(Object? node) {
       'dartrics.dismissals must be a map (got ${node.runtimeType})',
     );
   }
-  final sourcesNode = node['sources'];
-  bool comment;
-  bool yamlSource;
-  if (sourcesNode == null) {
-    // Bare `dismissals:` block — both channels on by default so the user
-    // does not have to enumerate them.
-    comment = true;
-    yamlSource = true;
-  } else if (sourcesNode is YamlMap) {
-    comment = sourcesNode['comment'] as bool? ?? true;
-    yamlSource = sourcesNode['yaml'] as bool? ?? true;
-  } else {
-    throw ConfigException(
-      'dartrics.dismissals.sources must be a map (got '
-      '${sourcesNode.runtimeType})',
-    );
-  }
+  final (:comment, :yamlSource) = _parseDismissalSources(node['sources']);
   if (!comment && !yamlSource) {
     throw ConfigException(
       'dartrics.dismissals: at least one dismissal source must be enabled',
     );
   }
-  final requireReason = node['requireReason'] as bool? ?? true;
-  final minReasonRaw = node['minReasonLength'];
-  final minReason = minReasonRaw is int
-      ? minReasonRaw
-      : defaultDismissalMinReasonLength;
-  if (minReason < 0) {
-    throw ConfigException(
-      'dartrics.dismissals.minReasonLength must be non-negative',
-    );
-  }
-  final requireAuthor = node['requireAuthor'] as bool? ?? false;
-  if (requireAuthor && !yamlSource) {
-    throw ConfigException(
-      'dartrics.dismissals.requireAuthor needs sources.yaml: true',
-    );
-  }
-  final requireTimestamp = node['requireTimestamp'] as bool? ?? false;
-  if (requireTimestamp && !yamlSource) {
-    throw ConfigException(
-      'dartrics.dismissals.requireTimestamp needs sources.yaml: true',
-    );
-  }
-  final warnStale = node['warnStale'] as bool? ?? true;
+  final minReasonLength = _parseMinReasonLength(node['minReasonLength']);
+  final requireAuthor = _parseGatedBool(
+    node['requireAuthor'],
+    yamlSource: yamlSource,
+    key: 'requireAuthor',
+  );
+  final requireTimestamp = _parseGatedBool(
+    node['requireTimestamp'],
+    yamlSource: yamlSource,
+    key: 'requireTimestamp',
+  );
   final yamlPath = node['yamlPath'];
   return DismissalConfig(
     commentSource: comment,
     yamlSource: yamlSource,
-    requireReason: requireReason,
-    minReasonLength: minReason,
+    requireReason: node['requireReason'] as bool? ?? true,
+    minReasonLength: minReasonLength,
     requireAuthor: requireAuthor,
     requireTimestamp: requireTimestamp,
-    warnStale: warnStale,
+    warnStale: node['warnStale'] as bool? ?? true,
     yamlPath: yamlPath is String ? yamlPath : null,
   );
+}
+
+/// Resolves the `sources:` sub-block. Three shapes:
+///
+/// - absent → both channels on (bare `dismissals:` is the AI-friendly
+///   default so the user does not have to enumerate them)
+/// - YamlMap with explicit `comment` / `yaml` keys → user override
+/// - anything else → `ConfigException`
+({bool comment, bool yamlSource}) _parseDismissalSources(Object? node) {
+  if (node == null) return (comment: true, yamlSource: true);
+  if (node is! YamlMap) {
+    throw ConfigException(
+      'dartrics.dismissals.sources must be a map (got ${node.runtimeType})',
+    );
+  }
+  return (
+    comment: node['comment'] as bool? ?? true,
+    yamlSource: node['yaml'] as bool? ?? true,
+  );
+}
+
+int _parseMinReasonLength(Object? raw) {
+  final value = raw is int ? raw : defaultDismissalMinReasonLength;
+  if (value < 0) {
+    throw ConfigException(
+      'dartrics.dismissals.minReasonLength must be non-negative',
+    );
+  }
+  return value;
+}
+
+/// Parses a `bool` knob that is only meaningful when the YAML source
+/// is enabled (the carried metadata field lives on YAML entries, not
+/// on `// dartrics:dismiss` comments). [key] is interpolated into the
+/// error message to keep both call-site error messages identical.
+bool _parseGatedBool(
+  Object? raw, {
+  required bool yamlSource,
+  required String key,
+}) {
+  final value = raw as bool? ?? false;
+  if (value && !yamlSource) {
+    throw ConfigException('dartrics.dismissals.$key needs sources.yaml: true');
+  }
+  return value;
 }
 
 SnapshotConfig _parseSnapshot(Object? node) {

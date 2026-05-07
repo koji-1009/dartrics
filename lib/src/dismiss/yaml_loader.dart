@@ -53,54 +53,52 @@ Dismissal _parseEntry(
   required String path,
   required int index,
 }) {
-  final filePath = entry['file'];
-  final scope = entry['scope'];
-  final metric = entry['metric'];
-  if (filePath is! String) {
-    throw ConfigException(
-      '$path: dismissals[$index].file is required and must be a string',
-    );
-  }
-  if (scope is! String) {
-    throw ConfigException(
-      '$path: dismissals[$index].scope is required and must be a string',
-    );
-  }
-  if (metric is! String) {
-    throw ConfigException(
-      '$path: dismissals[$index].metric is required and must be a string',
-    );
-  }
   final reason = entry['reason'];
   final by = entry['by'];
-  final atRaw = entry['at'];
-  DateTime? at;
-  if (atRaw != null) {
-    if (atRaw is DateTime) {
-      at = atRaw;
-    } else if (atRaw is String) {
-      try {
-        at = DateTime.parse(atRaw);
-      } on FormatException catch (e) {
-        throw ConfigException(
-          '$path: dismissals[$index].at is not a valid ISO-8601 timestamp '
-          '($atRaw): ${e.message}',
-        );
-      }
-    } else {
-      throw ConfigException(
-        '$path: dismissals[$index].at must be a string or timestamp '
-        '(got ${atRaw.runtimeType})',
-      );
-    }
-  }
   return Dismissal(
-    file: filePath,
-    scope: scope,
-    metricId: metric,
+    file: _requireString(entry, 'file', path: path, index: index),
+    scope: _requireString(entry, 'scope', path: path, index: index),
+    metricId: _requireString(entry, 'metric', path: path, index: index),
     reason: reason is String ? reason : '',
     source: DismissalSource.yaml,
     by: by is String ? by : null,
-    at: at,
+    at: _parseAt(entry['at'], path: path, index: index),
   );
+}
+
+String _requireString(
+  YamlMap entry,
+  String key, {
+  required String path,
+  required int index,
+}) {
+  final value = entry[key];
+  if (value is! String) {
+    throw ConfigException(
+      '$path: dismissals[$index].$key is required and must be a string',
+    );
+  }
+  return value;
+}
+
+/// `at:` is optional and accepts either a YAML-native timestamp scalar
+/// (which `package:yaml` already decodes to [DateTime]) or an ISO-8601
+/// string. Anything else is a `ConfigException`.
+DateTime? _parseAt(Object? raw, {required String path, required int index}) {
+  if (raw == null) return null;
+  if (raw is DateTime) return raw;
+  if (raw is! String) {
+    throw ConfigException(
+      '$path: dismissals[$index].at must be a string or timestamp '
+      '(got ${raw.runtimeType})',
+    );
+  }
+  try {
+    return DateTime.parse(raw);
+  } on FormatException catch (e) {
+    throw ConfigException(
+      '$path: dismissals[$index].at is not a valid ISO-8601 timestamp '
+      '($raw): ${e.message}',
+    );
+  }
 }

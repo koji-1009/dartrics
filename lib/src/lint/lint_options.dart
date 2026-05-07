@@ -78,26 +78,33 @@ class LintOptions {
     if (root is! YamlMap) return defaults;
     final dartrics = root['dartrics'];
     if (dartrics is! YamlMap) return defaults;
-    final flutter = dartrics['flutter'] as bool? ?? true;
-    final test = dartrics['test'] as bool? ?? true;
-    final metrics = dartrics['metrics'];
-    final result = <String, num>{};
-    if (metrics is YamlMap) {
-      for (final entry in metrics.entries) {
-        final key = entry.key.toString();
-        final value = entry.value;
-        if (value is YamlMap) {
-          final warning = value['warning'];
-          if (warning is num) result[key] = warning;
-        } else if (value is num) {
-          result[key] = value;
-        }
-      }
-    }
     return LintOptions(
-      warningThresholdById: result,
-      flutter: flutter,
-      test: test,
+      warningThresholdById: _parseThresholds(dartrics['metrics']),
+      flutter: dartrics['flutter'] as bool? ?? true,
+      test: dartrics['test'] as bool? ?? true,
     );
+  }
+
+  static Map<String, num> _parseThresholds(Object? node) {
+    if (node is! YamlMap) return const {};
+    final result = <String, num>{};
+    for (final entry in node.entries) {
+      final warning = _warningValue(entry.value);
+      if (warning != null) result[entry.key.toString()] = warning;
+    }
+    return result;
+  }
+
+  /// Resolves the per-metric YAML value into a single `warning` scalar.
+  /// Accepts either the long form `{ warning: <n> }` or the short form
+  /// `<n>`; anything else (including `false` or unrelated keys) returns
+  /// `null`, leaving the metric on its built-in default.
+  static num? _warningValue(Object? raw) {
+    if (raw is YamlMap) {
+      final w = raw['warning'];
+      return w is num ? w : null;
+    }
+    if (raw is num) return raw;
+    return null;
   }
 }

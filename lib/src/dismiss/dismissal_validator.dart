@@ -28,27 +28,38 @@ class DismissalRejected extends DismissalCheck {
 /// [DismissalRejected]. Does not mutate state, so it is trivially
 /// composable from both the comment scanner and the YAML loader.
 DismissalCheck validateDismissal(Dismissal d, DismissalConfig cfg) {
-  if (cfg.requireReason) {
-    final trimmed = d.reason.trim();
-    if (trimmed.isEmpty) {
-      return DismissalRejected(d, 'reason missing');
-    }
-    if (trimmed.length < cfg.minReasonLength) {
-      return DismissalRejected(
-        d,
-        'reason too short (need >= ${cfg.minReasonLength})',
-      );
-    }
-  }
-  // `by:` / `at:` only exist on YAML entries — config_loader already
-  // refuses to enable these knobs without sources.yaml.
+  final reasonRejection = _checkReason(d, cfg);
+  if (reasonRejection != null) return reasonRejection;
   if (d.source == DismissalSource.yaml) {
-    if (cfg.requireAuthor && (d.by == null || d.by!.trim().isEmpty)) {
-      return DismissalRejected(d, 'missing required `by:` field');
-    }
-    if (cfg.requireTimestamp && d.at == null) {
-      return DismissalRejected(d, 'missing required `at:` field');
-    }
+    final yamlRejection = _checkYamlMetadata(d, cfg);
+    if (yamlRejection != null) return yamlRejection;
   }
   return DismissalAccepted(d);
+}
+
+DismissalRejected? _checkReason(Dismissal d, DismissalConfig cfg) {
+  if (!cfg.requireReason) return null;
+  final trimmed = d.reason.trim();
+  if (trimmed.isEmpty) return DismissalRejected(d, 'reason missing');
+  if (trimmed.length < cfg.minReasonLength) {
+    return DismissalRejected(
+      d,
+      'reason too short (need >= ${cfg.minReasonLength})',
+    );
+  }
+  return null;
+}
+
+/// `by:` / `at:` only exist on YAML entries — `config_loader` already
+/// refuses to enable [DismissalConfig.requireAuthor] /
+/// [DismissalConfig.requireTimestamp] without `sources.yaml: true`, so
+/// this helper can assume the dismissal is already YAML-sourced.
+DismissalRejected? _checkYamlMetadata(Dismissal d, DismissalConfig cfg) {
+  if (cfg.requireAuthor && (d.by == null || d.by!.trim().isEmpty)) {
+    return DismissalRejected(d, 'missing required `by:` field');
+  }
+  if (cfg.requireTimestamp && d.at == null) {
+    return DismissalRejected(d, 'missing required `at:` field');
+  }
+  return null;
 }
