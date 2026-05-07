@@ -2,6 +2,14 @@
 
 Dart code-quality metrics and unused public-API detection, designed as the AI-loop counterpart of `dart analyze`.
 
+## In five lines
+
+- **What it does.** Computes a battery of code-quality metrics (CK, Halstead-volume, McCabe, Martin, Cognitive Complexity, plus Dart-3-idiom lenses) on top of `package:analyzer` and detects unreachable public API à la Periphery.
+- **Who it's for.** AI agents and the humans driving them. Every report mode is shaped to be *consumed*, not just read — most prominently `--reporter ai` (token-efficient YAML-ish, sorted by actionability).
+- **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons. The CLI ships the manual (`dartrics manual`), an explain-by-id (`dartrics explain`), and a regression diff (`dartrics regression`) — designed for a *see → understand → fix → verify* loop.
+- **Quick start.** `dart pub global activate dartrics` then `dartrics analyze lib/ --reporter ai`. JSON Schemas for `analysis_options.yaml` and the report payload live under `schemas/`.
+- **Status.** `0.x` — all output formats and CLI flags are still subject to refinement; pin a version if you depend on the JSON shape.
+
 `dartrics` re-implements the academically-grounded metric suite (CK, Halstead, McCabe, Martin, Cognitive Complexity) on top of `package:analyzer`, augments `dart analyze`'s `dead_code` lint with a Periphery-style public-API reachability pass, and ships a `--reporter ai` output plus a `regression` subcommand that gives AI agents a tight refactor loop: **see violations → understand them → fix → verify the fix actually improved things**.
 
 ## Install
