@@ -87,7 +87,7 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 | Boolean Trap                          | on      | McConnell 2004; Bloch 2018 | count of `bool`-typed parameters; default warning 2                       |
 | Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects via `dartrics: { metrics: { widget-tree-depth: { enabled: true } } }` |
 | Source Lines Of Code                  | on      | —                | non-blank, non-comment-only lines                                           |
-| Method Length                         | on      | —                | total source lines spanned by the body                                      |
+| Method Length                         | **off** | —                | total source lines spanned by the body. Off by default — high correlation with SLOC in production code |
 | Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size" |
 
 ### Class level
@@ -110,8 +110,8 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK 1994 are **
 | Efferent Coupling (Ce)          | distinct project-internal + `package:` dependencies (excludes `dart:*`) |
 | Afferent Coupling (Ca)          | incoming internal-import edges                                          |
 | Instability (I)                 | `Ce / (Ca + Ce)`                                                        |
-| Abstractness (A)                | abstract-class + mixin / total class-like declarations                  |
-| Distance from Main Sequence (D) | `\|A + I − 1\|`                                                         |
+| Abstractness (A) **off**        | abstract-class + mixin / total class-like declarations. Off by default — Martin's framing assumes "package = release unit", and Dart's 1-file-1-library granularity makes the per-file value brittle |
+| Distance from Main Sequence (D) **off** | `\|A + I − 1\|`. Off by default for the same reason as `abstractness` |
 
 Each metric exposes `rationale`, `refactorHints`, and `polarity` (`down` / `up` / `neutral`) so AI agents can act on a violation without re-deriving the metric's intent and so the regression diff knows which direction is "healthier".
 

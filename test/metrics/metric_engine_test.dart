@@ -217,17 +217,18 @@ class Hello extends StatelessWidget {
 
       final records = MetricEngine().analyzeResolved(units);
 
-      // build() is measured for every default metric, regardless of
+      // build() is measured for every default-on metric, regardless of
       // flutter mode — control-flow nesting on a declarative Widget
       // tree is naturally 0, so the metric doesn't false-positive on
-      // healthy code, and method-length is informative.
+      // healthy code. (method-length became default-off in 0.1.0
+      // because of its high correlation with SLOC; opt-in only.)
       final buildKeys = records
           .firstWhere((r) => r.scope.name == 'Hello.build')
           .values
           .keys
           .toSet();
       expect(buildKeys, contains('maximum-nesting-level'));
-      expect(buildKeys, contains('method-length'));
+      expect(buildKeys, contains('source-lines-of-code'));
       expect(buildKeys, contains('cyclomatic-complexity'));
 
       // The constructor still skips number-of-parameters under the
@@ -369,8 +370,13 @@ class SampleTest {
     expect(clsKeys, isNot(contains('class-length')));
     expect(clsKeys, isNot(contains('number-of-methods')));
 
-    // Pinning test:false re-enables the full battery on test files.
-    final strictRecords = MetricEngine(test: false).analyzeResolved(units);
+    // Pinning test:false re-enables size-and-shape metrics on test
+    // files. method-length is default-off as of 0.1.0, so explicitly
+    // opt it in via thresholds for this assertion.
+    final strictRecords = MetricEngine(
+      test: false,
+      thresholds: const {'method-length': MetricThresholds(enabled: true)},
+    ).analyzeResolved(units);
     final fnStrict = strictRecords
         .firstWhere((r) => r.scope.name == 'SampleTest.test_arrange_act_assert')
         .values
@@ -525,7 +531,10 @@ end_of_record
       final runner = AnalyzerRunner(roots: [dir.path]);
       final units = await runner.resolveAll();
       final engine = MetricEngine(
-        thresholds: const {'method-length': MetricThresholds(warning: 1)},
+        thresholds: const {
+          // method-length is default-off; opt in for this assertion.
+          'method-length': MetricThresholds(enabled: true, warning: 1),
+        },
         coverage: coverage,
       );
       final records = engine.analyzeResolved(units);

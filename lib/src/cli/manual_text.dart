@@ -55,7 +55,12 @@ Decades of software-engineering research has converted those felt reactions into
 
 ## The lens battery
 
-Twelve lenses ship default-on. Two ship default-off — Halstead Volume because its predictive value over cyclomatic complexity has not held up empirically, and `widget-tree-depth` because it's a Flutter-specific signal that wouldn't fire on most non-Flutter Dart code. They remain available but you must opt them in.
+Nine lenses ship default-on. Five ship default-off:
+
+- **Halstead Volume** — predictive value over cyclomatic complexity hasn't held up empirically; opt in if you want a token-weighted "size" reading
+- **Method Length** — high correlation with SLOC in production code, so emitting both is redundant noise. Opt in when you specifically want screen-real-estate (counts blanks + comments) instead of pure code volume
+- **Abstractness** / **Distance from Main Sequence** — Martin's framing assumes "package = release unit"; Dart's 1-file-1-library granularity makes the per-file values brittle until aggregation lands
+- **Widget Tree Depth** — Flutter-specific; opt in for projects that want the deep-`Container(child: ...)` reading
 
 Halstead Difficulty / Effort and the Maintainability Index were dropped in 0.1.0: both are pure derivations of the underlying token counts and `CC + V + LOC` respectively — they add no orthogonal signal beyond what the underlying lenses already provide.
 
@@ -72,7 +77,7 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of `bool`-typed parameters. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
 | `widget-tree-depth` (off) | "This Flutter `build()` is six `Container(child: ...)` chains deep." | Deepest chain of nested constructor calls in the body. Complement to `maximum-nesting-level`, which only counts control-flow constructs and gives 0 on a healthy declarative tree. | opt-in (7) |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
-| `method-length` | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | — |
+| `method-length` (off) | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | opt-in |
 | `halstead-volume` (off) | — | `N · log₂(η)`. Token-based program "size". (Halstead 1977) | opt-in |
 
 ### Class lenses
@@ -95,8 +100,8 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 | `efferent-coupling` (Ce) | "This file pulls on a lot of strings." | Distinct project-internal + `package:` dependencies (excludes `dart:*`). |
 | `afferent-coupling` (Ca) | "Touching this file ripples everywhere." | Incoming internal-import edges. |
 | `instability` (I) | "This is a fragile hub." | `Ce / (Ca + Ce)`. 0 = maximally stable, 1 = maximally unstable. |
-| `abstractness` (A) | — | Abstract / mixin types ÷ total class-like declarations. |
-| `distance-from-main-sequence` (D) | "It's a concrete file that everyone depends on, or an abstract leaf." | `\|A + I − 1\|`. Both extremes are smells. |
+| `abstractness` (A, off) | — | Abstract / mixin types ÷ total class-like declarations. Opt-in. |
+| `distance-from-main-sequence` (D, off) | "It's a concrete file that everyone depends on, or an abstract leaf." | `\|A + I − 1\|`. Both extremes are smells. Opt-in (depends on `abstractness`). |
 
 ## Polarity — which way is healthier
 

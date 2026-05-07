@@ -81,16 +81,33 @@ class Instability extends LibraryMetric {
 
 /// Abstractness (A, Martin 1994) — fraction of class-like types in this
 /// file that are abstract or mixins.
+///
+/// Off by default in 0.1.0: Martin's original metric assumes
+/// "package = release unit", and Dart's 1-file-1-library convention
+/// gives the metric a granularity that's too fine for the design-layer
+/// reading it was built for. A file containing one `abstract class Foo`
+/// scores A=1.0, which says nothing about the broader design layer the
+/// file participates in. The metric still makes sense aggregated at
+/// directory or package level, but dartrics doesn't yet do that
+/// aggregation — opt in when you've decided file-level abstractness
+/// is the reading you want.
 class Abstractness extends LibraryMetric {
   const Abstractness();
   @override
   String get id => 'abstractness';
   @override
+  bool get defaultEnabled => false;
+  @override
   String get rationale =>
       'Abstractness `A` (Martin 1994) is the fraction of class-like '
       'declarations in the file that are abstract (`abstract class` '
       'or `mixin`). Combined with `Instability`, it places each file '
-      'on the A–I plane that defines Martin\'s "Main Sequence".';
+      'on the A–I plane that defines Martin\'s "Main Sequence". Off '
+      'by default in 0.1.0 because Martin\'s framing assumes '
+      '"package = release unit" while Dart\'s 1-file-1-library '
+      'granularity makes the per-file value brittle (a single '
+      '`abstract class Foo` in its own file scores 1.0 without '
+      'saying anything about the design layer it participates in).';
 
   @override
   List<String> get refactorHints => const [
@@ -114,6 +131,8 @@ class DistanceFromMainSequence extends LibraryMetric {
   @override
   String get id => 'distance-from-main-sequence';
   @override
+  bool get defaultEnabled => false;
+  @override
   MetricPolarity get polarity => MetricPolarity.down;
   @override
   String get rationale =>
@@ -121,7 +140,10 @@ class DistanceFromMainSequence extends LibraryMetric {
       'measures how far the file sits from the line `A + I = 1` on '
       'the A–I plane. `D = 0` is the ideal balance; `D ≈ 1` lands '
       'either in the "zone of pain" (stable + concrete) or the "zone '
-      'of uselessness" (unstable + abstract).';
+      'of uselessness" (unstable + abstract). Off by default in 0.1.0 '
+      'because the score depends on `Abstractness`, which itself is '
+      'off-by-default for Dart\'s 1-file-1-library granularity '
+      'reasons (see that metric\'s rationale).';
 
   @override
   List<String> get refactorHints => const [
