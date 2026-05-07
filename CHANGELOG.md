@@ -4,6 +4,14 @@
 
 First public release. The CLI, the analyzer plugin, and the embeddable Dart API ship from a single package.
 
+### Design philosophy
+
+dartrics is built on the wager that the AI coding loop changes which software metrics are practically usable. The academic catalogue — McCabe 1976, CK 1994, LCOM4 1995, Martin 1994, Cognitive Complexity 2018 — has long been underused in everyday workflows because each of *calculating* the number, *interpreting* it, and *acting on it* was individually expensive for a human reviewer. An AI loop absorbs all three: the CLI computes in milliseconds, `--auto-explain` delivers the rationale, and the agent acts on it.
+
+Each metric is treated as a single **lens** — one dimension of "hard to read." Lenses are independent and stackable: an agent can iterate through dozens in a session, refactor under each, then re-evaluate. dartrics surfaces what each lens reads; the accept / refactor / dismiss decision is first-class and stays in the loop.
+
+The metric set, the thresholds, and the Flutter / test relaxations below are calibrated for Dart. The lens framing and the AI-loop contract are language-agnostic.
+
 ### Metrics
 
 - **Function / method**: cyclomatic complexity (McCabe 1976), cognitive complexity (Sonar 2018), maximum nesting level (control-flow only — `if`/`for`/`while`/`switch`/`try`/closure; widget-literal chains do not count), number of parameters, boolean-trap (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36 — count of `bool`-typed parameters, warning ≥ 2), source lines of code. Halstead Volume (Halstead 1977), method length, and `widget-tree-depth` (deepest chain of nested constructor calls — Flutter community ~5–7 threshold) ship off-by-default — opt in with `dartrics: { metrics: { <id>: { enabled: true } } }`. Method length is default-off because its correlation with SLOC in production code is high enough (often > 0.95) that emitting both is redundant noise — opt in when you specifically want the "screen real estate" reading (counts blank lines + comments) on top of SLOC's "actual code volume" reading. Halstead Difficulty / Effort and the Maintainability Index (Oman 1992) were dropped because they are pure derivations of the underlying token counts and `CC + V + LOC` respectively.

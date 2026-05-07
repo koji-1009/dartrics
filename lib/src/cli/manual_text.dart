@@ -26,6 +26,8 @@ Humans read code and feel things. *"This function is gnarly."* *"This class is d
 
 Decades of software-engineering research has converted those felt reactions into reproducible measurements. Each metric in `dartrics` is one such **lens**: a specific, citation-backed instrument that surfaces a specific kind of "hard to read." None of the lenses is the whole picture. Putting on more than one lens, in succession, is the point.
 
+Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, LCOM4 1995, Cognitive Complexity 2018 — never made it into the daily toolbox of working programmers. The cost of *calculating* the number, *interpreting* it, and *acting on it* was each individually expensive for a human reviewer. An AI loop absorbs all three. You compute in a second; the rationale and refactor moves are attached to the violation; the edit is yours to apply. The lenses that the literature catalogued for human reviewers are reachable to you in a way they weren't before.
+
 `dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, or formally dismiss with a reason. That decision step is first-class.
 
 ```

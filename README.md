@@ -10,7 +10,13 @@ Dart code-quality metrics and unused public-API detection, designed as the AI-lo
 - **Quick start.** `dart pub global activate dartrics` then `dartrics analyze lib/ --reporter ai`. JSON Schemas for `analysis_options.yaml` and the report payload live under `schemas/`.
 - **Status.** `0.x` — field names in the JSON / AI / SARIF outputs are stable (renames trigger a new header), but the surface has not yet been stress-tested by external users; pin a version in CI.
 
-`dartrics` re-implements the academically-grounded metric suite (CK, Halstead, McCabe, Martin, Cognitive Complexity) on top of `package:analyzer`, augments `dart analyze`'s `dead_code` lint with a Periphery-style public-API reachability pass, and ships a `--reporter ai` output plus a `regression` subcommand that gives AI agents a tight refactor loop: **see violations → understand them → fix → verify the fix actually improved things**.
+## Why dartrics
+
+Software engineering has spent fifty years publishing metrics that name specific kinds of "hard to read" — McCabe (1976), Halstead (1977), Chidamber & Kemerer (1994), Martin (1994), Cognitive Complexity (Sonar 2018) — and most of them never reached the working-day toolbox. The reasons recur: humans cannot compute LCOM4 by eye, the number alone doesn't tell you what to change, and even when it does the refactor isn't free.
+
+An AI coding loop absorbs all three costs. The CLI computes in milliseconds. `--auto-explain` ships the rationale and the refactor moves alongside every violation. The agent does the edit; `dartrics regression` confirms the metric actually settled. dartrics is built on the wager that the academic catalogue is reusable now in a way it wasn't before — not because the metrics changed, but because the consumer did.
+
+Each metric is treated as a **lens**: one specific dimension of "hard to read", anchored to its original paper. Lenses are independent — a function can be clean by cyclomatic complexity and tangled by cognitive complexity; a class can be small by method count and incoherent by LCOM4. Multiple lenses firing on the same scope is signal, not noise. dartrics does not gate; it surfaces what each lens reads, and leaves the accept / refactor / dismiss decision in the loop.
 
 ## Install
 
