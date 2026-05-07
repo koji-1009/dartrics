@@ -116,4 +116,43 @@ void main() {
       expect(units, isEmpty);
     });
   });
+
+  group('nested sub-package fallout', () {
+    test(
+      'resolveAll skips files in a sub-pubspec excluded by analyzer.exclude',
+      () async {
+        // Outer package: dir/lib/{a,b}.dart with dir/pubspec.yaml plus an
+        // analysis_options.yaml that excludes `sub/**` from analyzer.
+        await File(
+          '${dir.path}/pubspec.yaml',
+        ).writeAsString('name: outer\nenvironment:\n  sdk: ^3.10.0\n');
+        await File(
+          '${dir.path}/analysis_options.yaml',
+        ).writeAsString('analyzer:\n  exclude:\n    - sub/**\n');
+        // Sub-package with its own pubspec under the excluded path.
+        // `AnalysisContextCollection` honours the outer
+        // `analyzer.exclude:` so it never builds a context for `sub/`,
+        // and `contextFor` then throws `Bad state: Unable to find the
+        // context …` on `sub/lib/c.dart`. dartrics's own file walker
+        // sees the file (it does not consume `analyzer.exclude:`), so
+        // before the catch in `resolve`, the whole run aborted on the
+        // first stray sub-package fixture in the tree — exactly the
+        // dogfood failure mode `tmp/sample/lib/violators.dart` produced
+        // on the dartrics repo itself.
+        await Directory('${dir.path}/sub/lib').create(recursive: true);
+        await File(
+          '${dir.path}/sub/pubspec.yaml',
+        ).writeAsString('name: inner\nenvironment:\n  sdk: ^3.10.0\n');
+        await File('${dir.path}/sub/lib/c.dart').writeAsString('class C {}\n');
+        final runner = AnalyzerRunner(roots: [dir.path]);
+        final units = await runner.resolveAll();
+        // The outer package's two files still resolve; the sub-package
+        // file is silently skipped instead of taking the run down.
+        final paths = units.map((u) => u.path).toList();
+        expect(paths.any((p) => p.endsWith('a.dart')), isTrue);
+        expect(paths.any((p) => p.endsWith('b.dart')), isTrue);
+        expect(paths.any((p) => p.endsWith('c.dart')), isFalse);
+      },
+    );
+  });
 }

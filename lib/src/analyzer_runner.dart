@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:analyzer/dart/analysis/analysis_context.dart';
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:glob/glob.dart';
@@ -122,10 +123,28 @@ class AnalyzerRunner {
   }
 
   /// Resolves a single Dart file to a [ResolvedUnitResult]. Returns `null`
-  /// for paths that the analyzer cannot resolve (e.g. files outside any
-  /// package context).
+  /// for paths the analyzer cannot resolve — files outside any package
+  /// context (no `pubspec.yaml` ancestor under the analysis root) and
+  /// files that live in a *nested* package context (their own
+  /// `pubspec.yaml` ancestor under but separate from the root project,
+  /// e.g. an `example/` sub-package or a fixture tree). The latter
+  /// would otherwise abort the whole run with a `StateError` because
+  /// `AnalysisContextCollection.contextFor` does not know how to map
+  /// the path back to one of the supplied [roots].
   Future<ResolvedUnitResult?> resolve(String absolutePath) async {
-    final context = collection.contextFor(absolutePath);
+    final AnalysisContext context;
+    try {
+      context = collection.contextFor(absolutePath);
+      // `contextFor` throws `StateError` ("Unable to find the context …")
+      // when the path lives outside every supplied root's package. The
+      // standard `avoid_catching_errors` lint flags this, but the
+      // alternative — letting the bad-state error bubble — kills the
+      // whole run for one stray file (typical case: a sub-package
+      // fixture under the analysis root). Catching is the right move.
+      // ignore: avoid_catching_errors
+    } on StateError {
+      return null;
+    }
     final result = await context.currentSession.getResolvedUnit(absolutePath);
     return result is ResolvedUnitResult ? result : null;
   }
