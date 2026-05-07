@@ -1,8 +1,8 @@
 name: dartrics
 description: >-
-  Academically-grounded Dart code-quality metrics (CK, Halstead, McCabe,
-  Martin, Cognitive) and Periphery-style public-API unused-code detection,
-  with an AI-shaped reporter for refactor loops.
+  Citation-anchored Dart code-quality metrics (CK, Halstead, McCabe, Martin,
+  Cognitive) plus Periphery-style unused public-API detection, shaped for
+  AI refactor loops.
 version: 0.1.0
 repository: https://github.com/koji-1009/dartrics
 issue_tracker: https://github.com/koji-1009/dartrics/issues
