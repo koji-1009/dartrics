@@ -4,6 +4,7 @@ import 'package:io/io.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 
+import '../metrics/metric_catalogue.dart' show defaultMetricThresholds;
 import 'config.dart';
 
 final _log = Logger('config_loader');
@@ -15,14 +16,14 @@ Future<Config> loadConfig(String path) async {
   final file = File(path);
   if (!file.existsSync()) {
     _log.fine('config file $path not found, using defaults');
-    return const Config();
+    return _defaultConfig();
   }
   final source = await file.readAsString();
   final YamlMap root;
   try {
     final parsed = loadYaml(source);
     if (parsed is! YamlMap) {
-      return const Config();
+      return _defaultConfig();
     }
     root = parsed;
   } on YamlException catch (e) {
@@ -31,7 +32,7 @@ Future<Config> loadConfig(String path) async {
 
   final dartrics = root['dartrics'];
   if (dartrics is! YamlMap) {
-    return const Config();
+    return _defaultConfig();
   }
 
   return Config(
@@ -145,11 +146,35 @@ SnapshotMode _modeFromString(String raw) {
 }
 
 Map<String, MetricThresholds> _parseMetrics(Object? node) {
-  if (node is! YamlMap) return const {};
-  final map = <String, MetricThresholds>{};
+  // Start from the built-in default thresholds so the CLI fires
+  // violations on a default-config project the same way the analyzer
+  // plugin does. User-supplied entries override individual fields
+  // (`enabled` / `warning` / `error`) per metric; metrics absent from
+  // the user block keep their built-in warning so a freshly-installed
+  // dartrics is useful without a `dartrics:` block at all.
+  final map = <String, MetricThresholds>{
+    for (final e in defaultMetricThresholds.entries)
+      e.key: MetricThresholds(warning: e.value),
+  };
+  if (node is! YamlMap) return map;
   for (final entry in node.entries) {
-    final t = _thresholdsFromYaml(entry.value);
-    if (t != null) map[entry.key.toString()] = t;
+    final id = entry.key.toString();
+    final user = _thresholdsFromYaml(entry.value);
+    if (user == null) continue;
+    final base = map[id];
+    if (base == null) {
+      map[id] = user;
+    } else {
+      // Per-field merge: a YAML override that omits `warning` keeps the
+      // built-in default rather than silently falling back to "no
+      // threshold". `error` has no built-in default — only user-set
+      // values reach the engine.
+      map[id] = MetricThresholds(
+        enabled: user.enabled,
+        warning: user.warning ?? base.warning,
+        error: user.error,
+      );
+    }
   }
   return map;
 }
@@ -194,6 +219,11 @@ List<String> _parseStringList(
 }
 
 num? _asNum(Object? v) => v is num ? v : null;
+
+/// Builds the implicit-defaults configuration used when the file is
+/// missing or has no `dartrics:` block. Centralised so every fallback
+/// path emits the same merged-defaults `metricThresholds` map.
+Config _defaultConfig() => Config(metricThresholds: _parseMetrics(null));
 
 /// Thrown when the configuration file cannot be parsed or is structurally
 /// invalid. CLI handlers should map this to [ExitCode.config].

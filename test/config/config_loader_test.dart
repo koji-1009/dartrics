@@ -17,7 +17,11 @@ void main() {
 
   test('returns defaults when file does not exist', () async {
     final config = await loadConfig('${dir.path}/missing.yaml');
-    expect(config.metricThresholds, isEmpty);
+    // Built-in default thresholds populate so the CLI fires the same
+    // violations the analyzer plugin does on a default-config project.
+    expect(config.metricThresholds['cyclomatic-complexity']?.warning, 10);
+    expect(config.metricThresholds['cognitive-complexity']?.warning, 15);
+    expect(config.metricThresholds['number-of-parameters']?.warning, 4);
     expect(config.exclude, isEmpty);
     expect(config.unused.entryPoints, contains('main'));
   });
@@ -26,14 +30,35 @@ void main() {
     final f = File('${dir.path}/scalar.yaml');
     await f.writeAsString('"just a string"\n');
     final config = await loadConfig(f.path);
-    expect(config.metricThresholds, isEmpty);
+    expect(config.metricThresholds['cyclomatic-complexity']?.warning, 10);
   });
 
   test('returns defaults when no `dartrics` section is present', () async {
     final f = File('${dir.path}/other.yaml');
     await f.writeAsString('analyzer:\n  exclude: []\n');
     final config = await loadConfig(f.path);
-    expect(config.metricThresholds, isEmpty);
+    expect(config.metricThresholds['cyclomatic-complexity']?.warning, 10);
+    expect(config.metricThresholds['boolean-trap']?.warning, 2);
+  });
+
+  test('user-provided warning overrides the built-in default for that metric, '
+      'unspecified metrics keep the default', () async {
+    final f = File('${dir.path}/partial.yaml');
+    // Override one metric only; the rest must keep their built-in
+    // warnings so an `analysis_options.yaml` that mentions a single
+    // metric does not silently switch every other lens to "no
+    // threshold" — that was the 0.1.0 dogfood bug.
+    await f.writeAsString('''
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      warning: 5
+''');
+    final config = await loadConfig(f.path);
+    expect(config.metricThresholds['cyclomatic-complexity']?.warning, 5);
+    expect(config.metricThresholds['cognitive-complexity']?.warning, 15);
+    expect(config.metricThresholds['number-of-parameters']?.warning, 4);
+    expect(config.metricThresholds['boolean-trap']?.warning, 2);
   });
 
   test(
