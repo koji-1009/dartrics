@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dapper/dapper.dart';
 
 import '../models/analysis_report.dart';
+import '../models/unused_declaration.dart';
 import 'reporter.dart';
 
 /// Markdown reporter for PR comments and issue bodies.
@@ -142,7 +143,7 @@ class MdReporter implements Reporter {
       ..writeln();
     for (final u in report.unused) {
       buf.writeln(
-        '- `${u.location.path}:${u.location.line}` — ${u.kind.name} `${u.name}`',
+        '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`',
       );
     }
     buf.writeln();

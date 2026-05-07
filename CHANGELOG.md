@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0
+
+### Public-API unused-code detection — element-resolution mode
+
+- The CLI's `dartrics analyze` and `dartrics unused` paths now run the public-API reachability analysis over the analyzer's resolved element graph instead of the simple-name reference graph that shipped in 0.1.0. The detector keys reachability on canonical `Element.id`s of project-local declarations, so homonym methods on different classes are independent nodes (calling `Foo.bar()` no longer accidentally keeps `Baz.bar()` alive), prefixed imports keep distinct identities, and SDK / dependency symbols never pull through to project declarations they happen to share a name with.
+- Reachability is now tracked at member granularity. The detector reports unused instance methods, fields, getters, setters, and enum values in addition to the top-level kinds — same `UnusedKind` enum as before, just with the per-class entries populated. Existing 0.1.0 callers will see new entries with `kind: method | field | enumValue` in the unused list once a class is reachable; pass `--filter class,function,extension,typedef` (or set `unused: { filter: [...] }` in `analysis_options.yaml`) to restore the top-level-only shape.
+- New `--filter <kinds>` CLI flag (and matching `unused: { filter: [...] }` YAML key) narrows the report to a subset of declaration kinds. Accepted names: `function`, `method`, `class`, `field`, `typedef`, `enum`, `extension`. `enum` targets individual enum constants; enum *types* are filtered with `class`. Comma-separate or repeat the flag (`--filter method,field`). Unknown names exit `ExitCode.usage` with a did-you-mean style error.
+- Auto-rooting rules added to keep the per-member reports clean:
+  - Members marked `@override` are rooted (covers interface / superclass overrides without us walking the supertype hierarchy).
+  - Object dunder names — `toString`, `hashCode`, `==`, `noSuchMethod`, `runtimeType` — are rooted; the language runtime calls them, not user source.
+  - When a class carries any keep-alive annotation (`@JsonSerializable`, `@reflectiveTest`, every codegen preset, …) every public member of that class is rooted too — these annotations signal generator / reflective consumers that read members by name.
+- New `reflectiveTest` keep-alive preset added to `keep_alive_presets.dart` so `@reflectiveTest` classes from `package:test_reflective_loader` keep their `test_*` members alive.
+- `LibraryElement.exportNamespace` now drives the `excludeExported` root set, so re-exported `lib/src/` types (and every public method / field / getter / setter on them) survive without relying on textual `show` matching.
+- The parse-only `UnusedDetector.detect` entry point stays as a fallback for tests / embedders that don't want a real `AnalysisContextCollection`. `dartrics analyze` / `dartrics unused` route through the new `UnusedDetector.detectResolved` path automatically — no caller changes required.
+
 ## 0.1.0
 
 First public release. The CLI, the analyzer plugin, and the embeddable Dart API ship from a single package.

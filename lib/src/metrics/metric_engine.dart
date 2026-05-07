@@ -103,11 +103,9 @@ class MetricEngine {
     List<({String path, ResolvedUnitResult unit})> units,
   ) {
     final resolved = <_ResolvedFile>[];
-    final allClasses = <ClassDeclaration>[];
     for (final entry in units) {
       final classCollector = _ClassCollector();
       entry.unit.unit.accept(classCollector);
-      allClasses.addAll(classCollector.classes);
       resolved.add(
         _ResolvedFile(
           path: entry.path,
@@ -116,7 +114,6 @@ class MetricEngine {
         ),
       );
     }
-    final classIndex = ClassIndex.build(allClasses);
     final libraryIndex = LibraryIndex.build([
       for (final f in resolved) (path: f.path, unit: f.unit),
     ]);
@@ -124,7 +121,7 @@ class MetricEngine {
     final records = <MetricRecord>[];
     for (final file in resolved) {
       records.addAll(_functionRecordsFor(file));
-      records.addAll(_classRecordsFor(file, classIndex));
+      records.addAll(_classRecordsFor(file));
       records.add(_libraryRecordFor(file, libraryIndex));
     }
     return records;
@@ -197,16 +194,12 @@ class MetricEngine {
   bool _isMetricEnabled(String metricId, bool defaultEnabled) =>
       thresholds[metricId]?.enabled ?? defaultEnabled;
 
-  Iterable<MetricRecord> _classRecordsFor(
-    _ResolvedFile file,
-    ClassIndex index,
-  ) sync* {
+  Iterable<MetricRecord> _classRecordsFor(_ResolvedFile file) sync* {
     final isTestFile = test && TestAware.isTestPath(file.path);
     for (final cls in file.classes) {
       final input = ClassMetricInput(
         declaration: cls,
         lineInfo: file.unit.lineInfo,
-        index: index,
       );
       final values = <String, num>{};
       for (final calc in classMetrics) {

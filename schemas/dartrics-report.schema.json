@@ -152,10 +152,10 @@
           "enum": [
             "function",
             "method",
-            "klass",
+            "class",
             "field",
             "typedef",
-            "enumValue",
+            "enum",
             "extension"
           ]
         },

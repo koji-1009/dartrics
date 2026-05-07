@@ -17,6 +17,7 @@ import '../dismiss/yaml_loader.dart';
 import '../metrics/metric_engine.dart';
 import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
+import '../unused/resolved_reachability.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
@@ -29,6 +30,17 @@ import 'snapshot.dart';
 class AnalyzeCommand extends Command<int> {
   AnalyzeCommand() {
     addCommonOptions(argParser);
+    argParser.addMultiOption(
+      'filter',
+      help:
+          'Narrow the unused-declaration report to specific declaration '
+          'kinds (function, method, class, field, typedef, enum, '
+          'extension). `enum` targets individual enum constants; enum '
+          'type declarations are filtered with `class`. Repeat or '
+          'comma-separate. Defaults to every kind. CLI value overrides '
+          'any `unused: { filter: [...] }` block in analysis_options.yaml.',
+      splitCommas: true,
+    );
   }
 
   @override
@@ -44,6 +56,16 @@ class AnalyzeCommand extends Command<int> {
     final paths = options.rest.isNotEmpty
         ? options.rest
         : <String>[options.root];
+    final unusedConfig = mergeUnusedFilterFromCli(
+      base: config.unused,
+      cliFilter: argResults!['filter'] as List<String>,
+    );
+    try {
+      parseUnusedFilter(unusedConfig.filter);
+    } on FormatException catch (e) {
+      DartricsIO.stderrSink.writeln('dartrics analyze: ${e.message}');
+      return ExitCode.usage.code;
+    }
     final Set<String>? changed;
     try {
       changed = await _resolveChangedFiles(options.since);
@@ -71,6 +93,7 @@ class AnalyzeCommand extends Command<int> {
     final report = await _analyze((
       paths: paths,
       config: config,
+      unusedConfig: unusedConfig,
       options: options,
       changed: changed,
       snapshotConfig: snapshotConfig,
@@ -107,10 +130,9 @@ class AnalyzeCommand extends Command<int> {
       onDismissalRejection: _logDismissalRejection,
     );
     final records = engine.analyzeResolved(units);
-    final unused = await const UnusedDetector().detect([
-      for (final u in units)
-        (path: u.path, unit: u.unit.unit, lineInfo: u.unit.lineInfo),
-    ], req.config.unused);
+    final unused = await const UnusedDetector().detectResolved([
+      for (final u in units) (path: u.path, unit: u.unit),
+    ], req.unusedConfig);
 
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),
@@ -286,6 +308,7 @@ class AnalyzeCommand extends Command<int> {
 typedef _AnalyzeRequest = ({
   List<String> paths,
   Config config,
+  UnusedConfig unusedConfig,
   CommonOptions options,
   Set<String>? changed,
   SnapshotConfig snapshotConfig,

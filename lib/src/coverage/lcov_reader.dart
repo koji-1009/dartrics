@@ -2,13 +2,7 @@ import 'dart:io';
 
 /// Per-file coverage extracted from an `lcov.info` record.
 class FileCoverage {
-  const FileCoverage({
-    required this.path,
-    required this.lineHits,
-    required this.branchHits,
-  });
-
-  final String path;
+  const FileCoverage({required this.lineHits, required this.branchHits});
 
   /// `line number` → `hit count`. Lines absent from the map weren't
   /// reported in the lcov record (typically blank or comment-only).
@@ -92,7 +86,6 @@ class CoverageIndex {
       }
       if (line == 'end_of_record' && currentPath != null) {
         files[currentPath] = FileCoverage(
-          path: currentPath,
           lineHits: Map.unmodifiable(lineHits),
           branchHits: Map.unmodifiable(branchHits),
         );

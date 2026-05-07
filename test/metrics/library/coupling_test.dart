@@ -5,19 +5,16 @@ import 'package:test/test.dart';
 LibraryIndex _index() {
   return LibraryIndex.fromStats({
     '/p/lib/a.dart': LibraryStats(
-      path: '/p/lib/a.dart',
       internalImports: {'/p/lib/b.dart', '/p/lib/c.dart'},
       totalClasses: 2,
       abstractClasses: 1,
     ),
     '/p/lib/b.dart': LibraryStats(
-      path: '/p/lib/b.dart',
       internalImports: {'/p/lib/c.dart'},
       totalClasses: 1,
       abstractClasses: 0,
     ),
     '/p/lib/c.dart': LibraryStats(
-      path: '/p/lib/c.dart',
       internalImports: <String>{},
       totalClasses: 1,
       abstractClasses: 0,

@@ -136,8 +136,13 @@ MetricViolation _decodeViolation(Map<String, Object?> json) {
 }
 
 UnusedDeclaration _decodeUnused(Map<String, Object?> json) {
+  final rawKind = json['kind'] as String;
+  final kind = unusedKindFromJsonName(rawKind);
+  if (kind == null) {
+    throw FormatException('unused.kind: unknown value "$rawKind"');
+  }
   return UnusedDeclaration(
-    kind: UnusedKind.values.byName(json['kind'] as String),
+    kind: kind,
     name: json['name'] as String,
     location: SourceLocation(
       path: json['file'] as String,

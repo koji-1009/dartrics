@@ -84,6 +84,23 @@ class UnusedThing {}
     expect(names, isNot(contains('Widget')));
   });
 
+  test('excludeExported: NamedType references in a lib/ public file also '
+      'pull through (parse-only path)', () async {
+    final unused = await const UnusedDetector().detect([
+      _src('/proj/lib/api.dart', '''
+import 'src/widget.dart';
+final Widget? defaultRoot = null;
+'''),
+      _src('/proj/lib/src/widget.dart', '''
+class Widget {}
+class UnusedThing {}
+'''),
+    ], const UnusedConfig(excludeExported: true));
+    final names = unused.map((u) => u.name).toList();
+    expect(names, contains('UnusedThing'));
+    expect(names, isNot(contains('Widget')));
+  });
+
   test(
     'private (underscore-prefixed) names are not reported (analyzer covers them)',
     () async {

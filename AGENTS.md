@@ -20,7 +20,7 @@ Conventions for AI coding agents (Claude Code, Cursor, Codex, etc.) and human co
 - `lib/src/models/` — `AnalysisReport`, `MetricRecord`, `MetricViolation`, `ScopeRef`, `UnusedDeclaration`, `SourceLocation`, `RegressionReport` family, `AnalyzedFile`, `ExplainEntry`. Stable JSON schema lives here.
 - `lib/src/regression/` — `RegressionDiff` (pure computation) and `GitWorktree` (the short-lived `git worktree add` adapter for the historical side of the diff).
 - `lib/src/reporters/` — `console` / `json` / `md` / `ai` / `sarif` / `regression` / `rules`. `md` and `ai` finalise through `package:dapper`.
-- `lib/src/unused/` — public-API reachability graph + BFS detector + code-gen keep-alive presets.
+- `lib/src/unused/` — public-API reachability graph + BFS detector + code-gen / reflection keep-alive presets. `unused_detector.dart` is the facade with two entry points: the parse-only `detect` (kept for tests / embedders that don't want a real `AnalysisContextCollection`) and the resolved-AST `detectResolved` (the path the CLI actually takes — keys reachability on canonical `Element.id`s, tracks members at instance granularity, auto-roots `@override` / Object dunders, and propagates class-level annotation keep-alive to every member). `resolved_reachability.dart` houses the resolved implementation; `apply.dart` does the `--apply` deletion pass.
 - `test/` mirrors `lib/src/` 1-to-1; each metric has a golden test against hand-verified values; each plugin rule has an `AnalysisRuleTest` (analyzer_testing + test_reflective_loader); `cli_flow_test.dart` exercises end-to-end via a temp git repo.
 
 ## Workflow before every commit

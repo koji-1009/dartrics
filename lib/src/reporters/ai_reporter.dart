@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dapper/dapper.dart';
 
 import '../models/analysis_report.dart';
+import '../models/unused_declaration.dart';
 import 'reporter.dart';
 
 /// LLM-optimized reporter — emits only the violations and unused
@@ -204,7 +205,7 @@ class AiReporter implements Reporter {
       buf
         ..writeln('  - file: ${u.location.path}')
         ..writeln('    line: ${u.location.line}')
-        ..writeln('    kind: ${u.kind.name}')
+        ..writeln('    kind: ${unusedKindJsonName(u.kind)}')
         ..writeln('    name: ${u.name}')
         // See the snippet writer in `_writeViolations` for why `|2` is
         // needed. Same root cause: a deeply-indented declaration line

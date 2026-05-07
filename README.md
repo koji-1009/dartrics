@@ -316,9 +316,17 @@ The `dartrics: { unused: { presets: [...] } }` config field is still parsed for 
 
 ## Public-API unused-code detection
 
-Periphery-style BFS reachability over a name-based reference graph, rooted at `main`, declarations annotated with `@pragma('vm:entry-point')`, and (when `excludeExported` is enabled) declarations under `lib/` outside `lib/src/`. The detector follows `export ... show ...` clauses so re-exported `lib/src/` symbols stay reachable. Reports unused public functions, classes, mixins, extensions, typedefs, enums, and top-level fields.
+Element-resolution-based BFS reachability over the analyzer's resolved element graph, rooted at `main`, declarations annotated with `@pragma('vm:entry-point')`, and (when `excludeExported` is enabled) every public symbol surfaced through a `lib/`-public file's `LibraryElement.exportNamespace`. Homonym methods on different classes are independent nodes, prefixed imports keep distinct identities, and SDK / dependency symbols never accidentally keep project declarations alive. Reports unused public functions, classes, mixins, extensions, typedefs, enums, top-level fields, and individual instance methods / fields / getters / setters / enum values.
 
-`dartrics unused --apply` deletes detected top-level declarations (functions / classes / typedefs / extensions) from disk in place — analogous to `dart fix --apply`. Refuses to run on a dirty git tree (override with `--force`), and skips files under `test/` / `integration_test/` by default (override with `--include-tests`). Methods, fields, and enum values are reported but not yet auto-deletable; the summary names how many were skipped for that reason. After applying, run `dart fix --apply` to clean up imports that became unused.
+To keep per-member reports actionable, the detector auto-roots:
+
+- members marked `@override`,
+- the Object dunder names (`toString`, `hashCode`, `==`, `noSuchMethod`, `runtimeType`),
+- every public member of a class that carries a keep-alive annotation (`@JsonSerializable`, `@reflectiveTest`, every codegen preset). The reasoning: those annotations signal generator / reflective consumers that read members by name, which static analysis can't see.
+
+Use `--filter <kinds>` (or `unused: { filter: [...] }` in `analysis_options.yaml`) to narrow the report to specific declaration kinds — `function`, `method`, `class`, `field`, `typedef`, `enum`, `extension`. `enum` targets individual enum constants; enum *type* declarations are filtered with `class`. Unknown names exit with a usage error so a typo doesn't silently drop every entry. Repeat the flag or comma-separate (`--filter method,field`).
+
+`dartrics unused --apply` deletes detected top-level declarations (functions / classes / typedefs / extensions) from disk in place — analogous to `dart fix --apply`. Refuses to run on a dirty git tree (override with `--force`), and skips files under `test/` / `integration_test/` by default (override with `--include-tests`). Instance methods, fields, and enum values are reported but not yet auto-deletable; the summary names how many were skipped for that reason. After applying, run `dart fix --apply` to clean up imports that became unused.
 
 Private (underscore-prefixed) names are intentionally skipped — `dart analyze`'s `dead_code` lint already covers them.
 
@@ -331,7 +339,7 @@ Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`
 ```yaml
 # analysis_options.yaml in your project
 plugins:
-  dartrics: ^0.1.0
+  dartrics: ^0.2.0
 ```
 
 After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin enables five rules by default:

@@ -150,17 +150,49 @@ class Unused {
       },
     );
 
-    test(
-      'summary names unsupported kinds when the detector flags them',
-      () async {
-        // Top-level `const FOO` is reported by the detector as
-        // UnusedKind.field — apply does not yet handle that kind, so
-        // the summary should mention an unsupported entry. We can't
-        // assert stderr text directly through the runner, so we assert
-        // exit code 0 (apply runs cleanly even with unsupported items)
-        // and that the source is untouched.
-        await File('${dir.path}/lib/src/sample.dart').writeAsString('''
+    test('top-level const fields are now deletable through the CLI', () async {
+      // The 0.2.0 detector flags `const FOO = 42;` as
+      // UnusedKind.field; apply now handles fields end-to-end so
+      // the source is rewritten on success.
+      await File('${dir.path}/lib/src/sample.dart').writeAsString('''
 const FOO = 42;
+''');
+      final code = await runQuietly([
+        'unused',
+        '--root',
+        dir.path,
+        '--reporter',
+        'json',
+        '--output',
+        '${dir.path}/r.json',
+        '--config',
+        '${dir.path}/no.yaml',
+        '--apply',
+        '--force',
+      ]);
+      expect(code, 0);
+      final after = await File(
+        '${dir.path}/lib/src/sample.dart',
+      ).readAsString();
+      expect(after.contains('FOO'), isFalse);
+    });
+
+    test(
+      '`--filter method --apply` deletes only methods, leaves other kinds',
+      () async {
+        // Both an unused class and an unused method on a reachable
+        // class — the filter narrows --apply to methods so the class
+        // survives (still unused but not in the filter set) while
+        // `unusedMember` is removed.
+        await File('${dir.path}/lib/src/sample.dart').writeAsString('''
+class Reached {
+  void usedMember() {}
+  void unusedMember() {}
+}
+class UnusedClass {}
+void keepMe() {
+  Reached().usedMember();
+}
 ''');
         final code = await runQuietly([
           'unused',
@@ -172,15 +204,22 @@ const FOO = 42;
           '${dir.path}/r.json',
           '--config',
           '${dir.path}/no.yaml',
+          '--filter',
+          'method',
           '--apply',
           '--force',
         ]);
         expect(code, 0);
-        // FOO is left in place because field deletion isn't supported yet.
         final after = await File(
           '${dir.path}/lib/src/sample.dart',
         ).readAsString();
-        expect(after.contains('FOO'), isTrue);
+        expect(after.contains('void unusedMember'), isFalse);
+        expect(after.contains('void usedMember'), isTrue);
+        expect(
+          after.contains('class UnusedClass'),
+          isTrue,
+          reason: 'filter=method must not delete the class entry',
+        );
       },
     );
 

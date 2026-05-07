@@ -57,6 +57,10 @@ const Map<String, List<String>> keepAlivePresets = {
     'TableIndex',
     'UseRowClass',
   ],
+  // test_reflective_loader — methods named `test_*` are dispatched via
+  // reflection from the class-level `@reflectiveTest` annotation, so
+  // resolved-mode reachability can't see the calls in source.
+  'test_reflective_loader': ['reflectiveTest'],
 };
 
 /// The full union of every preset's annotation names. Used as the

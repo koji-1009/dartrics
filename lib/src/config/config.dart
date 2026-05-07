@@ -160,6 +160,7 @@ class UnusedConfig {
       'JsonSerializable',
     ],
     this.presets = const [],
+    this.filter = const [],
   });
 
   final List<String> entryPoints;
@@ -173,4 +174,12 @@ class UnusedConfig {
   /// the value no longer narrows the keep-alive set. See
   /// `keep_alive_presets.dart` for the full annotation list.
   final List<String> presets;
+
+  /// Narrows the kinds emitted by the resolved-AST detector to this
+  /// allow-list. Empty means "every kind". Honours
+  /// [UnusedKind.values] names — `function`, `method`, `klass`,
+  /// `field`, `typedef`, `enumValue`, `extension`. Unknown names
+  /// surface as a usage error from the CLI / config loader so a
+  /// typo doesn't silently drop every entry.
+  final List<String> filter;
 }

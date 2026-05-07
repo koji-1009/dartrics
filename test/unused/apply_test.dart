@@ -136,23 +136,290 @@ class Used {
     expect(tf.readAsStringSync(), isNot(contains('void unused()')));
   });
 
-  test('emits unsupportedKind for method / field / enumValue', () {
+  test('deletes an instance method by name + line', () {
     final f = File('${dir.path}/lib.dart');
     f.writeAsStringSync('''
 class C {
-  void m() {}
+  void used() {}
+  void gone() {
+    print('removed');
+  }
 }
 ''');
     final results = applyDeletions([
       UnusedDeclaration(
         kind: UnusedKind.method,
-        name: 'm',
+        name: 'gone',
+        location: SourceLocation(path: f.path, line: 3, column: 3),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, contains('void used()'));
+    expect(after, isNot(contains('void gone()')));
+  });
+
+  test('deletes a single-variable instance field', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+class C {
+  int kept = 1;
+  int unused = 2;
+}
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 3, column: 7),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, contains('int kept = 1;'));
+    expect(after, isNot(contains('int unused')));
+  });
+
+  test('deletes one variable from a multi-variable declaration: '
+      'middle of `int x, y, z;` becomes `int x, z;`', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+class C {
+  int x = 1, y = 2, z = 3;
+  int sum() => x + z;
+}
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'y',
+        location: SourceLocation(path: f.path, line: 2, column: 14),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, contains('int x = 1, z = 3;'));
+    expect(after, isNot(contains('y = 2')));
+  });
+
+  test('deletes the last variable from a multi-variable declaration: '
+      '`int x, y, z;` becomes `int x, y;`', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+class C {
+  int x = 1, y = 2, z = 3;
+  int sum() => x + y;
+}
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'z',
+        location: SourceLocation(path: f.path, line: 2, column: 21),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, contains('int x = 1, y = 2;'));
+    expect(after, isNot(contains('z = 3')));
+  });
+
+  test('deletes a top-level variable in a single-variable declaration', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+const kept = 1;
+const unused = 2;
+void main() => print(kept);
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 2, column: 7),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, contains('const kept = 1;'));
+    expect(after, isNot(contains('const unused = 2;')));
+  });
+
+  test('deletes one enum constant from a multi-constant enum', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+enum E {
+  a,
+  b,
+  c,
+}
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.enumValue,
+        name: 'b',
+        location: SourceLocation(path: f.path, line: 3, column: 3),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, contains('a,'));
+    expect(after, contains('c,'));
+    expect(after, isNot(contains('b,')));
+  });
+
+  test(
+    'refuses to delete the only constant in an enum (would leave invalid Dart)',
+    () {
+      final f = File('${dir.path}/lib.dart');
+      f.writeAsStringSync('enum E { lonely }\n');
+      final results = applyDeletions([
+        UnusedDeclaration(
+          kind: UnusedKind.enumValue,
+          name: 'lonely',
+          location: SourceLocation(path: f.path, line: 1, column: 10),
+        ),
+      ], includeTests: false);
+      expect(results.single.outcome, ApplyOutcome.unsupportedKind);
+      expect(f.readAsStringSync(), 'enum E { lonely }\n');
+    },
+  );
+
+  test('deletes the last enum constant in a multi-constant enum', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+enum E {
+  a,
+  b,
+  c,
+}
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.enumValue,
+        name: 'c',
+        location: SourceLocation(path: f.path, line: 4, column: 3),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, contains('a,'));
+    expect(after, contains('b,'));
+    expect(after, isNot(contains('c,')));
+  });
+
+  test('deletes a top-level extension type', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+extension type Wrapped(int x) {}
+extension type Kept(int x) {}
+void main() => print(Kept(1));
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.klass,
+        name: 'Wrapped',
+        location: SourceLocation(path: f.path, line: 1, column: 1),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    final after = f.readAsStringSync();
+    expect(after, isNot(contains('Wrapped')));
+    expect(after, contains('Kept'));
+  });
+
+  test('walks instance methods on mixins, extensions, '
+      'extension types, and enums', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+mixin M { void mMethod() {} }
+extension Ex on int { void exMethod() {} }
+extension type T(int x) { void tMethod() {} }
+enum E {
+  a;
+  void eMethod() {}
+}
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.method,
+        name: 'mMethod',
+        location: SourceLocation(path: f.path, line: 1, column: 12),
+      ),
+      UnusedDeclaration(
+        kind: UnusedKind.method,
+        name: 'exMethod',
+        location: SourceLocation(path: f.path, line: 2, column: 23),
+      ),
+      UnusedDeclaration(
+        kind: UnusedKind.method,
+        name: 'tMethod',
+        location: SourceLocation(path: f.path, line: 3, column: 27),
+      ),
+      UnusedDeclaration(
+        kind: UnusedKind.method,
+        name: 'eMethod',
+        location: SourceLocation(path: f.path, line: 6, column: 3),
+      ),
+    ], includeTests: false);
+    expect(results.map((r) => r.outcome), everyElement(ApplyOutcome.deleted));
+    final after = f.readAsStringSync();
+    expect(after, isNot(contains('mMethod')));
+    expect(after, isNot(contains('exMethod')));
+    expect(after, isNot(contains('tMethod')));
+    expect(after, isNot(contains('eMethod')));
+  });
+
+  test('merges nested ranges so deleting a class + its method '
+      'in one pass does not crash on shifted offsets', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('''
+class Drop {
+  void inner() {}
+}
+void main() {}
+''');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.method,
+        name: 'inner',
+        location: SourceLocation(path: f.path, line: 2, column: 3),
+      ),
+      UnusedDeclaration(
+        kind: UnusedKind.klass,
+        name: 'Drop',
+        location: SourceLocation(path: f.path, line: 1, column: 1),
+      ),
+    ], includeTests: false);
+    expect(results.map((r) => r.outcome), everyElement(ApplyOutcome.deleted));
+    final after = f.readAsStringSync();
+    expect(after, isNot(contains('class Drop')));
+    expect(after, isNot(contains('inner')));
+    expect(after, contains('void main()'));
+  });
+
+  test('merges two non-nested ranges that happen to touch', () {
+    // Two top-level functions back-to-back. Their _rangeFor extends
+    // through trailing newlines so the second function's range starts
+    // exactly where the first ends — _mergeRanges' "next.start <
+    // current.end" guard hits the fall-through (no extension needed)
+    // path.
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync('void a() {}\nvoid b() {}\nvoid main() {}\n');
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.function,
+        name: 'a',
+        location: SourceLocation(path: f.path, line: 1, column: 1),
+      ),
+      UnusedDeclaration(
+        kind: UnusedKind.function,
+        name: 'b',
         location: SourceLocation(path: f.path, line: 2, column: 1),
       ),
     ], includeTests: false);
-    expect(results.single.outcome, ApplyOutcome.unsupportedKind);
-    // File is untouched.
-    expect(f.readAsStringSync(), contains('void m()'));
+    expect(results.map((r) => r.outcome), everyElement(ApplyOutcome.deleted));
+    final after = f.readAsStringSync();
+    expect(after, 'void main() {}\n');
   });
 
   test('reports notFound when name/line does not match any declaration', () {
@@ -173,19 +440,34 @@ class C {
     expect(isGitTreeClean(dir.path), isTrue);
   });
 
-  group('buildApplySummary', () {
-    UnusedDeclaration mk(UnusedKind kind, String name) => UnusedDeclaration(
-      kind: kind,
-      name: name,
-      location: const SourceLocation(path: 'lib/x.dart', line: 1, column: 1),
-    );
+  test('isGitTreeClean returns true on a clean git repo and false on a '
+      'dirty one', () async {
+    final repo = await Directory.systemTemp.createTemp('apply_clean_');
+    addTearDown(() => repo.delete(recursive: true));
+    final init = await Process.run('git', [
+      'init',
+      '-q',
+      '-b',
+      'main',
+    ], workingDirectory: repo.path);
+    expect(init.exitCode, 0);
+    await Process.run('git', [
+      'config',
+      'commit.gpgsign',
+      'false',
+    ], workingDirectory: repo.path);
+    // Empty, just-initialised repo has no changes — porcelain output
+    // is empty so the clean-tree branch is exercised.
+    expect(isGitTreeClean(repo.path), isTrue);
+    // Adding an untracked file flips the result.
+    File('${repo.path}/note.txt').writeAsStringSync('hi');
+    expect(isGitTreeClean(repo.path), isFalse);
+  });
 
+  group('buildApplySummary', () {
     test('summary names unsupported addendum when relevant', () {
       final body = buildApplySummary([
-        ApplyResult(
-          target: mk(UnusedKind.field, 'F'),
-          outcome: ApplyOutcome.unsupportedKind,
-        ),
+        ApplyResult(outcome: ApplyOutcome.unsupportedKind),
       ]);
       expect(body, contains('deleted 0'));
       expect(body, contains('unsupported 1'));
@@ -194,10 +476,7 @@ class C {
 
     test('summary names notFound addendum when relevant', () {
       final body = buildApplySummary([
-        ApplyResult(
-          target: mk(UnusedKind.function, 'f'),
-          outcome: ApplyOutcome.notFound,
-        ),
+        ApplyResult(outcome: ApplyOutcome.notFound),
       ]);
       expect(body, contains('not found 1'));
       expect(body, contains('"not found" entries indicate the source changed'));
@@ -205,10 +484,7 @@ class C {
 
     test('summary omits both addenda when totals are zero', () {
       final body = buildApplySummary([
-        ApplyResult(
-          target: mk(UnusedKind.function, 'f'),
-          outcome: ApplyOutcome.deleted,
-        ),
+        ApplyResult(outcome: ApplyOutcome.deleted),
       ]);
       expect(body, isNot(contains('unsupported kinds')));
       expect(body, isNot(contains('"not found"')));
