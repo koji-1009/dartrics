@@ -44,12 +44,21 @@ void apply(bool show, bool selected) {}
     );
   }
 
-  void test_threeBoolParamsAcrossNamed_lint() async {
+  void test_namedBoolParams_noLint() async {
+    // Named bool parameters are self-documenting at the call site
+    // and intentionally not counted toward the boolean-trap signal.
+    await assertNoDiagnostics(r'''
+void apply({required bool a, required bool b, bool c = false}) {}
+''');
+  }
+
+  void test_mixedSignature_countsPositionalOnly() async {
+    // Two positional + one named = 2 positional, threshold is 2.
     await assertDiagnostics(
       r'''
-void apply({required bool a, required bool b, bool c = false}) {}
+void apply(bool show, bool selected, {required bool flush}) {}
 ''',
-      [lint(0, 65)],
+      [lint(0, 62)],
     );
   }
 

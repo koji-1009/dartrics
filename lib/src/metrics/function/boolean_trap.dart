@@ -2,16 +2,18 @@ import 'package:analyzer/dart/ast/ast.dart';
 
 import '../metric.dart';
 
-/// Number of `bool`-typed formal parameters declared by the function.
+/// Number of **positional** `bool`-typed formal parameters declared by
+/// the function.
 ///
 /// "Boolean-trap" is McConnell's *Code Complete* term (also Bloch's
 /// *Effective Java* item 36) for a function whose call site reads as
 /// `foo(true, false, true)` and forces every reader to jump to the
-/// declaration to recover what each flag means. A single bool parameter
-/// is fine on a clearly-named function; two or more on the same signature
-/// is the antipattern. The metric counts them so AI loops can surface a
-/// candidate for "split into intent-named methods" or "replace with a
-/// typed enum" without having to re-derive the heuristic.
+/// declaration to recover what each flag means. The antipattern is
+/// **specifically about positional flags** — Dart's named-parameter
+/// call-site `foo(animated: true, immediate: false)` puts the intent
+/// on the spot, which dissolves the readability problem. The metric
+/// therefore only counts positional bool parameters; named bool
+/// parameters are intentionally ignored.
 ///
 /// Detection is purely lexical on the type-annotation AST node — `bool`,
 /// `bool?`, `core.bool`, and `dart.core.bool` all match. Untyped
@@ -28,14 +30,18 @@ class BooleanTrap extends FunctionMetric {
 
   @override
   String get rationale =>
-      'Boolean-trap counts the number of `bool`-typed parameters declared '
-      'by the function. McConnell (*Code Complete*, 2004) and Bloch '
-      '(*Effective Java*, item 36) call out signatures that take two or '
-      'more boolean flags as a readability antipattern: `foo(true, '
-      'false, true)` at the call site forces every reader to jump to '
-      'the declaration to recover what each flag means. The default '
-      'warning threshold is 2, matching the cited threshold above which '
-      'the call-site loses self-documentation.';
+      'Boolean-trap counts the number of **positional** `bool`-typed '
+      'parameters declared by the function. McConnell (*Code Complete*, '
+      '2004) and Bloch (*Effective Java*, item 36) describe signatures '
+      'that take two or more positional boolean flags as a readability '
+      'antipattern: `foo(true, false, true)` at the call site forces '
+      'every reader to jump to the declaration to recover what each '
+      'flag means. Dart\'s named-parameter call site `foo(animated: '
+      'true, immediate: false)` puts the intent on the spot, which '
+      'dissolves the antipattern, so the metric ignores named bool '
+      'parameters. Default warning threshold is 2 — the smallest '
+      'positional-bool count where the call site loses self-'
+      'documentation.';
 
   @override
   List<String> get refactorHints => const [
@@ -51,6 +57,11 @@ class BooleanTrap extends FunctionMetric {
     if (params == null) return 0;
     var count = 0;
     for (final p in params.parameters) {
+      // Named parameters carry their name at the call site
+      // (`foo(animated: true)`), which dissolves the boolean-trap
+      // antipattern — the reader sees the flag's purpose on the
+      // spot. Only positional bool parameters are counted.
+      if (p.isNamed) continue;
       if (_isBoolParameter(p)) count++;
     }
     return count;

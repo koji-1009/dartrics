@@ -6,17 +6,30 @@ import 'helpers.dart';
 void main() {
   const m = BooleanTrap();
 
-  test('counts every bool-typed positional parameter', () {
+  test('counts every positional bool-typed parameter', () {
     final input = inputFor('''
 void f(bool a, bool b, int c) {}
 ''', name: 'f');
     expect(m.compute(input), 2);
   });
 
-  test('counts bool-typed named parameters too', () {
-    final input = inputFor('''
+  test(
+    'ignores named bool parameters (named call site is self-documenting)',
+    () {
+      // `foo(animated: true, immediate: false)` puts the intent on
+      // the spot, so the boolean-trap antipattern doesn't apply.
+      final input = inputFor('''
 void f({bool? a, required bool b, int? c}) {}
 ''', name: 'f');
+      expect(m.compute(input), 0);
+    },
+  );
+
+  test('counts only positional ones in a mixed signature', () {
+    final input = inputFor('''
+void f(bool a, bool b, {required bool c, bool? d}) {}
+''', name: 'f');
+    // Two positional bools count, two named bools are ignored.
     expect(m.compute(input), 2);
   });
 
