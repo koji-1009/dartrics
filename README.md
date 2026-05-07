@@ -103,6 +103,15 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 
 DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK 1994 are **not provided**: Dart's mixin + composition-over-inheritance culture keeps single-inheritance chains shallow, so they rarely produce signal.
 
+#### Dart-specific caveats on LCOM4 and RFC
+
+Both metrics use **name-based AST matching** scoped to the class declaration itself:
+
+- **LCOM4** only puts methods declared on the class into the graph. Mixin-applied methods, inherited methods, and extension methods are invisible. The trade-off avoids the false positives a "everything that resolves on this type" reading would produce, but it does mean methods that cohere only through a mixin (e.g. all call `log()` from a `Logger` mixin and don't share fields directly) appear as isolated components and get reported. Move the cohesion to a shared field on the class, or accept a dismissal with a load-bearing reason.
+- **RFC**'s "invoked methods" set comes from `MethodInvocation` (e.g. `foo.bar()`) and `InstanceCreationExpression` (e.g. `Foo()`) nodes inside the method bodies. Three Dart constructs are intentionally **not** counted toward the response set: extension-method tear-offs (`x.foo` without parens), callable-object invocations of `call()` written as `obj()`, and `super.x` redirections. The metric therefore under-reports rather than over-reports.
+
+If you have a concrete case where these caveats produce a misleading number, file an issue with the snippet — both rules can be tightened with element resolution if there's demand.
+
 ### Library / file level (Martin 1994)
 
 | Metric                          | Notes                                                                   |

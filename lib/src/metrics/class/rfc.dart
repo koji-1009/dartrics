@@ -24,7 +24,16 @@ class ResponseForClass extends ClassMetric {
       'from inside them. CK introduce it as a measure of the response '
       'set — the set of methods that can run in response to a message '
       'received by an object — and report it correlates with debugging '
-      'and testing effort. SonarQube uses ~50 as a default alarm.';
+      'and testing effort. SonarQube uses ~50 as a default alarm.\n\n'
+      'Dart counting rule: declared methods are taken from '
+      '`MethodDeclaration` and `ConstructorDeclaration` nodes whose '
+      'body is non-empty; invoked methods are simple-name matches on '
+      'every `MethodInvocation` and `InstanceCreationExpression` (for '
+      'constructor calls) reached from inside those bodies. This '
+      'misses extension-method tear-offs, callable-object `obj()` '
+      'invocations of `call()`, and `super.x` redirections — they '
+      'don\'t lift the response-set count for now, which keeps the '
+      'metric conservative (it under-reports rather than over-reports).';
 
   @override
   List<String> get refactorHints => const [

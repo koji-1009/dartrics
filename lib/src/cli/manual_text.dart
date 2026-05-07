@@ -86,9 +86,9 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | --- | --- | --- | --- |
 | `number-of-methods` | "Too many entry points to keep in my head." | Members with non-empty bodies. | — |
 | `weighted-methods-per-class` | "The whole class is heavy, not just one method." | Sum of cyclomatic complexity across methods. | CK 1994 |
-| `lcom4` | "This class is doing more than one thing." | Connected components in the field-share + method-call graph. ≥ 2 ⇒ the class can be split along the components. | Hitz & Montazeri 1995 |
+| `lcom4` | "This class is doing more than one thing." | Connected components in the field-share + method-call graph. Only declared methods are in the graph — mixin-applied methods don't count, so a class whose methods cohere via a mixin can show LCOM4 ≥ 2. (Hitz & Montazeri 1995) | Hitz & Montazeri 1995 |
 | `coupling-between-objects` | "This class needs to know about the world to do its job." | Distinct other types referenced anywhere in the class. | CK 1994 |
-| `response-for-class` | "Touching one method drags too many friends along." | `\|methods ∪ method-names invoked from those methods\|`. | CK 1994 |
+| `response-for-class` | "Touching one method drags too many friends along." | `\|methods ∪ method-names invoked from those methods\|`. Invoked-method set is name-matched on `MethodInvocation` + constructor calls; extension tear-offs, callable-object `()` invocations, and `super.x` are intentionally not counted (the metric under-reports rather than over-reports). | CK 1994 |
 | `class-length` | "I can't see the class on one screen." | Total source lines spanned by the class. | — |
 
 DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intentionally **not** provided. Dart's mixin + composition-over-inheritance culture keeps single-inheritance chains shallow, so they rarely produce signal.

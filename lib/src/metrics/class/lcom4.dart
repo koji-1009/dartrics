@@ -33,7 +33,16 @@ class Lcom4 extends ClassMetric {
       'cohesive class, anything higher hints that unrelated '
       'responsibilities are coexisting in one type. Hitz and Montazeri '
       'argue this connected-components reading is closer to a '
-      'designer\'s intuition than the original LCOM1 score.';
+      'designer\'s intuition than the original LCOM1 score.\n\n'
+      'Dart caveat: only methods declared on the class itself are '
+      'vertices in the graph — mixin-applied methods and inherited '
+      'methods are invisible. The trade-off avoids the false '
+      'positives a "include everything that resolves on this type" '
+      'reading would create, but it does mean methods that cohere '
+      'only via a mixin (e.g. all call `log()` from a Logger mixin '
+      'and don\'t share fields directly) appear as isolated '
+      'components and get reported. Move the cohesion to a shared '
+      'field, or accept the dismiss with a load-bearing reason.';
 
   @override
   List<String> get refactorHints => const [
