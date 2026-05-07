@@ -480,4 +480,71 @@ void main() {
       expect(body, contains('renamed'));
     },
   );
+
+  test(
+    'snippet with first line deeper than later lines round-trips through dapper',
+    () async {
+      // Regression: a violation centred on a method-body line followed
+      // by a closing brace at column 0 produces a YAML literal block
+      // whose first content line is more indented than later lines.
+      // YAML auto-detect (`|`) latches onto the first line's indent and
+      // treats the dedented closer as the next mapping key, which made
+      // dapper's `formatYaml` re-parse pass abort with `Expected a key
+      // while parsing a block mapping`. The reporter now pins the
+      // block scalar to `|2` so the parser uses an absolute baseline
+      // and tolerates dedenting content lines.
+      final tmp = Directory.systemTemp.createTempSync();
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final temp = File('${tmp.path}/ai.yaml');
+      final sink = temp.openWrite();
+      // Centre line 4 means the snippet covers lines 1–7. Line 4 is
+      // four spaces in — deeper than the closing braces on lines 5–7.
+      const source =
+          'class C {\n'
+          '  void foo() {\n'
+          '    if (x) {\n'
+          '      bar();\n'
+          '    }\n'
+          '  }\n'
+          '}\n';
+      AiReporter(sourceLoader: (path) => {path: source}).report(
+        AnalysisReport(
+          version: '1.0',
+          metrics: const [
+            MetricRecord(
+              file: '/proj/lib/foo.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.method,
+                name: 'C.foo',
+                location: SourceLocation(
+                  path: '/proj/lib/foo.dart',
+                  line: 4,
+                  column: 7,
+                ),
+              ),
+              values: {'cyclomatic-complexity': 12},
+              violations: [
+                MetricViolation(
+                  metricId: 'cyclomatic-complexity',
+                  severity: Severity.warning,
+                  threshold: 10,
+                ),
+              ],
+            ),
+          ],
+          unused: const [],
+        ),
+        sink,
+      );
+      await sink.close();
+      // The crash path was an exception thrown inside dapper's
+      // formatYaml; reaching this assertion at all means the round-trip
+      // succeeded. Spot-check the output for the closing-brace lines
+      // that previously triggered the parser bail.
+      final body = await temp.readAsString();
+      expect(body, contains('# dartrics ai-report v1'));
+      expect(body, contains('snippet:'));
+      expect(body, contains('}'));
+    },
+  );
 }

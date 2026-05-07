@@ -141,7 +141,15 @@ class AiReporter implements Reporter {
       if (v.dismissalRejected != null) {
         buf.writeln('    dismissalRejected: ${_escape(v.dismissalRejected!)}');
       }
-      buf.writeln('    snippet: |');
+      // `|2` pins the literal-block baseline to the parent indent + 2
+      // spaces. Without it, YAML auto-detects the indent from the first
+      // non-empty content line — a snippet whose centered line is
+      // deeper-indented than later lines (e.g. `}` closing an outer
+      // scope) makes the parser end the block early on the dedent.
+      // dapper round-trips the output through `package:yaml`, so the
+      // pin keeps the report parseable regardless of the source's
+      // indentation shape.
+      buf.writeln('    snippet: |2');
       for (final line in _snippetFor(m.file, m.scope.location.line)) {
         buf.writeln('      $line');
       }
@@ -183,7 +191,10 @@ class AiReporter implements Reporter {
         ..writeln('    line: ${u.location.line}')
         ..writeln('    kind: ${u.kind.name}')
         ..writeln('    name: ${u.name}')
-        ..writeln('    snippet: |');
+        // See the snippet writer in `_writeViolations` for why `|2` is
+        // needed. Same root cause: a deeply-indented declaration line
+        // would break YAML auto-detect.
+        ..writeln('    snippet: |2');
       for (final line in _snippetFor(u.location.path, u.location.line)) {
         buf.writeln('      $line');
       }
