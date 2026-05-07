@@ -49,7 +49,7 @@ Why each step:
    - `id` — stable kebab-case identifier (used as JSON key and threshold key).
    - `rationale` — one paragraph anchored in the original paper. Used by `dartrics rules` and `--explain`.
    - `refactorHints` — list of single-sentence imperative refactor moves.
-   - `polarity` — `MetricPolarity.down` (lower is better, the default), `up` (higher is better, e.g. maintainability index), or `neutral` (regression diff surfaces deltas without classifying).
+   - `polarity` — `MetricPolarity.down` (lower is better, the default), `up` (higher is better; reserved for custom embedder metrics, no built-in uses it), or `neutral` (regression diff surfaces deltas without classifying).
 4. Register the calculator in the corresponding `default_*_metrics.dart` list so the engine picks it up.
 5. Add a golden test in `test/metrics/.../<metric>_test.dart` with hand-verified values from a paper example or a small fixture you can verify by inspection.
 6. Update `README.md`'s metric table.
