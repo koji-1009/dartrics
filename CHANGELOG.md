@@ -6,7 +6,7 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Metrics
 
-- **Function / method**: cyclomatic complexity (McCabe 1976), cognitive complexity (Sonar 2018), maximum nesting level, number of parameters, boolean-trap (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36 — count of `bool`-typed parameters, warning ≥ 2), source lines of code, method length. Halstead V/D/E (Halstead 1977) and the maintainability index (Oman 1992) ship off-by-default — opt in with `dartrics: { metrics: { <id>: { enabled: true } } }`.
+- **Function / method**: cyclomatic complexity (McCabe 1976), cognitive complexity (Sonar 2018), maximum nesting level (control-flow only — `if`/`for`/`while`/`switch`/`try`/closure; widget-literal chains do not count), number of parameters, boolean-trap (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36 — count of `bool`-typed parameters, warning ≥ 2), source lines of code, method length. Halstead V/D/E (Halstead 1977), the maintainability index (Oman 1992), and `widget-tree-depth` (deepest chain of nested constructor calls — Flutter community ~5–7 threshold) ship off-by-default — opt in with `dartrics: { metrics: { <id>: { enabled: true } } }`.
 - **Class**: number of methods, weighted methods per class (CK 1994), LCOM4 (Hitz & Montazeri 1995, connected-component variant), CBO and RFC (CK 1994), class length. CK's DIT and NOC are intentionally not provided — Dart's mixin / composition-over-inheritance culture keeps inheritance chains shallow, so they rarely produce signal.
 - **Library / file**: efferent / afferent coupling, instability, abstractness, distance from main sequence (Martin 1994).
 - Each metric exposes `rationale` (one-paragraph explanation anchored to the original paper), `refactorHints` (concrete moves), and `polarity` (`down` / `up` / `neutral`) so AI loops know which direction is "healthier" for the regression diff.
@@ -60,8 +60,9 @@ First public release. The CLI, the analyzer plugin, and the embeddable Dart API 
 
 ### Flutter-aware mode
 
-- `dartrics: { flutter: true }` is the default. Skips `maximum-nesting-level` and `method-length` on `Widget.build()` and `number-of-parameters` on widget constructors — five-to-seven-deep `Container` trees and key/callback parameter lists are normal in idiomatic Flutter and shouldn't churn AI refactor loops. Non-Flutter packages are unaffected because no class extends a known widget superclass. Set `flutter: false` to force the lenses on widget code anyway.
-- Detection is AST-only across `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`. Cyclomatic / cognitive complexity, SLOC, and class- / library-level metrics still apply, including on widget helpers.
+- `dartrics: { flutter: true }` is the default. As of 0.1.0 the only thing it does is **skip `number-of-parameters` on widget constructors**: `key:` plus a long callback list is the idiom and shouldn't fire the parameter-count lens. `Widget.build()` is now measured normally — `maximum-nesting-level` only counts control-flow constructs (`if`/`for`/`while`/`switch`/`try`/closure), so a healthy declarative tree produces a depth of 0 without any special-casing, and `method-length` is informative even on declarative trees.
+- Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the new `widget-tree-depth` lens — opt-in for Flutter authors that want this signal, default warning 7 (matching Flutter community practice of ~5–7 before extracting a sub-widget).
+- Detection is AST-only across `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`. Set `flutter: false` to force `number-of-parameters` on widget constructors too.
 
 ### Test-aware mode
 

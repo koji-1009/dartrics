@@ -37,7 +37,7 @@ Decades of software-engineering research has converted those felt reactions into
 
 ## The lens battery
 
-Twelve lenses ship default-on. Four ship default-off because their predictive value over cyclomatic complexity has not held up empirically — they remain available but you must opt them in.
+Twelve lenses ship default-on. Five ship default-off — four because their predictive value over cyclomatic complexity has not held up empirically (Halstead V/D/E, Maintainability Index), one (`widget-tree-depth`) because it's a Flutter-specific signal that wouldn't fire on most non-Flutter Dart code anyway. They remain available but you must opt them in.
 
 Each entry below names: **the felt reaction** it captures, **what the lens computes**, the **default warning threshold**, and **when to refactor vs. dismiss**.
 
@@ -50,6 +50,7 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | `maximum-nesting-level` | "I can't tell which scope I'm in." | Max depth of `if`, `for`, `while`, `do`, `switch`, `try`, closure blocks. | 4 |
 | `number-of-parameters` | "Too many knobs at the call site." | Positional + named + optional. | 4 |
 | `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of `bool`-typed parameters. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
+| `widget-tree-depth` (off) | "This Flutter `build()` is six `Container(child: ...)` chains deep." | Deepest chain of nested constructor calls in the body. Complement to `maximum-nesting-level`, which only counts control-flow constructs and gives 0 on a healthy declarative tree. | opt-in (7) |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
 | `method-length` | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | — |
 | `halstead-volume` (off) | — | `(N1+N2) · log₂(n1+n2)`. Token-based historical metric. (Halstead 1977) | opt-in |
@@ -148,7 +149,7 @@ The lens reads it but you genuinely don't know whether the structure is load-bea
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:
 
-- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`): `Widget.build()` skips `maximum-nesting-level` and `method-length`; the constructor skips `number-of-parameters`. CC / Cognitive / SLOC and the class- / library-level lenses still measure. Non-Flutter packages are unaffected because no class matches.
+- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`), the **constructor** skips `number-of-parameters` because `key:` plus a long callback list is the cultural norm. `Widget.build()` is **measured normally** — `maximum-nesting-level` only counts control-flow constructs (`if`/`for`/`while`/`switch`/`try`/closure), so a healthy declarative tree gives 0 without special-casing. Visual depth from chained Widget literals belongs to the opt-in `widget-tree-depth` lens. Non-Flutter packages are unaffected because no class matches.
 - **`test: true`** (default). On files under `test/` or `integration_test/` whose basename ends in `_test.dart`: function-level `method-length` / `source-lines-of-code` / `maximum-nesting-level` step aside (AAA blocks and nested `group`/`setUp`/`test` scaffolding are normal); class-level `class-length` / `number-of-methods` step aside (test classes legitimately hold many `@Test` methods). Helpers like `test/helpers.dart` stay under strict thresholds because they're imported by tests rather than being tests.
 
 Both default to on because the failure mode of "the lens fires on a healthy Flutter widget / test method" is far more common than the failure mode of "the lens didn't fire when it should have." Flip either to `false` in `analysis_options.yaml` if you want the strict thresholds applied uniformly.
@@ -309,7 +310,6 @@ Knowing what `dartrics` deliberately doesn't measure is part of the contract:
 - **No cross-PR memory.** The tool doesn't remember "this dismiss was rejected last iteration." Stay session-local.
 - **No DIT / NOC.** Dart inheritance chains are too shallow for the metric to produce signal.
 - **No test-quality lenses.** Coverage is read in only as a complexity-justification signal. Mutation score, assertion density, etc. are out of scope.
-- **No build-tree depth lens for Flutter.** `Widget.build()` is opted *out* of the depth-based lenses (`flutter: true` by default); a hypothetical `widget-tree-depth` metric is not yet shipped.
 
 ## Pointers
 

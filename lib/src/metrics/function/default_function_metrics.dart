@@ -8,6 +8,7 @@ import 'max_nesting_level.dart';
 import 'method_length.dart';
 import 'number_of_parameters.dart';
 import 'source_lines_of_code.dart';
+import 'widget_tree_depth.dart';
 
 /// Set of function-level metrics enabled by default.
 ///
@@ -25,4 +26,5 @@ const List<FunctionMetric> defaultFunctionMetrics = [
   BooleanTrap(),
   SourceLinesOfCode(),
   MethodLength(),
+  WidgetTreeDepth(),
 ];

@@ -85,6 +85,7 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 | Maximum Nesting Level                 | on      | —                | depth of `if/for/while/do/switch/try/closure` blocks                        |
 | Number Of Parameters                  | on      | —                | positional + named + optional                                               |
 | Boolean Trap                          | on      | McConnell 2004; Bloch 2018 | count of `bool`-typed parameters; default warning 2                       |
+| Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects via `dartrics: { metrics: { widget-tree-depth: { enabled: true } } }` |
 | Source Lines Of Code                  | on      | —                | non-blank, non-comment-only lines                                           |
 | Method Length                         | on      | —                | total source lines spanned by the body                                      |
 | Halstead Volume / Difficulty / Effort | **off** | Halstead 1977    | token-based n1/n2/N1/N2 classification — historical                         |
@@ -312,15 +313,17 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 
 ## Flutter-aware mode
 
-`dartrics: { flutter: true }` is the default — out of the box, the lenses know how to step aside on idiomatic Flutter widgets so AI refactor loops don't churn on healthy `build()` trees. Set `flutter: false` in `analysis_options.yaml` to force the size-and-shape lenses on widget code anyway.
+`dartrics: { flutter: true }` is the default. Its job is to recognise idiomatic Flutter constructor signatures so the threshold-style lenses don't churn on widget code that's actually fine.
 
-| Target                           | Effect                                                  |
-| -------------------------------- | ------------------------------------------------------- |
-| `Widget.build()`                 | `maximum-nesting-level` and `method-length` are skipped |
-| Widget constructor               | `number-of-parameters` is skipped                       |
-| Other methods on the same widget | Measured normally                                       |
+| Target                           | Effect                                                                  |
+| -------------------------------- | ----------------------------------------------------------------------- |
+| Widget constructor               | `number-of-parameters` is skipped (`key:` + a long callback list is the cultural norm) |
+| `Widget.build()`                 | **Measured normally.** Control-flow nesting only counts `if/for/while/switch/try/closure`, so a healthy declarative tree gives 0; method length is informative even on declarative code |
+| Other methods on the same widget | Measured normally                                                       |
 
-Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Non-Flutter packages are unaffected because no class will match. Cyclomatic / cognitive complexity, SLOC, and the class- and library-level metrics still apply, because deep branching inside `build()` is still hard to read.
+Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Non-Flutter packages are unaffected because no class matches. Set `flutter: false` to force `number-of-parameters` on widget constructors too.
+
+Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the separate `widget-tree-depth` lens, which is **off by default** and configurable independently. Opt in via `dartrics: { metrics: { widget-tree-depth: { enabled: true, warning: 7 } } }` — Flutter community practice is to extract a sub-widget once a build tree exceeds about 5–7 levels.
 
 ## Test-aware mode
 

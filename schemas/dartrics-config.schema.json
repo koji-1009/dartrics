@@ -23,6 +23,7 @@
               "maximum-nesting-level",
               "number-of-parameters",
               "boolean-trap",
+              "widget-tree-depth",
               "source-lines-of-code",
               "method-length",
               "halstead-volume",

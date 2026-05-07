@@ -1,11 +1,31 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
-/// Pure-AST helpers used by both the CLI metric engine and the analyzer
-/// plugin to relax a small set of metrics on idiomatic Flutter widgets.
+/// Pure-AST helpers used by the metric engine and the analyzer plugin to
+/// recognise idiomatic Flutter widgets.
 ///
-/// We deliberately stay at the AST layer (no element resolution) so the
-/// plugin's per-file visitor stays cheap. The trade-off is that we
-/// recognise widgets only by the unqualified superclass name.
+/// As of 0.1.0, dartrics measures the same control-flow signals on
+/// `Widget.build()` as it does on any other method — `maximum-nesting-level`
+/// and `method-length` apply, because deeply-nested control flow inside
+/// `build()` is just as hard to read as it is anywhere else. The visual
+/// depth from chained Widget literals does **not** affect those metrics
+/// (`MaxNestingLevel` only counts `if` / `for` / `while` / `do` / `switch`
+/// / `try` / closure bodies, not `InstanceCreationExpression`s), so a
+/// healthy `Container > Padding > Row > Column > ...` tree produces a
+/// nesting score of 0.
+///
+/// Widget literal nesting itself is the responsibility of a separate
+/// `widget-tree-depth` lens (see `widget_tree_depth.dart`), which lets
+/// users tune Widget-tree depth thresholds independently from
+/// control-flow nesting.
+///
+/// What this helper still does: skip `number-of-parameters` on widget
+/// **constructors**. `key:` plus a long list of callback / typed-init
+/// parameters is the cultural norm for `StatelessWidget` /
+/// `StatefulWidget` constructors, and it does not carry the same call-
+/// site readability penalty that arbitrary boolean / positional
+/// parameters do. Other methods on the same widget — including helper
+/// builders, lifecycle hooks, and `_buildSomething` private helpers —
+/// are measured normally.
 abstract final class FlutterAware {
   /// Superclass names that mark a class as a widget for skip purposes.
   /// Covers stock Flutter, Riverpod's `ConsumerWidget`/`ConsumerStatefulWidget`,
@@ -20,22 +40,18 @@ abstract final class FlutterAware {
     'HookConsumerWidget',
   };
 
-  /// Metrics skipped when the declaration is a widget's `build` method.
-  static const Set<String> buildSkips = {
-    'maximum-nesting-level',
-    'method-length',
-  };
-
   /// Metrics skipped when the declaration is a widget's constructor.
+  /// `key:` plus a long list of callbacks is the idiom for stateless /
+  /// stateful widget constructors and shouldn't be flagged as
+  /// boolean-trap-style call-site noise.
   static const Set<String> constructorSkips = {'number-of-parameters'};
 
   /// Returns the set of metric ids that should be skipped for [decl] in
-  /// Flutter-aware mode. Empty for non-widget code or for declarations
-  /// inside a widget that aren't `build()`/the constructor.
+  /// Flutter-aware mode. Empty for non-widget code, for widget
+  /// `build()` (= measured normally as of 0.1.0), and for declarations
+  /// inside a widget that aren't the constructor.
   static Set<String> skipsFor(Declaration decl) {
-    if (decl is MethodDeclaration && decl.name.lexeme == 'build') {
-      if (_enclosingClassIsWidget(decl)) return buildSkips;
-    } else if (decl is ConstructorDeclaration) {
+    if (decl is ConstructorDeclaration) {
       if (_enclosingClassIsWidget(decl)) return constructorSkips;
     }
     return const {};

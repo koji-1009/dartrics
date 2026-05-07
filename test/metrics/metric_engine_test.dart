@@ -172,14 +172,24 @@ enum Color {
     expect(keys, isNot(contains('cyclomatic-complexity')));
   });
 
-  test('flutter mode skips Widget.build() length + nesting', () async {
-    final dir = await Directory.systemTemp.createTemp('flutter_engine_');
-    addTearDown(() => dir.delete(recursive: true));
-    await Directory('${dir.path}/lib').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
-    await File('${dir.path}/lib/widget.dart').writeAsString('''
+  test(
+    'Flutter aware mode keeps build() measured + skips ctor `number-of-parameters`',
+    () async {
+      // Contract as of 0.1.0: Widget.build() is **not** specially
+      // skipped — `maximum-nesting-level` only counts control-flow
+      // constructs (if/for/while/etc.) so a healthy Container-tree
+      // produces 0 anyway, and `method-length` is informative even on
+      // declarative Widget trees. Widget literal nesting belongs to a
+      // separate `widget-tree-depth` lens. The constructor still
+      // skips `number-of-parameters` because key + multiple callbacks
+      // is the cultural norm.
+      final dir = await Directory.systemTemp.createTemp('flutter_engine_');
+      addTearDown(() => dir.delete(recursive: true));
+      await Directory('${dir.path}/lib').create(recursive: true);
+      await File(
+        '${dir.path}/pubspec.yaml',
+      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/lib/widget.dart').writeAsString('''
 class StatelessWidget {}
 class Container { Container({this.child}); final Container? child; }
 
@@ -202,57 +212,101 @@ class Hello extends StatelessWidget {
   }
 }
 ''');
+      final runner = AnalyzerRunner(roots: [dir.path]);
+      final units = await runner.resolveAll();
+
+      final records = MetricEngine().analyzeResolved(units);
+
+      // build() is measured for every default metric, regardless of
+      // flutter mode — control-flow nesting on a declarative Widget
+      // tree is naturally 0, so the metric doesn't false-positive on
+      // healthy code, and method-length is informative.
+      final buildKeys = records
+          .firstWhere((r) => r.scope.name == 'Hello.build')
+          .values
+          .keys
+          .toSet();
+      expect(buildKeys, contains('maximum-nesting-level'));
+      expect(buildKeys, contains('method-length'));
+      expect(buildKeys, contains('cyclomatic-complexity'));
+
+      // The constructor still skips number-of-parameters under the
+      // Flutter-aware default (flutter: true).
+      final ctorKeys = records
+          .firstWhere(
+            (r) =>
+                r.scope.name == 'Hello' &&
+                r.values.containsKey('cyclomatic-complexity'),
+          )
+          .values
+          .keys
+          .toSet();
+      expect(ctorKeys, isNot(contains('number-of-parameters')));
+
+      // Pinning flutter:false un-skips the constructor too.
+      final strict = MetricEngine(flutter: false).analyzeResolved(units);
+      final strictCtor = strict
+          .firstWhere(
+            (r) =>
+                r.scope.name == 'Hello' &&
+                r.values.containsKey('number-of-parameters'),
+          )
+          .values
+          .keys
+          .toSet();
+      expect(strictCtor, contains('number-of-parameters'));
+
+      // Helper methods are measured normally on both paths.
+      final helperKeys = records
+          .firstWhere((r) => r.scope.name == 'Hello._helper')
+          .values
+          .keys
+          .toSet();
+      expect(helperKeys, contains('maximum-nesting-level'));
+    },
+  );
+
+  test('widget-tree-depth fires on a deep build() when opted in', () async {
+    final dir = await Directory.systemTemp.createTemp('wtd_engine_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/lib').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    // Resolved analysis turns un-keyword'd `Container()` into an
+    // InstanceCreationExpression even without `const`/`new`, so the
+    // depth visitor sees every level.
+    await File('${dir.path}/lib/widget.dart').writeAsString('''
+class StatelessWidget {}
+class Container { Container({this.child}); final Container? child; }
+
+class Hello extends StatelessWidget {
+  Container build(Object? ctx) {
+    return Container(
+      child: Container(
+        child: Container(
+          child: Container(
+            child: Container(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+''');
     final runner = AnalyzerRunner(roots: [dir.path]);
     final units = await runner.resolveAll();
-
-    // Disabling flutter mode includes everything for build() and the
-    // constructor (flutter is now default-on, so we must pin it off to
-    // exercise the un-relaxed path).
-    final defaultRecords = MetricEngine(flutter: false).analyzeResolved(units);
-    final buildKeys = defaultRecords
-        .firstWhere((r) => r.scope.name == 'Hello.build')
-        .values
-        .keys
-        .toSet();
-    expect(buildKeys, contains('maximum-nesting-level'));
-    expect(buildKeys, contains('method-length'));
-    final ctorKeys = defaultRecords
-        .firstWhere(
-          (r) =>
-              r.scope.name == 'Hello' &&
-              r.values.containsKey('number-of-parameters'),
-        )
-        .values
-        .keys
-        .toSet();
-    expect(ctorKeys, contains('number-of-parameters'));
-
-    // Flutter mode skips them on build()/ctor but keeps helper methods.
-    final flutterRecords = MetricEngine(flutter: true).analyzeResolved(units);
-    final fBuildKeys = flutterRecords
-        .firstWhere((r) => r.scope.name == 'Hello.build')
-        .values
-        .keys
-        .toSet();
-    expect(fBuildKeys, isNot(contains('maximum-nesting-level')));
-    expect(fBuildKeys, isNot(contains('method-length')));
-    expect(fBuildKeys, contains('cyclomatic-complexity'));
-    final fHelperKeys = flutterRecords
-        .firstWhere((r) => r.scope.name == 'Hello._helper')
-        .values
-        .keys
-        .toSet();
-    expect(fHelperKeys, contains('maximum-nesting-level'));
-    final fCtorKeys = flutterRecords
-        .firstWhere(
-          (r) =>
-              r.scope.name == 'Hello' &&
-              r.values.containsKey('cyclomatic-complexity'),
-        )
-        .values
-        .keys
-        .toSet();
-    expect(fCtorKeys, isNot(contains('number-of-parameters')));
+    final records = MetricEngine(
+      thresholds: const {
+        'widget-tree-depth': MetricThresholds(enabled: true, warning: 3),
+      },
+    ).analyzeResolved(units);
+    final build = records.firstWhere((r) => r.scope.name == 'Hello.build');
+    expect(build.values['widget-tree-depth'], 5);
+    final v = build.violations.firstWhere(
+      (v) => v.metricId == 'widget-tree-depth',
+    );
+    expect(v.severity, Severity.warning);
   });
 
   test('test mode relaxes size lenses on test/-resident files', () async {

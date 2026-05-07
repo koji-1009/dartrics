@@ -29,17 +29,21 @@ void main() {
       );
     });
 
-    test('build method on a widget skips nesting + length', () {
+    test('build method on a widget is measured normally', () {
+      // 0.1.0 contract: build() is measured for every default metric.
+      // `maximum-nesting-level` already counts only control flow
+      // (if/for/while/switch/try/closure), so a healthy declarative
+      // Widget tree produces a depth of 0 — the metric doesn't need
+      // to be skipped to avoid noise. Visual depth from chained
+      // Widget literals belongs to a separate `widget-tree-depth`
+      // lens.
       final cls = _firstClass('''
 class W extends StatelessWidget {
   Widget build(BuildContext context) => Container();
 }
 ''');
       final method = cls.body.members.whereType<MethodDeclaration>().single;
-      expect(FlutterAware.skipsFor(method), {
-        'maximum-nesting-level',
-        'method-length',
-      });
+      expect(FlutterAware.skipsFor(method), isEmpty);
     });
 
     test('non-build method on a widget is not skipped', () {
@@ -52,7 +56,7 @@ class W extends StatelessWidget {
       expect(FlutterAware.skipsFor(method), isEmpty);
     });
 
-    test('build method on a non-widget class is not skipped', () {
+    test('non-widget class methods are not skipped', () {
       final cls = _firstClass('''
 class Builder {
   void build() {}
