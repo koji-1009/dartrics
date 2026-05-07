@@ -8,10 +8,11 @@ sealed class DismissalCheck {
 }
 
 /// The dismissal passed every gate and should be applied to the
-/// matching violation.
+/// matching violation. The dismissal payload itself isn't carried —
+/// callers already have the original [Dismissal] in hand from
+/// [validateDismissal]'s first argument.
 class DismissalAccepted extends DismissalCheck {
-  const DismissalAccepted(this.dismissal);
-  final Dismissal dismissal;
+  const DismissalAccepted();
 }
 
 /// The dismissal matched a violation but failed validation. The
@@ -34,7 +35,7 @@ DismissalCheck validateDismissal(Dismissal d, DismissalConfig cfg) {
     final yamlRejection = _checkYamlMetadata(d, cfg);
     if (yamlRejection != null) return yamlRejection;
   }
-  return DismissalAccepted(d);
+  return const DismissalAccepted();
 }
 
 DismissalRejected? _checkReason(Dismissal d, DismissalConfig cfg) {

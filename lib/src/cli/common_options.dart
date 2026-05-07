@@ -118,7 +118,6 @@ class CommonOptions {
     required this.limit,
     required this.fatalWarnings,
     required this.fatalStyle,
-    required this.verbose,
     required this.rest,
   });
 
@@ -168,7 +167,6 @@ class CommonOptions {
       limit: limit,
       fatalWarnings: results['fatal-warnings'] as bool,
       fatalStyle: results['fatal-style'] as bool,
-      verbose: results['verbose'] as bool,
       rest: results.rest,
     );
   }
@@ -197,7 +195,6 @@ class CommonOptions {
   final int? limit;
   final bool fatalWarnings;
   final bool fatalStyle;
-  final bool verbose;
   final List<String> rest;
 }
 

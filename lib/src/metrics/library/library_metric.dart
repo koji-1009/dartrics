@@ -7,13 +7,10 @@ import '../metric.dart';
 /// Per-file precomputed information for the library-level metrics.
 class LibraryStats {
   LibraryStats({
-    required this.path,
     required this.internalImports,
     required this.totalClasses,
     required this.abstractClasses,
   });
-
-  final String path;
 
   /// Absolute paths of project-internal files imported by this file.
   final Set<String> internalImports;
@@ -70,7 +67,6 @@ class LibraryIndex {
     final imports = _resolveImports(path, unit, ctx);
     final classCounts = _countClasses(unit);
     return LibraryStats(
-      path: path,
       internalImports: imports,
       totalClasses: classCounts.total,
       abstractClasses: classCounts.abstractCount,

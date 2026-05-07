@@ -3,8 +3,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:dartrics/src/metrics/class/class_metric.dart';
 
-/// Parses [source] and produces a [ClassMetricInput] for the named class,
-/// indexed against every class found in the same source.
+/// Parses [source] and produces a [ClassMetricInput] for the named class.
 ClassMetricInput inputFor(String source, {required String className}) {
   final result = parseString(content: source);
   final visitor = _ClassFinder();
@@ -13,12 +12,7 @@ ClassMetricInput inputFor(String source, {required String className}) {
     (c) => c.namePart.typeName.lexeme == className,
     orElse: () => throw StateError('class $className not found'),
   );
-  final index = ClassIndex.build(visitor.classes);
-  return ClassMetricInput(
-    declaration: target,
-    lineInfo: result.lineInfo,
-    index: index,
-  );
+  return ClassMetricInput(declaration: target, lineInfo: result.lineInfo);
 }
 
 class _ClassFinder extends RecursiveAstVisitor<void> {
