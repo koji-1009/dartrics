@@ -1,9 +1,10 @@
 import 'dart:io';
 
 import 'package:dartrics/src/cli/doctor_command.dart';
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:dartrics/src/config/config.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   group('diagnose (pure)', () {
@@ -146,11 +147,7 @@ dartrics:
       warning: 10
       error: 20
 ''');
-      final code = await buildCommandRunner().run([
-        'doctor',
-        '--config',
-        f.path,
-      ]);
+      final code = await runQuietly(['doctor', '--config', f.path]);
       expect(code, 0);
     });
 
@@ -162,27 +159,19 @@ dartrics:
     cylomatic-complexity:
       warning: 10
 ''');
-      final code = await buildCommandRunner().run([
-        'doctor',
-        '--config',
-        f.path,
-      ]);
+      final code = await runQuietly(['doctor', '--config', f.path]);
       expect(code, 1);
     });
 
     test('exits 78 (EX_CONFIG) on malformed YAML', () async {
       final f = File('${dir.path}/analysis_options.yaml');
       await f.writeAsString('dartrics:\n  metrics:\n    {broken\n');
-      final code = await buildCommandRunner().run([
-        'doctor',
-        '--config',
-        f.path,
-      ]);
+      final code = await runQuietly(['doctor', '--config', f.path]);
       expect(code, 78);
     });
 
     test('exits 0 when config file is missing (defaults are clean)', () async {
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'doctor',
         '--config',
         '${dir.path}/missing.yaml',

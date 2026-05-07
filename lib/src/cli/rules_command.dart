@@ -6,6 +6,7 @@ import 'package:io/io.dart';
 import '../metrics/metric_catalogue.dart';
 import '../models/analysis_report.dart';
 import '../reporters/rules_reporter.dart';
+import 'io_sinks.dart';
 
 export '../metrics/metric_catalogue.dart'
     show collectRuleDescriptions, defaultMetricThresholds, findRuleDescription;
@@ -48,7 +49,7 @@ class RulesCommand extends Command<int> {
     final IOSink sink;
     final bool ownsSink;
     if (output == '-') {
-      sink = stdout;
+      sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
       sink = File(output).openWrite();
@@ -76,7 +77,9 @@ List<ExplainEntry> buildExplanations(List<String> ids) {
     if (id.isEmpty || !seen.add(id)) continue;
     final desc = findRuleDescription(id);
     if (desc == null) {
-      stderr.writeln('dartrics: --explain: unknown metric "$id"');
+      DartricsIO.stderrSink.writeln(
+        'dartrics: --explain: unknown metric "$id"',
+      );
       continue;
     }
     out.add(

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 
+import 'io_sinks.dart';
 import 'manual_text.dart';
 
 /// `dartrics manual` — prints the operator's manual for AI consumers.
@@ -37,7 +38,7 @@ class ManualCommand extends Command<int> {
   Future<int> run() async {
     final output = argResults!['output'] as String;
     if (output == '-') {
-      stdout.write(manualText);
+      DartricsIO.stdoutSink.write(manualText);
     } else {
       final sink = File(output).openWrite();
       try {

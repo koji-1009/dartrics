@@ -5,6 +5,8 @@ import 'package:dartrics/src/cli/manual_text.dart';
 import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
+
 void main() {
   group('manual subcommand', () {
     test('manualText is byte-identical to doc/manual.md', () {
@@ -24,11 +26,7 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('manual_cli_');
       try {
         final out = '${dir.path}/MANUAL.md';
-        final code = await buildCommandRunner().run([
-          'manual',
-          '--output',
-          out,
-        ]);
+        final code = await runQuietly(['manual', '--output', out]);
         expect(code, 0);
         final body = await File(out).readAsString();
         expect(body, equals(manualText));
@@ -40,8 +38,9 @@ void main() {
     });
 
     test('--output - prints manual to stdout', () async {
-      final code = await buildCommandRunner().run(['manual', '--output', '-']);
-      expect(code, 0);
+      final r = await runCaptured(['manual', '--output', '-']);
+      expect(r.exitCode, 0);
+      expect(r.stdout, equals(manualText));
     });
 
     test('appears in the top-level help', () {

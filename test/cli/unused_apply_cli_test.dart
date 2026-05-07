@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   group('dartrics unused --apply', () {
@@ -38,7 +39,7 @@ void deleteMe() {
   print('bye');
 }
 ''');
-        final code = await buildCommandRunner().run([
+        final code = await runQuietly([
           'unused',
           '--root',
           dir.path,
@@ -92,7 +93,7 @@ void keepMe() {}
 void deleteMe() {}
 ''');
       // Untracked file → dirty tree.
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'unused',
         '--root',
         dir.path,
@@ -127,7 +128,7 @@ class Unused {
   void m() {}
 }
 ''');
-        final code = await buildCommandRunner().run([
+        final code = await runQuietly([
           'unused',
           '--root',
           dir.path,
@@ -161,7 +162,7 @@ class Unused {
         await File('${dir.path}/lib/src/sample.dart').writeAsString('''
 const FOO = 42;
 ''');
-        final code = await buildCommandRunner().run([
+        final code = await runQuietly([
           'unused',
           '--root',
           dir.path,
@@ -191,7 +192,7 @@ const FOO = 42;
       await File('${dir.path}/test/foo_test.dart').writeAsString('''
 void unusedFn() {}
 ''');
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'unused',
         '--root',
         dir.path,

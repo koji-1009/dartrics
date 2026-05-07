@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartrics/src/cli/explain_command.dart';
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   // Minimal JSON report fixture — one metric record with two violations,
@@ -100,7 +101,7 @@ void main() {
       final input = File('${dir.path}/report.json');
       await input.writeAsString(jsonEncode(sampleReport()));
       final output = '${dir.path}/explain.yaml';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'explain',
         'a3f1c4e9b2d70218',
         '--input',
@@ -126,7 +127,7 @@ void main() {
       final input = File('${dir.path}/report.json');
       await input.writeAsString(jsonEncode(sampleReport()));
       final output = '${dir.path}/explain.json';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'explain',
         'a3f1c4e9b2d70218',
         '--input',
@@ -148,14 +149,14 @@ void main() {
     });
 
     test('exits 64 when id argument is missing', () async {
-      final code = await buildCommandRunner().run(['explain']);
+      final code = await runQuietly(['explain']);
       expect(code, 64);
     });
 
     test('exits 65 when no violation matches the id', () async {
       final input = File('${dir.path}/report.json');
       await input.writeAsString(jsonEncode(sampleReport()));
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'explain',
         'nonexistent-id',
         '--input',
@@ -167,7 +168,7 @@ void main() {
     test('exits 65 when input file is invalid JSON', () async {
       final input = File('${dir.path}/bad.json');
       await input.writeAsString('not json at all');
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'explain',
         'whatever',
         '--input',
@@ -177,7 +178,7 @@ void main() {
     });
 
     test('exits 65 when input file is missing', () async {
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'explain',
         'whatever',
         '--input',
@@ -189,19 +190,14 @@ void main() {
     test('exits 65 when JSON top level is not an object', () async {
       final input = File('${dir.path}/array.json');
       await input.writeAsString('[]');
-      final code = await buildCommandRunner().run([
-        'explain',
-        'x',
-        '--input',
-        input.path,
-      ]);
+      final code = await runQuietly(['explain', 'x', '--input', input.path]);
       expect(code, 65);
     });
 
     test('--output - prints to stdout (default sink path)', () async {
       final input = File('${dir.path}/report.json');
       await input.writeAsString(jsonEncode(sampleReport()));
-      final code = await buildCommandRunner().run([
+      final r = await runCaptured([
         'explain',
         'a3f1c4e9b2d70218',
         '--input',
@@ -209,7 +205,8 @@ void main() {
         '--output',
         '-',
       ]);
-      expect(code, 0);
+      expect(r.exitCode, 0);
+      expect(r.stdout, contains('a3f1c4e9b2d70218'));
     });
 
     test(
@@ -227,7 +224,7 @@ void main() {
         final input = File('${dir.path}/rich.json');
         await input.writeAsString(jsonEncode(report));
         final output = '${dir.path}/rich.yaml';
-        final code = await buildCommandRunner().run([
+        final code = await runQuietly([
           'explain',
           'b7e2c5f10a3d4e21',
           '--input',
@@ -252,7 +249,7 @@ void main() {
       final input = File('${dir.path}/dismissed.json');
       await input.writeAsString(jsonEncode(report));
       final output = '${dir.path}/dismissed.yaml';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'explain',
         'a3f1c4e9b2d70218',
         '--input',
@@ -315,7 +312,7 @@ void main() {
         }),
       );
       final output = '${dir.path}/out.yaml';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'explain',
         'aaa1234567890abc',
         '--input',

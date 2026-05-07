@@ -6,6 +6,7 @@ import 'package:io/io.dart' show ExitCode;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
+import 'cli/io_sinks.dart';
 import 'cli/runner.dart';
 import 'config/config_loader.dart';
 import 'version.dart';
@@ -19,22 +20,31 @@ import 'version.dart';
 /// - any other uncaught error     → `70 EX_SOFTWARE`
 Future<void> runApp(List<String> arguments) async {
   if (isVersionRequest(arguments)) {
-    stdout.writeln('dartrics $dartricsVersion');
+    DartricsIO.stdoutSink.writeln('dartrics $dartricsVersion');
     exitCode = ExitCode.success.code;
     return;
   }
   await runZonedGuarded(() async {
-    _setupLogging();
+    final logSub = setupLogging();
     try {
-      final runner = buildCommandRunner();
-      final code = await runner.run(arguments) ?? 0;
-      exitCode = code;
-    } on ConfigException catch (e) {
-      stderr.writeln(e.toString());
-      exitCode = ExitCode.config.code;
-    } on UsageException catch (e) {
-      stderr.writeln(e.toString());
-      exitCode = ExitCode.usage.code;
+      try {
+        final runner = buildCommandRunner();
+        final code = await runner.run(arguments) ?? 0;
+        exitCode = code;
+      } on ConfigException catch (e) {
+        DartricsIO.stderrSink.writeln(e.toString());
+        exitCode = ExitCode.config.code;
+      } on UsageException catch (e) {
+        DartricsIO.stderrSink.writeln(e.toString());
+        exitCode = ExitCode.usage.code;
+      }
+    } finally {
+      // Cancel the listener before returning so its captured zone
+      // (which holds the test's redirected sinks via `runWithIOSinks`)
+      // is released. Each `runApp` call thus owns its own listener
+      // lifecycle, which keeps multi-run test suites from writing log
+      // records into a sink the previous run already closed.
+      await logSub.cancel();
     }
   }, handleUncaughtZoneError);
 }
@@ -44,7 +54,7 @@ Future<void> runApp(List<String> arguments) async {
 /// reach it without having to construct a guarded zone themselves.
 @visibleForTesting
 void handleUncaughtZoneError(Object error, StackTrace stack) {
-  stderr.writeln('Unhandled error: $error\n$stack');
+  DartricsIO.stderrSink.writeln('Unhandled error: $error\n$stack');
   exitCode = ExitCode.software.code;
 }
 
@@ -62,14 +72,30 @@ bool isVersionRequest(List<String> arguments) {
   return false;
 }
 
-void _setupLogging() {
+/// Installs a logger listener that routes records to
+/// [resolveStdoutSink] / [resolveStderrSink] via [routeLogRecord].
+/// Returns the subscription so [runApp] can cancel it on exit.
+///
+/// Marked `@visibleForTesting` so tests can call it directly to verify
+/// the wiring without spinning up the full [runApp].
+@visibleForTesting
+StreamSubscription<LogRecord> setupLogging() {
   Logger.root.level = Level.INFO;
-  Logger.root.onRecord.listen((record) {
-    final line = '${record.level.name}: ${record.message}';
-    if (record.level >= Level.WARNING) {
-      stderr.writeln(line);
-    } else {
-      stdout.writeln(line);
-    }
-  });
+  return Logger.root.onRecord.listen(routeLogRecord);
+}
+
+/// Per-record dispatch for the listener installed by [setupLogging].
+/// Extracted so the WARNING / non-WARNING branches are unit-testable
+/// directly — dartrics never emits a `Logger.warning` during normal
+/// operation, so coverage of the WARNING branch from the [runApp]
+/// surface alone would require a synthetic post-run record, which
+/// would in turn race with the test's sink lifecycle.
+@visibleForTesting
+void routeLogRecord(LogRecord record) {
+  final line = '${record.level.name}: ${record.message}';
+  if (record.level >= Level.WARNING) {
+    DartricsIO.stderrSink.writeln(line);
+  } else {
+    DartricsIO.stdoutSink.writeln(line);
+  }
 }

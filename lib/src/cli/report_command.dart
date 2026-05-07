@@ -10,6 +10,7 @@ import '../models/source_location.dart';
 import '../models/unused_declaration.dart';
 import '../reporters/reporters.dart';
 import 'common_options.dart';
+import 'io_sinks.dart';
 
 /// `dartrics report` — re-emits a previously persisted JSON report in
 /// another format. Useful for converting a cached `metrics.json` into Markdown
@@ -31,12 +32,12 @@ class ReportCommand extends Command<int> {
   Future<int> run() async {
     final options = CommonOptions.from(this);
     if (options.rest.isEmpty) {
-      stderr.writeln('Usage: dartrics report <input.json>');
+      DartricsIO.stderrSink.writeln('Usage: dartrics report <input.json>');
       return ExitCode.usage.code;
     }
     final input = File(options.rest.first);
     if (!input.existsSync()) {
-      stderr.writeln('${input.path}: file not found');
+      DartricsIO.stderrSink.writeln('${input.path}: file not found');
       return ExitCode.data.code;
     }
     final report = _decode(input.readAsStringSync());
@@ -44,7 +45,7 @@ class ReportCommand extends Command<int> {
     final IOSink sink;
     final bool ownsSink;
     if (options.output == '-') {
-      sink = stdout;
+      sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
       sink = File(options.output).openWrite();

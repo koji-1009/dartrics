@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 /// Auto-explain smoke tests — making sure the rationale + refactor hints
 /// for the metrics that fired at least one violation land in the report
@@ -39,7 +40,7 @@ dartrics:
 
   test('AI report ships rationale automatically when a metric fires', () async {
     final out = File('${dir.path}/r.yaml');
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       dir.path,
       '--reporter',
@@ -62,7 +63,7 @@ dartrics:
 
   test('--no-auto-explain suppresses the explain block', () async {
     final out = File('${dir.path}/r.yaml');
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       dir.path,
       '--reporter',
@@ -84,7 +85,7 @@ dartrics:
     '--explain takes priority + adds further metrics to the union',
     () async {
       final out = File('${dir.path}/r.yaml');
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'analyze',
         dir.path,
         '--reporter',
