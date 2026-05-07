@@ -269,33 +269,54 @@ class MetricEngine {
     for (final entry in values.entries) {
       final t = thresholds[entry.key];
       if (t == null) continue;
-      final _Justification just = _justifiableMetrics.contains(entry.key)
-          ? _classifyJustification(branch: branchCoverage, line: lineCoverage)
-          : const _Justification.notApplicable();
-      Severity? sev;
-      num? thr;
-      if (t.error != null && entry.value >= t.error!) {
-        sev = Severity.error;
-        thr = t.error!;
-      } else if (t.warning != null && entry.value >= t.warning!) {
-        sev = Severity.warning;
-        thr = t.warning!;
-      }
-      if (sev == null || thr == null) continue;
+      final triggered = _classifyThreshold(entry.value, t);
+      if (triggered == null) continue;
       violations.add(
         _buildViolation(
           metricId: entry.key,
-          severity: sev,
-          threshold: thr,
+          severity: triggered.severity,
+          threshold: triggered.threshold,
           path: path,
           scopeName: scopeName,
           lineCoverage: lineCoverage,
           branchCoverage: branchCoverage,
-          justification: just,
+          justification: _justificationFor(
+            entry.key,
+            branchCoverage: branchCoverage,
+            lineCoverage: lineCoverage,
+          ),
         ),
       );
     }
     return violations;
+  }
+
+  /// Returns the (severity, threshold) pair that fired for [value]
+  /// against [t], preferring `error` over `warning`. `null` when the
+  /// value sits below both bands or the corresponding threshold is
+  /// unset.
+  ({Severity severity, num threshold})? _classifyThreshold(
+    num value,
+    MetricThresholds t,
+  ) {
+    if (t.error != null && value >= t.error!) {
+      return (severity: Severity.error, threshold: t.error!);
+    }
+    if (t.warning != null && value >= t.warning!) {
+      return (severity: Severity.warning, threshold: t.warning!);
+    }
+    return null;
+  }
+
+  _Justification _justificationFor(
+    String metricId, {
+    required double? branchCoverage,
+    required double? lineCoverage,
+  }) {
+    if (!_justifiableMetrics.contains(metricId)) {
+      return const _Justification.notApplicable();
+    }
+    return _classifyJustification(branch: branchCoverage, line: lineCoverage);
   }
 
   /// Builds a single violation, consulting [dismissals] for an entry

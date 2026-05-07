@@ -80,37 +80,46 @@ class CoverageIndex {
         currentPath = line.substring(3);
         lineHits = <int, int>{};
         branchHits = <(int, int), int>{};
-      } else if (line.startsWith('DA:')) {
-        final parts = line.substring(3).split(',');
-        if (parts.length < 2) {
-          throw FormatException('malformed DA line: $line');
-        }
-        final ln = int.parse(parts[0]);
-        final count = int.parse(parts[1]);
-        lineHits[ln] = count;
-      } else if (line.startsWith('BRDA:')) {
-        final parts = line.substring(5).split(',');
-        if (parts.length < 4) {
-          throw FormatException('malformed BRDA line: $line');
-        }
-        final ln = int.parse(parts[0]);
-        final branchId = int.parse(parts[2]);
-        final raw = parts[3];
-        // `-` means the branch was never evaluated; treat as 0 hits.
-        final count = raw == '-' ? 0 : int.parse(raw);
-        branchHits[(ln, branchId)] = count;
-      } else if (line == 'end_of_record') {
-        if (currentPath != null) {
-          files[currentPath] = FileCoverage(
-            path: currentPath,
-            lineHits: Map.unmodifiable(lineHits),
-            branchHits: Map.unmodifiable(branchHits),
-          );
-          currentPath = null;
-        }
+        continue;
+      }
+      if (line.startsWith('DA:')) {
+        _parseDA(line, lineHits);
+        continue;
+      }
+      if (line.startsWith('BRDA:')) {
+        _parseBRDA(line, branchHits);
+        continue;
+      }
+      if (line == 'end_of_record' && currentPath != null) {
+        files[currentPath] = FileCoverage(
+          path: currentPath,
+          lineHits: Map.unmodifiable(lineHits),
+          branchHits: Map.unmodifiable(branchHits),
+        );
+        currentPath = null;
       }
     }
     return CoverageIndex(files: Map.unmodifiable(files));
+  }
+
+  static void _parseDA(String line, Map<int, int> lineHits) {
+    final parts = line.substring(3).split(',');
+    if (parts.length < 2) {
+      throw FormatException('malformed DA line: $line');
+    }
+    lineHits[int.parse(parts[0])] = int.parse(parts[1]);
+  }
+
+  static void _parseBRDA(String line, Map<(int, int), int> branchHits) {
+    final parts = line.substring(5).split(',');
+    if (parts.length < 4) {
+      throw FormatException('malformed BRDA line: $line');
+    }
+    final ln = int.parse(parts[0]);
+    final branchId = int.parse(parts[2]);
+    // `-` means the branch was never evaluated; treat as 0 hits.
+    final count = parts[3] == '-' ? 0 : int.parse(parts[3]);
+    branchHits[(ln, branchId)] = count;
   }
 
   /// Returns the [FileCoverage] for [absolutePath], or `null` when the

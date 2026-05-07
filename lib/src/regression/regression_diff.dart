@@ -131,36 +131,17 @@ class RegressionDiff {
     var tinyHelpersAdded = 0;
     var slocDelta = 0;
     var ccReduction = 0;
-
     for (final entry in afterIndex.entries) {
-      final key = entry.key;
-      final after = entry.value;
-      final before = beforeIndex[key];
-      final afterScope = after.scope.kind;
-      final isFunctionish =
-          afterScope == ScopeKind.function || afterScope == ScopeKind.method;
-      if (before == null && isFunctionish) {
-        final sloc = (after.values['source-lines-of-code'] ?? 0).toInt();
-        if (sloc <= config.smallBodyThreshold) {
-          tinyHelpersAdded++;
-        }
-      }
-      final beforeSloc = (before?.values['source-lines-of-code'] ?? 0).toInt();
-      final afterSloc = (after.values['source-lines-of-code'] ?? 0).toInt();
-      slocDelta += afterSloc - beforeSloc;
-      if (before != null) {
-        final beforeCc = (before.values['cyclomatic-complexity'] ?? 0).toInt();
-        final afterCc = (after.values['cyclomatic-complexity'] ?? 0).toInt();
-        if (afterCc < beforeCc) ccReduction += beforeCc - afterCc;
-      }
+      final delta = _scopeContribution(beforeIndex[entry.key], entry.value);
+      tinyHelpersAdded += delta.tinyHelpers;
+      slocDelta += delta.slocDelta;
+      ccReduction += delta.ccReduction;
     }
-    // Also subtract SLOC for scopes that disappeared (deleted code).
+    // Subtract SLOC for scopes that disappeared (deleted code).
     for (final entry in beforeIndex.entries) {
       if (afterIndex.containsKey(entry.key)) continue;
-      final sloc = (entry.value.values['source-lines-of-code'] ?? 0).toInt();
-      slocDelta -= sloc;
+      slocDelta -= _slocOf(entry.value);
     }
-
     return CosmeticSignals(
       tinyHelpersAdded: tinyHelpersAdded,
       slocDelta: slocDelta,
@@ -168,6 +149,40 @@ class RegressionDiff {
       smallBodyThreshold: config.smallBodyThreshold,
     );
   }
+
+  /// Per-scope contribution to the cosmetic-split detector. Bundles the
+  /// "is this a tiny new helper?" + SLOC delta + CC reduction so the
+  /// outer loop just sums three integers per scope.
+  ({int tinyHelpers, int slocDelta, int ccReduction}) _scopeContribution(
+    MetricRecord? before,
+    MetricRecord after,
+  ) {
+    final tinyHelpers = _isNewTinyFunction(before, after) ? 1 : 0;
+    final slocDelta = _slocOf(after) - (before == null ? 0 : _slocOf(before));
+    final ccReduction = _ccReduction(before, after);
+    return (
+      tinyHelpers: tinyHelpers,
+      slocDelta: slocDelta,
+      ccReduction: ccReduction,
+    );
+  }
+
+  bool _isNewTinyFunction(MetricRecord? before, MetricRecord after) {
+    if (before != null) return false;
+    final kind = after.scope.kind;
+    if (kind != ScopeKind.function && kind != ScopeKind.method) return false;
+    return _slocOf(after) <= config.smallBodyThreshold;
+  }
+
+  int _ccReduction(MetricRecord? before, MetricRecord after) {
+    if (before == null) return 0;
+    final beforeCc = (before.values['cyclomatic-complexity'] ?? 0).toInt();
+    final afterCc = (after.values['cyclomatic-complexity'] ?? 0).toInt();
+    return afterCc < beforeCc ? beforeCc - afterCc : 0;
+  }
+
+  int _slocOf(MetricRecord r) =>
+      (r.values['source-lines-of-code'] ?? 0).toInt();
 
   Map<_ScopeKey, MetricRecord> _index(List<MetricRecord> records) {
     final out = <_ScopeKey, MetricRecord>{};
@@ -244,6 +259,18 @@ ChangeDirection classifyChange({
   if (before == null || after == null || before == after) {
     return ChangeDirection.unchanged;
   }
+  return _directionByPolarity(before: before, after: after, polarity: polarity);
+}
+
+/// Polarity-aware leg of [classifyChange]. Both inputs are guaranteed
+/// non-null and unequal at this point — the caller has already
+/// short-circuited those cases. Pulled out so the polarity switch is
+/// not gated behind early-return noise.
+ChangeDirection _directionByPolarity({
+  required num before,
+  required num after,
+  required MetricPolarity polarity,
+}) {
   switch (polarity) {
     case MetricPolarity.down:
       return after < before
