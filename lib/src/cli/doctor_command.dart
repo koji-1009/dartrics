@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 
@@ -7,6 +5,7 @@ import '../config/config.dart';
 import '../config/config_loader.dart';
 import '../metrics/metric_catalogue.dart';
 import '../unused/keep_alive_presets.dart';
+import 'io_sinks.dart';
 
 /// `dartrics doctor` — validates the `dartrics:` block in
 /// `analysis_options.yaml` for typos, ordering issues, and references
@@ -46,21 +45,21 @@ class DoctorCommand extends Command<int> {
     try {
       config = await loadConfig(path);
     } on ConfigException catch (e) {
-      stderr.writeln('dartrics doctor: ${e.message}');
+      DartricsIO.stderrSink.writeln('dartrics doctor: ${e.message}');
       return ExitCode.config.code;
     }
     final issues = diagnose(config);
     for (final issue in issues) {
-      stdout.writeln('  [WARN] ${issue.message}');
+      DartricsIO.stdoutSink.writeln('  [WARN] ${issue.message}');
       if (issue.hint != null) {
-        stdout.writeln('         hint: ${issue.hint}');
+        DartricsIO.stdoutSink.writeln('         hint: ${issue.hint}');
       }
     }
     if (issues.isEmpty) {
-      stdout.writeln('dartrics doctor: $path — clean.');
+      DartricsIO.stdoutSink.writeln('dartrics doctor: $path — clean.');
       return ExitCode.success.code;
     }
-    stdout.writeln(
+    DartricsIO.stdoutSink.writeln(
       'dartrics doctor: $path — ${issues.length} issue${issues.length == 1 ? '' : 's'}.',
     );
     return 1;

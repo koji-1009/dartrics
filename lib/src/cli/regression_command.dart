@@ -14,6 +14,7 @@ import '../models/source_location.dart';
 import '../regression/git_worktree.dart';
 import '../regression/regression_diff.dart';
 import '../reporters/regression_reporter.dart';
+import 'io_sinks.dart';
 
 /// `dartrics regression` — re-runs every metric on two states (a
 /// historical git ref and either the current working tree or another
@@ -114,7 +115,7 @@ class RegressionCommand extends Command<int> {
       await _emit(regression, reporter, output);
       return ExitCode.success.code;
     } on GitWorktreeException catch (e) {
-      stderr.writeln(e);
+      DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
     } finally {
       await beforeWt?.dispose();
@@ -178,7 +179,7 @@ class RegressionCommand extends Command<int> {
     final IOSink sink;
     final bool ownsSink;
     if (output == '-') {
-      sink = stdout;
+      sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
       sink = File(output).openWrite();

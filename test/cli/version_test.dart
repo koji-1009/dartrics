@@ -5,6 +5,8 @@ import 'package:dartrics/src/cli/runner.dart';
 import 'package:dartrics/src/entry_point.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
+
 void main() {
   test('dartricsVersion is exported and matches pubspec.yaml', () async {
     final pubspec = await File('pubspec.yaml').readAsString();
@@ -36,12 +38,7 @@ void main() {
   });
 
   test('runApp short-circuits on --version and sets exitCode 0', () async {
-    final originalExit = exitCode;
-    try {
-      await runApp(['--version']);
-      expect(exitCode, 0);
-    } finally {
-      exitCode = originalExit;
-    }
+    final code = await runAppQuietly(['--version']);
+    expect(code, 0);
   });
 }

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   late Directory dir;
@@ -45,7 +46,7 @@ void main() {
       }),
     );
     final out = File('${dir.path}/report.md');
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'report',
       input.path,
       '--reporter',
@@ -62,7 +63,7 @@ void main() {
   });
 
   test('exits 64 when no input file argument is given', () async {
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'report',
       '--config',
       '${dir.path}/no.yaml',
@@ -71,7 +72,7 @@ void main() {
   });
 
   test('exits 65 when input file does not exist', () async {
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'report',
       '${dir.path}/no-such-file.json',
       '--config',
@@ -125,7 +126,7 @@ void main() {
       );
       // Re-emit as JSON so we can assert the round-trip exactly.
       final out = File('${dir.path}/round.json');
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'report',
         input.path,
         '--reporter',

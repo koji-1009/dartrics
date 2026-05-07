@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
 
+import 'helpers.dart';
+
 void main() {
   late Directory dir;
 
@@ -24,7 +26,7 @@ class UnusedThing {}
     'analyze --output writes JSON to a file and --verbose enables fine logs',
     () async {
       final out = File('${dir.path}/out.json');
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'analyze',
         '${dir.path}/lib',
         '--reporter',
@@ -43,7 +45,7 @@ class UnusedThing {}
 
   test('unused --output writes to a file', () async {
     final out = File('${dir.path}/u.json');
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'unused',
       '${dir.path}/lib',
       '--reporter',
@@ -59,7 +61,7 @@ class UnusedThing {}
 
   test('unused --fatal-warnings exits 1 when something is unused', () async {
     // The fixture defines `UnusedThing` which never gets referenced.
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'unused',
       '${dir.path}/lib',
       '--reporter',
@@ -87,7 +89,7 @@ dartrics:
       await File('${dir.path}/lib/foo.dart').writeAsString('''
 int f() { return 1; }
 ''');
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'analyze',
         '${dir.path}/lib',
         '--reporter',
@@ -103,7 +105,7 @@ int f() { return 1; }
   );
 
   test('analyze with no positional arg falls back to --root', () async {
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       '--root',
       '${dir.path}/lib',
@@ -118,7 +120,7 @@ int f() { return 1; }
   });
 
   test('unused with no positional arg falls back to --root', () async {
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'unused',
       '--root',
       '${dir.path}/lib',
@@ -136,7 +138,7 @@ int f() { return 1; }
     '--concurrency=4 produces the same report as the sequential default',
     () async {
       final outA = File('${dir.path}/cc-default.json');
-      final codeA = await buildCommandRunner().run([
+      final codeA = await runQuietly([
         'analyze',
         '${dir.path}/lib',
         '--reporter',
@@ -151,7 +153,7 @@ int f() { return 1; }
         'none',
       ]);
       final outB = File('${dir.path}/cc-parallel.json');
-      final codeB = await buildCommandRunner().run([
+      final codeB = await runQuietly([
         'analyze',
         '${dir.path}/lib',
         '--reporter',
@@ -244,7 +246,7 @@ int f() { return 1; }
 
     final out = File('${repo.path}/out.json');
     final code = await Directory(repo.path).runIn(() async {
-      return buildCommandRunner().run([
+      return runQuietly([
         'analyze',
         '${repo.path}/lib',
         '--reporter',
@@ -279,7 +281,7 @@ int f() { return 1; }
     await _runGit(repo.path, ['commit', '-m', 'init']);
 
     final code = await Directory(repo.path).runIn(() async {
-      return buildCommandRunner().run([
+      return runQuietly([
         'analyze',
         '${repo.path}/lib',
         '--reporter',
@@ -319,7 +321,7 @@ int f() { return 1; }
 
     final out = File('${repo.path}/u.json');
     final code = await Directory(repo.path).runIn(() async {
-      return buildCommandRunner().run([
+      return runQuietly([
         'unused',
         '${repo.path}/lib',
         '--reporter',
@@ -352,7 +354,7 @@ int f() { return 1; }
     ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${dir.path}/lib/x.dart').writeAsString('void x() {}\n');
     final code = await Directory(dir.path).runIn(() async {
-      return buildCommandRunner().run([
+      return runQuietly([
         'unused',
         '${dir.path}/lib',
         '--reporter',
@@ -369,7 +371,7 @@ int f() { return 1; }
   });
 
   test('analyze --output - prints to stdout (default sink path)', () async {
-    final code = await buildCommandRunner().run([
+    final r = await runCaptured([
       'analyze',
       '${dir.path}/lib',
       '--reporter',
@@ -379,13 +381,14 @@ int f() { return 1; }
       '--config',
       '${dir.path}/no.yaml',
     ]);
-    expect(code, 0);
+    expect(r.exitCode, 0);
+    expect(r.stdout, contains('"version"'));
   });
 
   test('report --output - prints to stdout (default sink path)', () async {
     final input = File('${dir.path}/in.json');
     await input.writeAsString('{"version":"1.0","metrics":[],"unused":[]}');
-    final code = await buildCommandRunner().run([
+    final r = await runCaptured([
       'report',
       input.path,
       '--reporter',
@@ -395,7 +398,8 @@ int f() { return 1; }
       '--config',
       '${dir.path}/no.yaml',
     ]);
-    expect(code, 0);
+    expect(r.exitCode, 0);
+    expect(r.stdout, contains('"version"'));
   });
 
   test(
@@ -404,7 +408,7 @@ int f() { return 1; }
       // Currently dartrics never emits Severity.info, so --fatal-style is a
       // no-op; exit stays 0 even on a clean file. Document the current
       // behavior: it does not flip to 1.
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'analyze',
         '${dir.path}/lib',
         '--reporter',

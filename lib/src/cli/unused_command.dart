@@ -13,6 +13,7 @@ import '../unused/apply.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
+import 'io_sinks.dart';
 import 'rules_command.dart';
 import 'snapshot.dart';
 
@@ -69,7 +70,7 @@ class UnusedCommand extends Command<int> {
           ? null
           : (await changedDartFilesSince(options.since!)).toSet();
     } on GitDiffException catch (e) {
-      stderr.writeln(e);
+      DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
     }
     final runner = AnalyzerRunner(
@@ -147,7 +148,7 @@ class UnusedCommand extends Command<int> {
     final IOSink sink;
     final bool ownsSink;
     if (options.output == '-') {
-      sink = stdout;
+      sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
       sink = File(options.output).openWrite();
@@ -174,14 +175,14 @@ class UnusedCommand extends Command<int> {
     final force = argResults!['force'] as bool;
     final includeTests = argResults!['include-tests'] as bool;
     if (!force && !isGitTreeClean(options.root)) {
-      stderr.writeln(
+      DartricsIO.stderrSink.writeln(
         'dartrics unused: refusing to apply on a dirty git tree. '
         'Commit or stash first, or pass --force.',
       );
       return ExitCode.usage.code;
     }
     final outcomes = applyDeletions(filtered, includeTests: includeTests);
-    stderr.write(buildApplySummary(outcomes));
+    DartricsIO.stderrSink.write(buildApplySummary(outcomes));
     return null;
   }
 }

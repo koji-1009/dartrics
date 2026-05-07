@@ -1,10 +1,11 @@
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:dartrics/src/cli/snapshot.dart';
 import 'package:dartrics/src/config/config.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   group('snapshotPathFor', () {
@@ -153,7 +154,7 @@ void main() {
 
       final out = '${dir.path}/run.json';
       // First run — populates the snapshot, emits everything.
-      final code1 = await buildCommandRunner().run([
+      final code1 = await runQuietly([
         'analyze',
         '${dir.path}/lib',
         '--reporter',
@@ -168,7 +169,7 @@ void main() {
       expect(code1, 0);
 
       // Second run — same content, snapshot hits, no records emitted.
-      final code2 = await buildCommandRunner().run([
+      final code2 = await runQuietly([
         'analyze',
         '${dir.path}/lib',
         '--reporter',
@@ -193,7 +194,7 @@ void main() {
       final out = '${dir.path}/run.json';
       // Two consecutive runs with --snapshot none should both emit records.
       for (var i = 0; i < 2; i++) {
-        final code = await buildCommandRunner().run([
+        final code = await runQuietly([
           'analyze',
           '${dir.path}/lib',
           '--reporter',

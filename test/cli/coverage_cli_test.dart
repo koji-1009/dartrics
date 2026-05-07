@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   late Directory dir;
@@ -42,7 +43,7 @@ dartrics:
     cyclomatic-complexity: 1
 ''');
     final out = '${dir.path}/run.json';
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       '${dir.path}/lib',
       '--reporter',
@@ -90,7 +91,7 @@ end_of_record
       'dartrics:\n  metrics:\n    cyclomatic-complexity: 1\n',
     );
     final out = '${dir.path}/run.json';
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       '${dir.path}/lib',
       '--reporter',
@@ -120,7 +121,7 @@ end_of_record
   test('analyze --coverage <missing> exits 65 EX_DATAERR', () async {
     final config = File('${dir.path}/dartrics.yaml');
     await config.writeAsString('dartrics:\n');
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       '${dir.path}/lib',
       '--reporter',
@@ -142,7 +143,7 @@ end_of_record
     await lcov.writeAsString('SF:/x\nDA:bogus\nend_of_record\n');
     final config = File('${dir.path}/dartrics.yaml');
     await config.writeAsString('dartrics:\n');
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       '${dir.path}/lib',
       '--reporter',

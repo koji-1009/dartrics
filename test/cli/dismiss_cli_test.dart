@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
-import 'package:dartrics/src/entry_point.dart';
 import 'package:io/io.dart' show ExitCode;
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 /// End-to-end exercises for the `dartrics:dismiss` channel — comment
 /// directive, YAML sidecar, validation gates, and `--strict-dismiss`.
@@ -31,7 +31,7 @@ void main() {
     List<String> extraArgs = const [],
   }) async {
     final out = File('${dir.path}/out.json');
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       dir.path,
       '--reporter',
@@ -273,14 +273,13 @@ dartrics:
       comment: false
       yaml: false
 ''');
-    final saved = exitCode;
-    exitCode = 0;
-    try {
-      await runApp(['analyze', dir.path, '--config', config.path]);
-      expect(exitCode, ExitCode.config.code);
-    } finally {
-      exitCode = saved;
-    }
+    final code = await runAppQuietly([
+      'analyze',
+      dir.path,
+      '--config',
+      config.path,
+    ]);
+    expect(code, ExitCode.config.code);
   });
 }
 

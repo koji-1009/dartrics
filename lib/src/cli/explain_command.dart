@@ -8,6 +8,7 @@ import 'package:io/io.dart';
 
 import '../metrics/metric_catalogue.dart';
 import '../reporters/rules_reporter.dart';
+import 'io_sinks.dart';
 
 /// `dartrics explain &lt;id&gt;` — looks up a violation by its stable
 /// 16-hex-char id and prints the matching entry plus the metric's
@@ -54,7 +55,9 @@ class ExplainCommand extends Command<int> {
   Future<int> run() async {
     final results = argResults!;
     if (results.rest.isEmpty) {
-      stderr.writeln('Usage: dartrics explain <id> [--input <report.json>]');
+      DartricsIO.stderrSink.writeln(
+        'Usage: dartrics explain <id> [--input <report.json>]',
+      );
       return ExitCode.usage.code;
     }
     final id = results.rest.first;
@@ -63,7 +66,9 @@ class ExplainCommand extends Command<int> {
     try {
       body = await readReportBody(input);
     } on FileSystemException catch (e) {
-      stderr.writeln('dartrics explain: ${e.message}: ${e.path}');
+      DartricsIO.stderrSink.writeln(
+        'dartrics explain: ${e.message}: ${e.path}',
+      );
       return ExitCode.data.code;
     }
 
@@ -71,18 +76,24 @@ class ExplainCommand extends Command<int> {
     try {
       decoded = jsonDecode(body);
     } on FormatException catch (e) {
-      stderr.writeln('dartrics explain: invalid JSON: ${e.message}');
+      DartricsIO.stderrSink.writeln(
+        'dartrics explain: invalid JSON: ${e.message}',
+      );
       return ExitCode.data.code;
     }
     if (decoded is! Map<String, Object?>) {
-      stderr.writeln('dartrics explain: top-level JSON must be an object');
+      DartricsIO.stderrSink.writeln(
+        'dartrics explain: top-level JSON must be an object',
+      );
       return ExitCode.data.code;
     }
     final raw = decoded;
 
     final found = findViolation(raw, id);
     if (found == null) {
-      stderr.writeln('dartrics explain: no violation with id "$id"');
+      DartricsIO.stderrSink.writeln(
+        'dartrics explain: no violation with id "$id"',
+      );
       return ExitCode.data.code;
     }
 
@@ -91,7 +102,7 @@ class ExplainCommand extends Command<int> {
     final IOSink sink;
     final bool ownsSink;
     if (output == '-') {
-      sink = stdout;
+      sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
       sink = File(output).openWrite();

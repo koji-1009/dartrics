@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
+
+import 'cli/helpers.dart';
 
 void main() {
   group('Phase 0 smoke', () {
@@ -20,8 +21,7 @@ void main() {
 
     test('analyze empty package produces an empty json report', () async {
       final outputFile = File('${tempDir.path}/report.json');
-      final runner = buildCommandRunner();
-      final code = await runner.run([
+      final code = await runQuietly([
         'analyze',
         tempDir.path,
         '--reporter',
@@ -41,8 +41,7 @@ void main() {
     });
 
     test('unused subcommand exits 0 (Phase 0 stub)', () async {
-      final runner = buildCommandRunner();
-      final code = await runner.run([
+      final code = await runQuietly([
         'unused',
         tempDir.path,
         '--config',

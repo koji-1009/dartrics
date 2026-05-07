@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   late Directory repo;
@@ -42,7 +43,7 @@ int f(int x) {
       await _runGit(repo.path, ['commit', '-m', 'simplify']);
 
       final out = '${repo.path}/diff.json';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'regression',
         '--root',
         repo.path,
@@ -64,7 +65,7 @@ int f(int x) {
   );
 
   test('regression --metric filters to the named ids', () async {
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'regression',
       '--before',
       'HEAD',
@@ -103,7 +104,7 @@ int f(int x) {
       await _runGit(repo.path, ['add', '.']);
       await _runGit(repo.path, ['commit', '-m', 'shrink']);
 
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'regression',
         '--before',
         'HEAD~1',
@@ -127,7 +128,7 @@ int f(int x) {
   );
 
   test('regression exits 65 on a bogus before-ref', () async {
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'regression',
       '--before',
       'bogus-ref',
@@ -145,7 +146,7 @@ int f(int x) {
 
   test('regression md / ai reporters produce output without errors', () async {
     for (final fmt in const ['md', 'ai']) {
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'regression',
         '--before',
         'HEAD',
@@ -166,7 +167,7 @@ int f(int x) {
   });
 
   test('regression --output - writes to stdout', () async {
-    final code = await buildCommandRunner().run([
+    final r = await runCaptured([
       'regression',
       '--before',
       'HEAD',
@@ -181,7 +182,8 @@ int f(int x) {
       '--config',
       '${repo.path}/no.yaml',
     ]);
-    expect(code, 0);
+    expect(r.exitCode, 0);
+    expect(r.stdout, contains('"changes"'));
   });
 }
 

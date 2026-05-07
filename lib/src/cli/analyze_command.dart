@@ -20,6 +20,7 @@ import '../reporters/reporters.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
+import 'io_sinks.dart';
 import 'rules_command.dart';
 import 'snapshot.dart';
 
@@ -47,7 +48,7 @@ class AnalyzeCommand extends Command<int> {
     try {
       changed = await _resolveChangedFiles(options.since);
     } on GitDiffException catch (e) {
-      stderr.writeln(e);
+      DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
     }
     final snapshotConfig = resolveSnapshotConfig(
@@ -61,10 +62,10 @@ class AnalyzeCommand extends Command<int> {
         root: options.root,
       );
     } on CoverageLoadException catch (e) {
-      stderr.writeln(e);
+      DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
     } on FormatException catch (e) {
-      stderr.writeln('coverage parse error: ${e.message}');
+      DartricsIO.stderrSink.writeln('coverage parse error: ${e.message}');
       return ExitCode.data.code;
     }
     final report = await _analyze((
@@ -171,7 +172,7 @@ class AnalyzeCommand extends Command<int> {
     final stale = <StaleDismissal>[];
     for (final d in dismissals.staleEntries()) {
       if (!analyzedPaths.contains(d.file)) continue;
-      stderr.writeln(
+      DartricsIO.stderrSink.writeln(
         'dartrics: dismissal at ${d.file}::${d.scope} '
         '[${d.metricId}] never matched a live violation — likely '
         'stale, consider removing the entry.',
@@ -212,7 +213,7 @@ class AnalyzeCommand extends Command<int> {
     final IOSink sink;
     final bool ownsSink;
     if (options.output == '-') {
-      sink = stdout;
+      sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
       sink = File(options.output).openWrite();
@@ -271,7 +272,7 @@ class AnalyzeCommand extends Command<int> {
   }
 
   void _logDismissalRejection(Dismissal d, String reason) {
-    stderr.writeln(
+    DartricsIO.stderrSink.writeln(
       'dartrics: dismissal rejected at ${d.file}::${d.scope} '
       '[${d.metricId}]: $reason',
     );

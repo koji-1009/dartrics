@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartrics/src/cli/rules_command.dart';
-import 'package:dartrics/src/cli/runner.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:dartrics/src/reporters/rules_reporter.dart';
 import 'package:test/test.dart';
+
+import 'helpers.dart';
 
 void main() {
   test('collectRuleDescriptions yields one entry per built-in metric', () {
@@ -30,7 +32,7 @@ void main() {
 
     test('default ai reporter writes a yaml-ish bundle', () async {
       final out = '${dir.path}/rules.yaml';
-      final code = await buildCommandRunner().run(['rules', '--output', out]);
+      final code = await runQuietly(['rules', '--output', out]);
       expect(code, 0);
       final body = await File(out).readAsString();
       expect(body, contains('# dartrics rules v1'));
@@ -39,7 +41,7 @@ void main() {
 
     test('--reporter md emits a markdown catalogue', () async {
       final out = '${dir.path}/rules.md';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'rules',
         '--reporter',
         'md',
@@ -54,7 +56,7 @@ void main() {
 
     test('--reporter json emits structured rules', () async {
       final out = '${dir.path}/rules.json';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'rules',
         '--reporter',
         'json',
@@ -71,7 +73,7 @@ void main() {
 
     test('--reporter console emits a one-rule-per-line summary', () async {
       final out = '${dir.path}/rules.txt';
-      final code = await buildCommandRunner().run([
+      final code = await runQuietly([
         'rules',
         '--reporter',
         'console',
@@ -86,14 +88,15 @@ void main() {
     });
 
     test('--output - prints rules to stdout', () async {
-      final code = await buildCommandRunner().run([
+      final r = await runCaptured([
         'rules',
         '--reporter',
         'json',
         '--output',
         '-',
       ]);
-      expect(code, 0);
+      expect(r.exitCode, 0);
+      expect(r.stdout, contains('cyclomatic-complexity'));
     });
   });
 
@@ -109,13 +112,24 @@ void main() {
     expect(json.containsKey('defaultThreshold'), isFalse);
   });
 
-  test('buildExplanations dedupes ids, blanks, and unknowns', () {
-    final explanations = buildExplanations([
-      'cyclomatic-complexity',
-      'cyclomatic-complexity', // duplicate
-      ' ', // blank
-      'unknown-metric', // unknown — written to stderr, dropped
-    ]);
+  test('buildExplanations dedupes ids, blanks, and unknowns', () async {
+    // The "unknown-metric" branch writes to stderr (the function itself
+    // does not throw); redirect into a discard sink so the message
+    // does not leak into the test reporter's stream.
+    final ctl = StreamController<List<int>>();
+    unawaited(ctl.stream.drain<void>());
+    final sink = IOSink(ctl.sink);
+    final explanations = await withDartricsIO(
+      () => buildExplanations([
+        'cyclomatic-complexity',
+        'cyclomatic-complexity', // duplicate
+        ' ', // blank
+        'unknown-metric', // unknown — written to stderr, dropped
+      ]),
+      stderrSink: sink,
+    );
+    await sink.close();
+    await ctl.close();
     expect(explanations, hasLength(1));
     expect(explanations.single.metricId, 'cyclomatic-complexity');
   });
@@ -127,7 +141,7 @@ void main() {
     await File('${dir.path}/lib/a.dart').writeAsString('void a() {}\n');
     // Snapshot off — we already exercised that path elsewhere.
     final out = '${dir.path}/run.json';
-    final code = await buildCommandRunner().run([
+    final code = await runQuietly([
       'analyze',
       '${dir.path}/lib',
       '--reporter',
