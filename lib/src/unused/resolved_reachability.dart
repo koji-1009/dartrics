@@ -629,7 +629,12 @@ void _emitFields(
           annotations: annotations,
           hasVmEntryPointPragma: hasVmPragma,
         ),
-        outgoingIds: _collectOutgoing(v, ownElementId: canonical.id),
+        outgoingIds: _collectVariableOutgoing(
+          variable: v,
+          sharedType: decl.fields.type,
+          metadata: decl.metadata,
+          ownElementId: canonical.id,
+        ),
         isInLibPublic: ctx.isLibPublic,
         isInstanceMember: true,
         isOverride: isOverride,
@@ -638,6 +643,28 @@ void _emitFields(
       ),
     );
   }
+}
+
+/// Outgoing-edge collection for a single variable inside a
+/// [VariableDeclarationList]. The list-level shared type annotation and
+/// the parent declaration's metadata sit on the parent, not on each
+/// [VariableDeclaration], so per-variable emission has to walk them
+/// explicitly to avoid losing edges (e.g. `final UnitContext x;` would
+/// otherwise miss the reference to `UnitContext`).
+Set<int> _collectVariableOutgoing({
+  required VariableDeclaration variable,
+  required TypeAnnotation? sharedType,
+  required NodeList<Annotation> metadata,
+  required int ownElementId,
+}) {
+  final out = <int>{};
+  final visitor = _OutgoingCollector(out, ownElementId: ownElementId);
+  variable.accept(visitor);
+  sharedType?.accept(visitor);
+  for (final annotation in metadata) {
+    annotation.accept(visitor);
+  }
+  return out;
 }
 
 void _emitTopLevelFunction(
@@ -690,7 +717,12 @@ void _emitTopLevelVariables(
           annotations: annotations,
           hasVmEntryPointPragma: hasVmPragma,
         ),
-        outgoingIds: _collectOutgoing(v, ownElementId: canonical.id),
+        outgoingIds: _collectVariableOutgoing(
+          variable: v,
+          sharedType: decl.variables.type,
+          metadata: decl.metadata,
+          ownElementId: canonical.id,
+        ),
         isInLibPublic: ctx.isLibPublic,
         isInstanceMember: false,
         isOverride: false,

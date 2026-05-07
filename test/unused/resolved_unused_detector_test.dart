@@ -513,6 +513,43 @@ class UnusedClass {}
   });
 
   test(
+    'field metadata annotations contribute outgoing edges, so '
+    '`@annot final Marker x;` keeps both the typedef and the '
+    'annotation class alive',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+void main() {
+  print(Holder().label);
+}
+''');
+      await File('${dir.path}/lib/src/a.dart').writeAsString('''
+typedef Marker = String;
+class Annot {
+  const Annot();
+}
+const annot = Annot();
+
+class Holder {
+  @annot
+  final Marker label = 'x';
+}
+''');
+      final unused = await detectIn(
+        const UnusedConfig(excludeExported: false),
+      );
+      final names = unused.map((u) => u.name).toList();
+      // The shared type `Marker` is on the parent FieldDeclaration; the
+      // annotation `@annot` (and its element `Annot`) live in
+      // metadata. Both must reach through the field's outgoing set so
+      // they don't get reported as unused.
+      expect(names, isNot(contains('Marker')));
+      expect(names, isNot(contains('Annot')));
+      expect(names, isNot(contains('annot')));
+    },
+  );
+
+  test(
     'explicit constructor declarations are walked but not separately '
     'tracked — calls inside the constructor body keep helpers alive',
     () async {
