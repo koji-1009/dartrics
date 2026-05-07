@@ -102,6 +102,79 @@ void main() {
     },
   );
 
+  test(
+    'ai reporter emits cosmetic block with raw values when below threshold',
+    () async {
+      // 2 helpers added — under the looksCosmetic threshold (≥ 3).
+      // The block should still render so AI loops can see the trend.
+      final report = build(
+        cosmetic: const CosmeticSignals(
+          tinyHelpersAdded: 2,
+          slocDelta: 8,
+          ccReduction: 1,
+          smallBodyThreshold: 3,
+        ),
+      );
+      final body = await render(report, 'ai');
+      expect(body, contains('cosmetic:'));
+      expect(body, contains('tinyHelpersAdded: 2'));
+      expect(body, contains('slocDelta: 8'));
+      expect(body, contains('ccReduction: 1'));
+      expect(body, contains('looksCosmetic: false'));
+      // Threshold-crossing warning should NOT appear.
+      expect(body, isNot(contains('warning:')));
+    },
+  );
+
+  test(
+    'md reporter renders Cosmetic signals section without warning when below threshold',
+    () async {
+      final report = build(
+        cosmetic: const CosmeticSignals(
+          tinyHelpersAdded: 2,
+          slocDelta: 8,
+          ccReduction: 1,
+          smallBodyThreshold: 3,
+        ),
+      );
+      final body = await render(report, 'md');
+      expect(body, contains('Cosmetic signals'));
+      expect(body, isNot(contains('Cosmetic-split warning')));
+      expect(body, contains('tinyHelpersAdded: 2'));
+    },
+  );
+
+  test('console reporter prefixes "cosmetic signals" when below threshold', () async {
+    final report = build(
+      cosmetic: const CosmeticSignals(
+        tinyHelpersAdded: 2,
+        slocDelta: 5,
+        ccReduction: 1,
+        smallBodyThreshold: 3,
+      ),
+    );
+    final body = await render(report, 'console');
+    expect(body, contains('cosmetic signals'));
+    expect(body, isNot(contains('WARNING')));
+  });
+
+  test('reporters omit the cosmetic block entirely when all counters are 0', () async {
+    final report = build(
+      cosmetic: const CosmeticSignals(
+        tinyHelpersAdded: 0,
+        slocDelta: 0,
+        ccReduction: 0,
+        smallBodyThreshold: 3,
+      ),
+    );
+    final ai = await render(report, 'ai');
+    expect(ai, isNot(contains('cosmetic:')));
+    final md = await render(report, 'md');
+    expect(md, isNot(contains('Cosmetic')));
+    final console = await render(report, 'console');
+    expect(console, isNot(contains('cosmetic')));
+  });
+
   test('reporter accepts an empty change list', () async {
     final report = build(
       cosmetic: const CosmeticSignals(

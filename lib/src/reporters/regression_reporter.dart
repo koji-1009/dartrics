@@ -42,18 +42,27 @@ class RegressionReporter {
       ..writeln('  neutralDelta: ${report.summary.neutralDelta}')
       ..writeln('  added: ${report.summary.added}')
       ..writeln('  removed: ${report.summary.removed}');
-    if (report.cosmetic.looksCosmetic) {
+    if (_cosmeticHasSignal(report.cosmetic)) {
       buf
-        ..writeln('warning: |')
-        ..writeln(
-          '  This refactor looks cosmetic: ${report.cosmetic.tinyHelpersAdded} '
-          'new functions with bodies <= ${report.cosmetic.smallBodyThreshold} '
-          'lines were added; total SLOC grew by ${report.cosmetic.slocDelta} '
-          'while cyclomatic complexity only dropped by '
-          '${report.cosmetic.ccReduction}. Consider whether the refactor '
-          'actually improved readability or just spread the same logic across '
-          'more methods.',
-        );
+        ..writeln('cosmetic:')
+        ..writeln('  tinyHelpersAdded: ${report.cosmetic.tinyHelpersAdded}')
+        ..writeln('  slocDelta: ${report.cosmetic.slocDelta}')
+        ..writeln('  ccReduction: ${report.cosmetic.ccReduction}')
+        ..writeln('  smallBodyThreshold: ${report.cosmetic.smallBodyThreshold}')
+        ..writeln('  looksCosmetic: ${report.cosmetic.looksCosmetic}');
+      if (report.cosmetic.looksCosmetic) {
+        buf
+          ..writeln('warning: |')
+          ..writeln(
+            '  This refactor looks cosmetic: ${report.cosmetic.tinyHelpersAdded} '
+            'new functions with bodies <= ${report.cosmetic.smallBodyThreshold} '
+            'lines were added; total SLOC grew by ${report.cosmetic.slocDelta} '
+            'while cyclomatic complexity only dropped by '
+            '${report.cosmetic.ccReduction}. Consider whether the refactor '
+            'actually improved readability or just spread the same logic across '
+            'more methods.',
+          );
+      }
     }
     if (report.changes.isEmpty) return buf.toString();
     buf.writeln('changes:');
@@ -84,17 +93,32 @@ class RegressionReporter {
       ..writeln('| added | ${report.summary.added} |')
       ..writeln('| removed | ${report.summary.removed} |')
       ..writeln();
-    if (report.cosmetic.looksCosmetic) {
+    if (_cosmeticHasSignal(report.cosmetic)) {
       buf
-        ..writeln('## ⚠️ Cosmetic-split warning')
+        ..writeln(
+          report.cosmetic.looksCosmetic
+              ? '## ⚠️ Cosmetic-split warning'
+              : '## Cosmetic signals',
+        )
         ..writeln()
         ..writeln(
-          '${report.cosmetic.tinyHelpersAdded} new tiny helpers '
-          '(SLOC <= ${report.cosmetic.smallBodyThreshold}); '
-          'total SLOC delta ${report.cosmetic.slocDelta}; '
-          'CC reduction ${report.cosmetic.ccReduction}.',
+          '- tinyHelpersAdded: ${report.cosmetic.tinyHelpersAdded} '
+          '(bodies ≤ ${report.cosmetic.smallBodyThreshold} SLOC)',
         )
+        ..writeln('- slocDelta: ${report.cosmetic.slocDelta}')
+        ..writeln('- ccReduction: ${report.cosmetic.ccReduction}')
+        ..writeln('- looksCosmetic: ${report.cosmetic.looksCosmetic}')
         ..writeln();
+      if (report.cosmetic.looksCosmetic) {
+        buf
+          ..writeln(
+            'The refactor looks cosmetic: helpers added without a '
+            'matching CC reduction. Consider whether the refactor '
+            'improved readability or just spread the same logic '
+            'across more methods.',
+          )
+          ..writeln();
+      }
     }
     if (report.changes.isEmpty) return buf.toString();
     buf
@@ -119,12 +143,15 @@ class RegressionReporter {
         '${report.summary.added} added, '
         '${report.summary.removed} removed.',
       );
-    if (report.cosmetic.looksCosmetic) {
+    if (_cosmeticHasSignal(report.cosmetic)) {
+      final prefix = report.cosmetic.looksCosmetic
+          ? 'WARNING: refactor looks cosmetic — '
+          : 'cosmetic signals: ';
       buf.writeln(
-        'WARNING: refactor looks cosmetic '
-        '(${report.cosmetic.tinyHelpersAdded} tiny helpers added; '
+        '$prefix'
+        '${report.cosmetic.tinyHelpersAdded} tiny helpers added; '
         'SLOC delta ${report.cosmetic.slocDelta}; '
-        'CC reduction ${report.cosmetic.ccReduction}).',
+        'CC reduction ${report.cosmetic.ccReduction}.',
       );
     }
     for (final c in report.changes) {
@@ -136,4 +163,11 @@ class RegressionReporter {
     }
     return buf.toString();
   }
+
+  /// True when any cosmetic counter is non-zero. The reporters use this
+  /// to decide whether to emit the cosmetic block at all — a refactor
+  /// that adds 0 helpers, didn't move SLOC, and didn't change CC
+  /// generates no signal worth showing.
+  bool _cosmeticHasSignal(CosmeticSignals c) =>
+      c.tinyHelpersAdded != 0 || c.slocDelta != 0 || c.ccReduction != 0;
 }
