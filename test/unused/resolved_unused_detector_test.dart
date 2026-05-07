@@ -512,6 +512,36 @@ class UnusedClass {}
     expect(names, contains('UnusedClass'));
   });
 
+  test('object-pattern destructuring (`case Foo(:final bar):`) keeps '
+      'the matched field reachable', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+
+void main() {
+  final p = Point(1, 2);
+  switch (p) {
+    case Point(:final x):
+      print(x);
+  }
+}
+''');
+    await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Point {
+  Point(this.x, this.y);
+  final int x;
+  final int y;
+}
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final names = unused.map((u) => u.name).toList();
+    // `x` is read via pattern destructuring; without the pattern hook
+    // the visitor would miss it and report it unused.
+    expect(names, isNot(contains('x')));
+    // `y` is never accessed — confirms the test exercises the
+    // path-sensitivity (only the pattern-named fields stay alive).
+    expect(names, contains('y'));
+  });
+
   test(
     'field metadata annotations contribute outgoing edges, so '
     '`@annot final Marker x;` keeps both the typedef and the '
