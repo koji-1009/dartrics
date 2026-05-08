@@ -13,7 +13,7 @@ Dart code-quality metrics and unused public-API detection, designed as the AI-lo
 - **Who it's for.** AI agents and the humans driving them. Every report mode is shaped to be *consumed*, not just read — most prominently `--reporter ai` (token-efficient YAML-ish, sorted by actionability).
 - **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons. The CLI ships the manual (`dartrics manual`), an explain-by-id (`dartrics explain`), and a regression diff (`dartrics regression`) — designed for a *see → understand → fix → verify* loop.
 - **Quick start.** `dart pub global activate dartrics` then `dartrics analyze lib/ --reporter ai`. JSON Schemas for `analysis_options.yaml` and the report payload live under `schemas/`.
-- **Status.** `0.x` — field names in the JSON / AI / SARIF outputs are stable (renames trigger a new header), but the surface has not yet been stress-tested by external users; pin a version in CI.
+- **Status.** JSON / AI / SARIF outputs carry contractual format headers (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header. The surface has not yet been stress-tested by external users.
 
 ## Why dartrics
 
@@ -99,7 +99,7 @@ Common options:
 
 ## Provided metrics
 
-dartrics ships a curated set; metrics that don't fit Dart's idioms (single inheritance, mixin / composition culture) are deliberately omitted, and metrics whose predictive value over cyclomatic complexity has not held up empirically (Halstead Volume) ship **off by default** and must be opted into via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index were dropped in 0.1.0 — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal beyond what the underlying metrics already provide.
+dartrics ships a curated set; metrics that don't fit Dart's idioms (single inheritance, mixin / composition culture) are deliberately omitted, and metrics whose predictive value over cyclomatic complexity has not held up empirically (Halstead Volume) ship **off by default** and must be opted into via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are not provided — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal beyond what the underlying metrics already provide.
 
 ### Function / method level
 
@@ -281,7 +281,7 @@ dartrics:
       - "protected"
       - "JsonSerializable"
     # presets: kept for backward compat; every codegen preset is
-    # always on as of 0.1.0, listing them here is no longer required.
+    # always on, listing them here is no longer required.
 
   snapshot:
     mode: baseline           # cache | baseline | none
@@ -339,7 +339,7 @@ Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`
 ```yaml
 # analysis_options.yaml in your project
 plugins:
-  dartrics: ^0.2.0
+  dartrics:
 ```
 
 After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin enables five rules by default:
@@ -428,7 +428,7 @@ Stable contract:
 
 - `# dartrics ai-report v1` header is present on every emission. Consumers can match on it to validate the format.
 - The snippet block is a YAML literal (`|`) of up to 7 lines (`line ± 3`).
-- Field names (`metric`, `severity`, `scope`, `coverage`, …) are stable through the `0.x` series. New fields may be added.
+- Field names (`metric`, `severity`, `scope`, `coverage`, …) are stable within a header version; new fields may be added.
 - Breaking changes (renames, removals, semantic shifts) trigger a new header, e.g. `# dartrics ai-report v2`.
 
 The JSON reporter emits the same logical model plus an `analyzedFiles` list that backs the snapshot diff:
@@ -484,7 +484,7 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 
 ## Embedding
 
-`lib/dartrics.dart` is intentionally tight — it exposes only the function-level metric calculators so a custom CI bot or editor extension can compute one metric on a parsed `CompilationUnit` without spinning up the full engine. Everything else (report shapes, regression diff, coverage attachment, dismissal, the unused detector, class- and library-level metrics, `MetricEngine` itself) is CLI-only in 0.1.0; the supported integration point is `dartrics analyze --reporter json` parsed in your own pipeline.
+`lib/dartrics.dart` is intentionally tight — it exposes only the function-level metric calculators so a custom CI bot or editor extension can compute one metric on a parsed `CompilationUnit` without spinning up the full engine. Everything else (report shapes, regression diff, coverage attachment, dismissal, the unused detector, class- and library-level metrics, `MetricEngine` itself) is CLI-only; the supported integration point is `dartrics analyze --reporter json` parsed in your own pipeline.
 
 | What you get | Names |
 | --- | --- |
@@ -498,7 +498,7 @@ The library is deliberately *not* in charge of report assembly, regression diff,
 
 ## Recommendation
 
-`dartrics` 0.1.0 is **recommended for AI-driven Dart codebases** — projects where Claude Code, Cursor, Codex, or another agent is doing meaningful code review or refactor work and the maintainer wants the agent's quality judgements to be grounded in reproducible, citation-backed metrics rather than vibes.
+`dartrics` is **recommended for AI-driven Dart codebases** — projects where Claude Code, Cursor, Codex, or another agent is doing meaningful code review or refactor work and the maintainer wants the agent's quality judgements to be grounded in reproducible, citation-backed metrics rather than vibes.
 
 What's wired up for that use case:
 
@@ -512,14 +512,13 @@ What's wired up for that use case:
 
 ### Honest limitations
 
-- **0.1.0 is the first release.** Field names are stable through the 0.x series, but the surface has not yet been stress-tested by external users; pin a version in CI.
 - **The analyzer plugin covers only the five function-level rules** (CC, Cognitive, Max nesting, Number of parameters, Boolean-trap). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
 - **Cross-run memory is out of scope.** dartrics doesn't remember "this dismiss was rejected last iteration; don't propose it again." Stay session-local.
 - **Performance is modest.** `--concurrency` parallelises file resolution but the analyzer driver itself is single-isolate; expect ~10 % wall-time wins on small trees, more on large ones. CPU-bound.
 - **`package:analyzer` 13.x moves fast.** Major Dart SDK or analyzer bumps may require dartrics updates before they ship cleanly.
-- **Built-in metric set is not exhaustive.** The catalogue deliberately omits metrics whose predictive value over CC has not held up empirically (DIT, NOC) and ships Halstead Volume off-by-default. Halstead Difficulty / Effort and the Maintainability Index were removed in 0.1.0 because they're pure derivations of the underlying counts and add no orthogonal signal. Bring your own opt-in for niche signals.
+- **Built-in metric set is not exhaustive.** The catalogue deliberately omits metrics whose predictive value over CC has not held up empirically (DIT, NOC) and ships Halstead Volume off-by-default. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent because they're pure derivations of the underlying counts and add no orthogonal signal. Bring your own opt-in for niche signals.
 
-### Who should not adopt 0.1.0 yet
+### Who should not adopt dartrics yet
 
 - Teams that need **per-line metric thresholds** in the IDE for the full metric suite — the plugin is intentionally narrow.
 - Teams that don't engage with the dismiss channel at all — the validator is opinionated, and a pure-fail-fast linter (`dart analyze` + `--fatal-warnings`) is a better fit.
