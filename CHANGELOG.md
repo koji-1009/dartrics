@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Bugfix
+
+- `.pubignore`'s `coverage/` pattern (no leading slash) matched at any depth, so the published `0.1.0` and `0.2.0` archives shipped without `lib/src/coverage/coverage_loader.dart` and `lib/src/coverage/lcov_reader.dart` even though both are imported by `lib/src/cli/analyze_command.dart` and `lib/src/metrics/metric_engine.dart`. Anyone who installed from pub.dev hit unresolved-import errors. The pattern is now `/coverage/`, matching `.gitignore`. No source-code changes; reinstall to recover a working package.
+
 ## 0.2.0
 
 ### Public-API unused-code detection — element-resolution mode

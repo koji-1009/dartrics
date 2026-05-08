@@ -4,7 +4,7 @@
 # From `.gitignore`:
 .dart_tool/
 tmp/
-coverage/
+/coverage/
 
 # Dev artefacts and AI/contributor docs (not part of the published API).
 .claude/
