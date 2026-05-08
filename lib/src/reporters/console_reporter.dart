@@ -11,7 +11,8 @@ class ConsoleReporter implements Reporter {
     sink.writeln(
       'dartrics: analyzed ${report.analyzedFileCount} file(s); '
       '${report.metrics.length} metric record(s), '
-      '${report.unused.length} unused declaration(s).',
+      '${report.unused.length} unused declaration(s)'
+      '${_snapshotSuffix(report)}.',
     );
     for (final record in report.metrics) {
       for (final v in record.violations) {
@@ -31,5 +32,15 @@ class ConsoleReporter implements Reporter {
         '[unused] ${unusedKindJsonName(u.kind)} ${u.name}',
       );
     }
+  }
+
+  /// Tail-text appended to the summary line when a diff filter (`cache`
+  /// snapshot or `--since`) was active, so a `0 unused` summary doesn't
+  /// look indistinguishable from "really nothing fired".
+  String _snapshotSuffix(AnalysisReport report) {
+    final changed = report.changedFileCount;
+    if (changed == null) return '';
+    return ' [snapshot ${report.snapshotMode}: '
+        '$changed of ${report.analyzedFileCount} changed]';
   }
 }

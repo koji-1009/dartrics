@@ -221,6 +221,8 @@ class AnalysisReport {
     this.analyzedFiles = const [],
     this.explanations = const [],
     this.staleDismissals = const [],
+    this.snapshotMode = 'none',
+    this.changedFileCount,
   });
 
   final String version;
@@ -244,6 +246,21 @@ class AnalysisReport {
   /// (the default) and the engine has finished walking violations.
   final List<StaleDismissal> staleDismissals;
 
+  /// Snapshot mode active for this run — `'cache'`, `'baseline'`, or
+  /// `'none'`. Carried into the report so reporters can disambiguate
+  /// "0 violations because there really were none" from "0 violations
+  /// because the cache snapshot filtered them out". `'none'` is the
+  /// default for legacy callers that don't set it.
+  final String snapshotMode;
+
+  /// Number of files whose hash differed from the snapshot (or whose
+  /// `.dart` source was touched between `--since` refs). `null` when no
+  /// diff filter is active — the report covers every analyzed file. A
+  /// non-null `0` means "diff filter was active and produced an empty
+  /// set", which is exactly the case that makes `unused: 0` look like
+  /// a regression unless the reporter spells it out.
+  final int? changedFileCount;
+
   int _analyzedFileCount = 0;
   int get analyzedFileCount => _analyzedFileCount;
   void attachAnalyzedFileCount(int n) => _analyzedFileCount = n;
@@ -260,6 +277,8 @@ class AnalysisReport {
     'version': version,
     if (analyzedFiles.isNotEmpty)
       'analyzedFiles': analyzedFiles.map((f) => f.toJson()).toList(),
+    'snapshotMode': snapshotMode,
+    if (changedFileCount != null) 'changedFileCount': changedFileCount,
     'metrics': metrics.map((m) => m.toJson()).toList(),
     'unused': unused.map((u) => u.toJson()).toList(),
     if (staleDismissals.isNotEmpty)

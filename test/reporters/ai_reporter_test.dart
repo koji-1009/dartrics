@@ -30,6 +30,28 @@ void main() {
     },
   );
 
+  test('emits snapshot block when a diff filter is active', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    AiReporter().report(
+      AnalysisReport(
+        version: '1.0',
+        metrics: const [],
+        unused: const [],
+        snapshotMode: 'cache',
+        changedFileCount: 0,
+      )..attachAnalyzedFileCount(3),
+      sink,
+    );
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('snapshot:'));
+    expect(body, contains('mode: cache'));
+    expect(body, contains('changedFiles: 0 of 3'));
+  });
+
   test('emits violations and unused with snippet placeholder', () async {
     final tmp = Directory.systemTemp.createTempSync();
     addTearDown(() => tmp.deleteSync(recursive: true));

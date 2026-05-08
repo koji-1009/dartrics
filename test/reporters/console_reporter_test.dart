@@ -25,6 +25,26 @@ void main() {
     },
   );
 
+  test('appends snapshot suffix when a diff filter is active', () async {
+    final dir = await Directory.systemTemp.createTemp('console_reporter_snap_');
+    addTearDown(() => dir.delete(recursive: true));
+    final out = File('${dir.path}/r.txt');
+    final sink = out.openWrite();
+    ConsoleReporter().report(
+      AnalysisReport(
+        version: '1.0',
+        metrics: const [],
+        unused: const [],
+        snapshotMode: 'cache',
+        changedFileCount: 0,
+      )..attachAnalyzedFileCount(3),
+      sink,
+    );
+    await sink.close();
+    final body = await out.readAsString();
+    expect(body, contains('[snapshot cache: 0 of 3 changed]'));
+  });
+
   test('annotates dismissed and dismissal-rejected violations', () async {
     final dir = await Directory.systemTemp.createTemp('console_reporter_dis_');
     addTearDown(() => dir.delete(recursive: true));

@@ -109,18 +109,26 @@ class UnusedCommand extends Command<int> {
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),
     ]);
+    final snapshotConfig = resolveSnapshotConfig(
+      config.snapshot,
+      options.snapshot,
+    );
     final snapshotChanged = _maybeApplySnapshot(
-      config: config,
-      options: options,
+      snapshotConfig: snapshotConfig,
+      root: options.root,
+      sinceActive: options.since != null,
       hashes: hashes,
     );
-    final filtered = _filterUnused(unused, changed ?? snapshotChanged);
+    final activeFilter = changed ?? snapshotChanged;
+    final filtered = _filterUnused(unused, activeFilter);
     final report = AnalysisReport(
       version: '1.0',
       metrics: const [],
       unused: filtered,
       analyzedFiles: hashes,
       explanations: buildExplanations(options.explain),
+      snapshotMode: snapshotConfig.mode.name,
+      changedFileCount: activeFilter?.length,
     )..attachAnalyzedFileCount(units.length);
 
     await _emit(report, options);
@@ -138,17 +146,14 @@ class UnusedCommand extends Command<int> {
   /// filtering work instead. `--since` and snapshot diffs are mutually
   /// exclusive — see the matching note in `analyze_command.dart`.
   Set<String>? _maybeApplySnapshot({
-    required Config config,
-    required CommonOptions options,
+    required SnapshotConfig snapshotConfig,
+    required String root,
+    required bool sinceActive,
     required List<AnalyzedFile> hashes,
   }) {
-    final snapshotConfig = resolveSnapshotConfig(
-      config.snapshot,
-      options.snapshot,
-    );
-    final snapshotPath = snapshotPathFor(snapshotConfig, options.root);
+    final snapshotPath = snapshotPathFor(snapshotConfig, root);
     Set<String>? snapshotChanged;
-    if (snapshotPath != null && options.since == null) {
+    if (snapshotPath != null && !sinceActive) {
       snapshotChanged = Snapshot.read(snapshotPath).changedPaths(hashes);
     }
     if (snapshotPath != null) {
