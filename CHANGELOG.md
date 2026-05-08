@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2
+
+### Bugfixes
+
+- `maximum-nesting-level` no longer counts named-argument closures (Widget builders, event handlers) as a nesting level. `ListView.builder(itemBuilder: (...) {})` and `ElevatedButton(onPressed: () {})` were reporting `1` even when no `if` / `for` was involved — directly contradicting the contract that `widget_tree_depth.dart` and `flutter_aware.dart` both document ("a healthy Widget tree produces a nesting score of 0"). Closures still increment when passed positionally (`xs.forEach((x) {})`, `xs.fold(0, (a, x) => …)`) — those are higher-order calls, not declarative configuration. Inner `if` / `for` inside a named-argument closure still counts at the right depth.
+- The summary table now surfaces snapshot mode and the diff filter so the cache-mode default doesn't render as a regression. Without these rows the second run with no source changes filtered every violation through `_filterUnused` and rendered as `unused declarations: 0` indistinguishable from "really nothing fired". Adds `snapshot mode: cache` / `files changed: 0 of 3 (no new findings)` to the md summary, a top-level `snapshot:` block to the AI reporter, a `[snapshot cache: 0 of 3 changed]` tail tag to the console line, and `snapshotMode` + `changedFileCount` fields at the JSON report root. Field additions only — `# dartrics ai-report v1` and the JSON `1.0` header stay valid.
+
 ## 0.2.1
 
 ### Bugfix
