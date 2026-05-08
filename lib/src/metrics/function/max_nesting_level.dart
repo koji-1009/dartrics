@@ -110,8 +110,18 @@ class _NestingVisitor extends RecursiveAstVisitor<void> {
       // into its statements when computing the outer function's nesting.
       return;
     }
-    // Closure (e.g. `xs.forEach((x) {...})`) — introduces a visual nesting
-    // level for the reader.
+    if (node.parent is NamedArgument) {
+      // Named-argument closure (`ListView.builder(itemBuilder: (...) {})`,
+      // `ElevatedButton(onPressed: () {})`, …) is declarative
+      // configuration — a Widget builder or an event handler — not a
+      // control-flow nesting level. Descend without incrementing so any
+      // inner `if` / `for` still counts at the right depth, but the
+      // closure boundary itself doesn't.
+      super.visitFunctionExpression(node);
+      return;
+    }
+    // Positional closure (e.g. `xs.forEach((x) {...})`) — higher-order
+    // function call, introduces a visual nesting level for the reader.
     _enter();
     super.visitFunctionExpression(node);
     _exit();

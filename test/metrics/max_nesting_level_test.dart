@@ -36,4 +36,57 @@ int f(int x) {
 ''', name: 'f');
     expect(m.compute(input), 3);
   });
+
+  test('named-argument closure (Widget builder) does not add a level', () {
+    final input = inputFor('''
+Object f() {
+  return ListView.builder(
+    itemCount: 3,
+    itemBuilder: (context, index) {
+      return Padding(padding: 8, child: index);
+    },
+  );
+}
+''', name: 'f');
+    expect(m.compute(input), 0);
+  });
+
+  test('named-argument closure passes through inner control flow', () {
+    final input = inputFor('''
+Object f() {
+  return ListView.builder(
+    itemCount: 3,
+    itemBuilder: (context, index) {
+      if (index == 0) return 1;
+      return 2;
+    },
+  );
+}
+''', name: 'f');
+    expect(m.compute(input), 1);
+  });
+
+  test('named-argument closure (event handler) does not add a level', () {
+    final input = inputFor('''
+Object f() {
+  return ElevatedButton(
+    onPressed: () => 1,
+    child: 'tap',
+  );
+}
+''', name: 'f');
+    expect(m.compute(input), 0);
+  });
+
+  test('positional closure still adds a level (forEach)', () {
+    final input = inputFor('''
+int f(List<int> xs) {
+  xs.forEach((x) {
+    print(x);
+  });
+  return xs.length;
+}
+''', name: 'f');
+    expect(m.compute(input), 1);
+  });
 }
