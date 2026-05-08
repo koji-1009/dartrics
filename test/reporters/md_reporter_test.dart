@@ -24,7 +24,61 @@ void main() {
     expect(body, contains('cyclomatic-complexity'));
     expect(body, contains('## Unused Declarations'));
     expect(body, contains('_legacyFormatter'));
+    expect(body, contains('snapshot mode'));
   });
+
+  test(
+    'summary surfaces snapshot diff filter with `no new findings` hint',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      MdReporter().report(
+        AnalysisReport(
+          version: '1.0',
+          metrics: const [],
+          unused: const [],
+          snapshotMode: 'cache',
+          changedFileCount: 0,
+        )..attachAnalyzedFileCount(3),
+        sink,
+      );
+      await sink.close();
+
+      final body = await temp.readAsString();
+      expect(body, contains('snapshot mode'));
+      expect(body, contains('cache'));
+      expect(body, contains('files changed'));
+      expect(body, contains('0 of 3'));
+      expect(body, contains('no new findings'));
+    },
+  );
+
+  test(
+    'summary omits `no new findings` hint when some files changed',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      MdReporter().report(
+        AnalysisReport(
+          version: '1.0',
+          metrics: const [],
+          unused: const [],
+          snapshotMode: 'cache',
+          changedFileCount: 2,
+        )..attachAnalyzedFileCount(3),
+        sink,
+      );
+      await sink.close();
+
+      final body = await temp.readAsString();
+      expect(body, contains('2 of 3'));
+      expect(body, isNot(contains('no new findings')));
+    },
+  );
 
   test('renders coverage and earned tag on the violation bullet', () async {
     final temp = await File.fromUri(

@@ -31,6 +31,7 @@ class AiReporter implements Reporter {
   void report(AnalysisReport report, IOSink sink) {
     const header = '# dartrics ai-report v1';
     final body = StringBuffer();
+    _writeSnapshotStatus(body, report);
     _writeExplanations(body, report);
     final dropped = _writeViolations(body, report);
     final unusedDropped = _writeUnused(body, report);
@@ -53,6 +54,21 @@ class AiReporter implements Reporter {
       ..writeln(header)
       ..write(body.toString());
     sink.write(formatYaml(full.toString()));
+  }
+
+  /// Surfaces snapshot mode + diff filter so a `0`-everything report
+  /// reads as "nothing fired in the changed file set" rather than
+  /// "nothing fired at all". Skipped when no diff filter is active and
+  /// snapshot mode is `none` — the AI loop has nothing to disambiguate.
+  void _writeSnapshotStatus(StringBuffer buf, AnalysisReport report) {
+    final changed = report.changedFileCount;
+    if (changed == null && report.snapshotMode == 'none') return;
+    buf
+      ..writeln('snapshot:')
+      ..writeln('  mode: ${report.snapshotMode}');
+    if (changed != null) {
+      buf.writeln('  changedFiles: $changed of ${report.analyzedFileCount}');
+    }
   }
 
   void _writeExplanations(StringBuffer buf, AnalysisReport report) {

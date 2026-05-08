@@ -174,6 +174,8 @@ class AnalyzeCommand extends Command<int> {
       analyzedFiles: hashes,
       explanations: buildExplanations(resolvedExplainIds),
       staleDismissals: staleDismissals,
+      snapshotMode: req.snapshotConfig.mode.name,
+      changedFileCount: allowed?.length,
     )..attachAnalyzedFileCount(units.length);
   }
 

@@ -16,6 +16,15 @@
       "type": "array",
       "items": { "$ref": "#/$defs/AnalyzedFile" }
     },
+    "snapshotMode": {
+      "description": "Snapshot mode active for this run. Distinguishes a `0`-violations report from a `0`-violations-after-cache-filter report.",
+      "enum": ["cache", "baseline", "none"]
+    },
+    "changedFileCount": {
+      "description": "Number of files that survived the diff filter (cache snapshot or `--since`). Absent when no diff filter is active — the report covers every analyzed file.",
+      "type": "integer",
+      "minimum": 0
+    },
     "metrics": {
       "type": "array",
       "items": { "$ref": "#/$defs/MetricRecord" }

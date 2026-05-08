@@ -72,7 +72,18 @@ class MdReporter implements Reporter {
     buf
       ..writeln('| unused declarations | ${report.unused.length} |')
       ..writeln('| analyzed files | ${report.analyzedFileCount} |')
-      ..writeln();
+      ..writeln('| snapshot mode | ${report.snapshotMode} |');
+    final changed = report.changedFileCount;
+    if (changed != null) {
+      // Without this row, `cache` mode's second-run filter looks like
+      // every violation suddenly evaporated — `unused declarations | 0`
+      // is otherwise indistinguishable from "really nothing fired".
+      final hint = changed == 0 ? ' (no new findings)' : '';
+      buf.writeln(
+        '| files changed | $changed of ${report.analyzedFileCount}$hint |',
+      );
+    }
+    buf.writeln();
   }
 
   void _writeViolations(StringBuffer buf, AnalysisReport report) {
