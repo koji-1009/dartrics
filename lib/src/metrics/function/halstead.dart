@@ -113,6 +113,12 @@ class HalsteadVolume extends FunctionMetric {
     'Reduce vocabulary by reusing helper functions instead of duplicating literal constants and operators.',
     'Split the function — Halstead Volume is roughly additive across helpers so each piece becomes easier to read.',
   ];
+
+  @override
+  List<String> get references => const [
+    'Halstead, M. H. (1977). Elements of Software Science. Elsevier.',
+  ];
+
   @override
   num compute(FunctionMetricInput input) =>
       HalsteadCounts.fromBody(input.body).volume;

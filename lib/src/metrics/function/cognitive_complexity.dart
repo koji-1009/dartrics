@@ -49,6 +49,11 @@ class CognitiveComplexity extends FunctionMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'Campbell, G. A. (2018). Cognitive Complexity: A new way of measuring understandability. SonarSource technical paper.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final visitor = _CognitiveVisitor();
     input.body.accept(visitor);

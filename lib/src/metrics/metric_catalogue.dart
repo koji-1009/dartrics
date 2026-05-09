@@ -34,6 +34,7 @@ List<RuleDescription> collectRuleDescriptions() {
         defaultThreshold: defaultMetricThresholds[m.id],
         rationale: m.rationale,
         refactorHints: m.refactorHints,
+        references: m.references,
         polarity: m.polarity.name,
       ),
     for (final m in defaultClassMetrics)
@@ -44,6 +45,7 @@ List<RuleDescription> collectRuleDescriptions() {
         defaultThreshold: defaultMetricThresholds[m.id],
         rationale: m.rationale,
         refactorHints: m.refactorHints,
+        references: m.references,
         polarity: m.polarity.name,
       ),
     for (final m in defaultLibraryMetrics)
@@ -54,6 +56,7 @@ List<RuleDescription> collectRuleDescriptions() {
         defaultThreshold: defaultMetricThresholds[m.id],
         rationale: m.rationale,
         refactorHints: m.refactorHints,
+        references: m.references,
         polarity: m.polarity.name,
       ),
   ];

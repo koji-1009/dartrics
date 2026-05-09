@@ -50,6 +50,11 @@ class NumberOfParameters extends FunctionMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'Fowler, M. (1999). Refactoring: Improving the Design of Existing Code. Addison-Wesley.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final params = input.parameters;
     if (params == null) return 0;

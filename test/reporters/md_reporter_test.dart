@@ -195,6 +195,7 @@ void main() {
               metricId: 'cyclomatic-complexity',
               rationale: 'Why CC matters.',
               refactorHints: ['Extract helpers.'],
+              references: ['Author (1976). Title.'],
             ),
           ],
         ),
@@ -205,6 +206,8 @@ void main() {
       expect(body, contains('## Explanations'));
       expect(body, contains('Why CC matters.'));
       expect(body, contains('Extract helpers.'));
+      expect(body, contains('**References:**'));
+      expect(body, contains('Author (1976). Title.'));
     },
   );
 }

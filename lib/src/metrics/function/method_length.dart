@@ -39,6 +39,11 @@ class MethodLength extends FunctionMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'Beck, K. (1996). Smalltalk Best Practice Patterns. Prentice Hall.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final start = input.lineInfo.getLocation(input.body.offset).lineNumber;
     final end = input.lineInfo.getLocation(input.body.end).lineNumber;

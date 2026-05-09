@@ -78,6 +78,14 @@ abstract class FunctionMetric {
   /// metric trips. Each entry is a single short imperative sentence.
   List<String> get refactorHints;
 
+  /// Original sources for the metric — papers, books, or specs the
+  /// definition is anchored to. Each entry is a short citation
+  /// ("Author (Year). Title. Venue."). Empty for metrics that don't
+  /// trace to a published source. Surfaced by `dartrics rules`,
+  /// `--explain`, and the AI report so an agent reading dartrics output
+  /// can verify a metric against its primary source.
+  List<String> get references => const [];
+
   /// Direction in which the value moves when the code gets healthier.
   /// Override to `up` for custom metrics where higher is better, or
   /// `neutral` for metrics where neither direction is universally good.

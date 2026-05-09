@@ -205,11 +205,17 @@ class ExplainEntry {
     required this.metricId,
     required this.rationale,
     required this.refactorHints,
+    this.references = const [],
   });
 
   final String metricId;
   final String rationale;
   final List<String> refactorHints;
+
+  /// Citations the metric is anchored to. Mirrors the metric
+  /// calculator's `references` getter; empty for metrics that don't
+  /// trace to a published source.
+  final List<String> references;
 }
 
 /// Top-level result returned by the analyzer.

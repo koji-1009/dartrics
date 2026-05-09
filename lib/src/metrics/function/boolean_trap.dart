@@ -52,6 +52,12 @@ class BooleanTrap extends FunctionMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'McConnell, S. (2004). Code Complete (2nd ed.). Microsoft Press.',
+    'Bloch, J. (2008). Effective Java (2nd ed.), item 36. Addison-Wesley.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final params = input.parameters;
     if (params == null) return 0;

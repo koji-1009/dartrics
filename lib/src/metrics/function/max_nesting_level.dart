@@ -35,6 +35,11 @@ class MaxNestingLevel extends FunctionMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'NIST Special Publication 500-235 §4 — Structured Testing: A Testing Methodology Using the Cyclomatic Complexity Metric (1996).',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final visitor = _NestingVisitor();
     input.body.accept(visitor);

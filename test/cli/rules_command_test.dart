@@ -183,4 +183,117 @@ void main() {
     expect(round.path, 'a.dart');
     expect(round.sha256, 'abc');
   });
+
+  group('references field', () {
+    test('every cited metric carries at least one structured reference', () {
+      // Pin the contract that metrics whose rationale names a primary
+      // source also expose that source through the structured
+      // `references` getter; the AI report and `dartrics rules` consume
+      // the structured list rather than parsing the prose.
+      const citedIds = {
+        'cyclomatic-complexity',
+        'cognitive-complexity',
+        'maximum-nesting-level',
+        'number-of-parameters',
+        'boolean-trap',
+        'method-length',
+        'halstead-volume',
+        'source-lines-of-code',
+        'lcom4',
+        'weighted-methods-per-class',
+        'coupling-between-objects',
+        'response-for-class',
+        'efferent-coupling',
+        'afferent-coupling',
+        'instability',
+        'abstractness',
+        'distance-from-main-sequence',
+      };
+      final byId = {for (final r in collectRuleDescriptions()) r.id: r};
+      for (final id in citedIds) {
+        final desc = byId[id];
+        expect(desc, isNotNull, reason: 'missing rule description for $id');
+        expect(
+          desc!.references,
+          isNotEmpty,
+          reason:
+              '$id mentions a primary source in its rationale but does not '
+              'expose it through `references`. Add the citation to the '
+              'metric calculator.',
+        );
+      }
+    });
+
+    test('RuleDescription.toJson omits absent references', () {
+      final json = const RuleDescription(
+        id: 'metric-x',
+        scope: 'function',
+        defaultEnabled: true,
+        defaultThreshold: null,
+        rationale: 'why',
+        refactorHints: ['hint'],
+      ).toJson();
+      expect(json.containsKey('references'), isFalse);
+    });
+
+    test('RuleDescription.toJson surfaces non-empty references', () {
+      final json = const RuleDescription(
+        id: 'metric-x',
+        scope: 'function',
+        defaultEnabled: true,
+        defaultThreshold: null,
+        rationale: 'why',
+        refactorHints: ['hint'],
+        references: ['Author (Year). Title.'],
+      ).toJson();
+      expect(json, containsPair('references', ['Author (Year). Title.']));
+    });
+
+    test(
+      'rules CLI surfaces references in ai / md / console / json reporters',
+      () async {
+        final dir = await Directory.systemTemp.createTemp('rules_refs_');
+        addTearDown(() => dir.delete(recursive: true));
+
+        final ai = '${dir.path}/r.yaml';
+        expect(await runQuietly(['rules', '--output', ai]), 0);
+        final aiBody = await File(ai).readAsString();
+        expect(aiBody, contains('references:'));
+        expect(aiBody, contains('McCabe'));
+
+        final md = '${dir.path}/r.md';
+        expect(
+          await runQuietly(['rules', '--reporter', 'md', '--output', md]),
+          0,
+        );
+        final mdBody = await File(md).readAsString();
+        expect(mdBody, contains('**References:**'));
+
+        final console = '${dir.path}/r.txt';
+        expect(
+          await runQuietly([
+            'rules',
+            '--reporter',
+            'console',
+            '--output',
+            console,
+          ]),
+          0,
+        );
+        expect(await File(console).readAsString(), contains('  ref: McCabe'));
+
+        final json = '${dir.path}/r.json';
+        expect(
+          await runQuietly(['rules', '--reporter', 'json', '--output', json]),
+          0,
+        );
+        final decoded =
+            jsonDecode(await File(json).readAsString()) as Map<String, Object?>;
+        final list = (decoded['rules']! as List).cast<Map<String, Object?>>();
+        final cc = list.firstWhere((r) => r['id'] == 'cyclomatic-complexity');
+        expect(cc['references'], isA<List<Object?>>());
+        expect((cc['references']! as List).first, contains('McCabe'));
+      },
+    );
+  });
 }

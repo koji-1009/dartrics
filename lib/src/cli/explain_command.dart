@@ -134,6 +134,7 @@ class ExplainCommand extends Command<int> {
     'polarity': desc.polarity,
     'rationale': desc.rationale,
     'refactorHints': desc.refactorHints,
+    if (desc.references.isNotEmpty) 'references': desc.references,
   };
 
   String _renderAi(ExplainHit hit, RuleDescription? desc) {
@@ -174,6 +175,12 @@ class ExplainCommand extends Command<int> {
         ..writeln('  refactorHints:');
       for (final h in desc.refactorHints) {
         buf.writeln('    - ${_yamlInline(h)}');
+      }
+      if (desc.references.isNotEmpty) {
+        buf.writeln('  references:');
+        for (final ref in desc.references) {
+          buf.writeln('    - ${_yamlInline(ref)}');
+        }
       }
     } else {
       buf.writeln(

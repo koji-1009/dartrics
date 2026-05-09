@@ -444,6 +444,7 @@ void main() {
           metricId: 'cyclomatic-complexity',
           rationale: 'Multi\nline rationale: with colon and # hash.',
           refactorHints: ['Plain hint.', 'Has: colon hint.'],
+          references: ['Author (1976). Title.'],
         ),
       ],
     );
@@ -458,6 +459,8 @@ void main() {
     expect(body, contains('explain:'));
     expect(body, contains('Multi'));
     expect(body, contains('"Has: colon hint."'));
+    expect(body, contains('references:'));
+    expect(body, contains('Author (1976). Title.'));
   });
 
   test(

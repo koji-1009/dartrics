@@ -25,6 +25,9 @@ abstract class ClassMetric {
   /// Concrete refactor moves to take when the metric trips.
   List<String> get refactorHints;
 
+  /// Original sources for the metric. See [FunctionMetric.references].
+  List<String> get references => const [];
+
   /// Direction in which the value moves when the code gets healthier.
   /// See `FunctionMetric.polarity`.
   MetricPolarity get polarity => MetricPolarity.down;

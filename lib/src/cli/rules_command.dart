@@ -87,6 +87,7 @@ List<ExplainEntry> buildExplanations(List<String> ids) {
         metricId: desc.id,
         rationale: desc.rationale,
         refactorHints: desc.refactorHints,
+        references: desc.references,
       ),
     );
   }
