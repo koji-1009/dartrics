@@ -121,19 +121,6 @@ dartrics:
     expect(t?.warning, 1000);
   });
 
-  test('parses unused.presets list', () async {
-    final f = File('${dir.path}/presets.yaml');
-    await f.writeAsString('''
-dartrics:
-  unused:
-    presets:
-      - freezed
-      - json_serializable
-''');
-    final config = await loadConfig(f.path);
-    expect(config.unused.presets, ['freezed', 'json_serializable']);
-  });
-
   test('throws ConfigException on malformed YAML', () async {
     final f = File('${dir.path}/broken.yaml');
     await f.writeAsString('dartrics:\n  metrics:\n    {broken\n');

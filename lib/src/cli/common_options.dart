@@ -210,7 +210,6 @@ UnusedConfig mergeUnusedFilterFromCli({
     entryPoints: base.entryPoints,
     excludeExported: base.excludeExported,
     ignoreAnnotations: base.ignoreAnnotations,
-    presets: base.presets,
     filter: cliFilter,
   );
 }

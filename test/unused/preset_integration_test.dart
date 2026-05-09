@@ -128,25 +128,4 @@ void main() {}
     ], const UnusedConfig(excludeExported: false));
     expect(unused.map((u) => u.name).toSet(), isNot(contains('AppDatabase')));
   });
-
-  test(
-    'legacy `presets:` field is accepted but no longer narrows the set',
-    () async {
-      // Even with an empty (or wrong) `presets:` list, freezed-annotated
-      // classes still stay alive — the preset-opt-in mechanism is a no-op
-      // for backward compatibility only.
-      final unused = await const UnusedDetector().detect([
-        _src('/proj/lib/src/model.dart', '''
-class Freezed { const Freezed(); }
-const freezed = Freezed();
-
-@freezed
-class Foo {}
-
-void main() {}
-'''),
-      ], const UnusedConfig(excludeExported: false, presets: []));
-      expect(unused.map((u) => u.name).toSet(), isNot(contains('Foo')));
-    },
-  );
 }

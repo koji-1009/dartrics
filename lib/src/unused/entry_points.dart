@@ -15,8 +15,7 @@ List<DeclarationRecord> resolveEntryPoints(
   }
   final keepAliveAnnotations = <String>{
     ...config.ignoreAnnotations,
-    // Every codegen preset is always honored as a keep-alive root;
-    // `config.presets` is parsed but no longer narrows the set.
+    // Every codegen preset is always honored as a keep-alive root.
     ...allKeepAliveAnnotations,
   };
   for (final d in declarations) {

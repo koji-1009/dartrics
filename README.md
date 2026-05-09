@@ -268,7 +268,7 @@ Every codegen-related annotation listed below is **always** treated as a reachab
 | [hive](https://pub.dev/packages/hive) / [hive_ce](https://pub.dev/packages/hive_ce) | `HiveType`, `HiveField`                                                                                                                    |
 | [drift](https://pub.dev/packages/drift)                       | `DriftDatabase`, `DriftAccessor`, `DataClassName`, `TableIndex`, `UseRowClass`                                                             |
 
-Annotations are looked up by **simple name only** (`@Freezed()` matches the simple name `Freezed`). If your project doesn't use a given package, the entry has no effect — there's no per-project cost to leaving every preset on. The `dartrics: { unused: { presets: [...] } }` field is parsed for backward compatibility but its value is ignored; for in-house codegen, list annotations under `dartrics: { unused: { ignore-annotations: [...] } }`.
+Annotations are looked up by **simple name only** (`@Freezed()` matches the simple name `Freezed`). If your project doesn't use a given package, the entry has no effect — there's no per-project cost to leaving every preset on. For in-house codegen, list annotations under `dartrics: { unused: { ignore-annotations: [...] } }`.
 
 ## Public-API unused-code detection
 

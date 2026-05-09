@@ -115,18 +115,6 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "default": ["visibleForTesting", "protected", "JsonSerializable"]
-        },
-        "presets": {
-          "type": "array",
-          "items": {
-            "enum": [
-              "freezed",
-              "json_serializable",
-              "dart_mappable",
-              "go_router_builder",
-              "auto_route"
-            ]
-          }
         }
       }
     },

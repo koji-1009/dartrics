@@ -9,18 +9,11 @@ void main() {
     }
   });
 
-  test('expandPresets unions known preset annotation sets', () {
-    final expanded = expandPresets(['freezed', 'json_serializable']);
-    expect(expanded, containsAll(keepAlivePresets['freezed']!));
-    expect(expanded, containsAll(keepAlivePresets['json_serializable']!));
-  });
-
-  test('expandPresets silently ignores unknown preset names', () {
-    final expanded = expandPresets(['no_such_preset', 'freezed']);
-    expect(expanded, equals(keepAlivePresets['freezed']!.toSet()));
-  });
-
-  test('expandPresets returns empty for an empty input', () {
-    expect(expandPresets(const []), isEmpty);
+  test('allKeepAliveAnnotations is the union of every preset', () {
+    final expected = <String>{};
+    for (final names in keepAlivePresets.values) {
+      expected.addAll(names);
+    }
+    expect(allKeepAliveAnnotations, equals(expected));
   });
 }

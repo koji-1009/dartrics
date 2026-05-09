@@ -4,7 +4,6 @@ import 'package:io/io.dart';
 import '../config/config.dart';
 import '../config/config_loader.dart';
 import '../metrics/metric_catalogue.dart';
-import '../unused/keep_alive_presets.dart';
 import 'io_sinks.dart';
 
 /// `dartrics doctor` — validates the `dartrics:` block in
@@ -97,18 +96,6 @@ List<DoctorIssue> diagnose(Config config) {
     }
     final orderingIssue = checkThresholdOrdering(id, t, polarityById[id]!);
     if (orderingIssue != null) issues.add(orderingIssue);
-  }
-
-  for (final preset in config.unused.presets) {
-    if (!keepAlivePresets.containsKey(preset)) {
-      final hint = _didYouMean(preset, keepAlivePresets.keys.toSet());
-      issues.add(
-        DoctorIssue(
-          message: 'unknown unused preset "$preset"',
-          hint: hint == null ? null : 'did you mean "$hint"?',
-        ),
-      );
-    }
   }
 
   return issues;

@@ -105,24 +105,15 @@ void main() {
       expect(diagnose(config), isEmpty);
     });
 
-    test('unknown unused preset is flagged with did-you-mean', () {
-      const config = Config(unused: UnusedConfig(presets: ['frezed']));
-      final issues = diagnose(config);
-      expect(issues, hasLength(1));
-      expect(issues.single.message, contains('frezed'));
-      expect(issues.single.hint, contains('freezed'));
-    });
-
     test('multiple issues accumulate', () {
       const config = Config(
         metricThresholds: {
           'cyclomatic-complexity': MetricThresholds(warning: 20, error: 10),
           'cylomatic-complexity': MetricThresholds(warning: 1),
         },
-        unused: UnusedConfig(presets: ['frezed', 'unknown']),
       );
       final issues = diagnose(config);
-      expect(issues, hasLength(4));
+      expect(issues, hasLength(2));
     });
   });
 

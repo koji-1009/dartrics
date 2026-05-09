@@ -159,21 +159,12 @@ class UnusedConfig {
       'protected',
       'JsonSerializable',
     ],
-    this.presets = const [],
     this.filter = const [],
   });
 
   final List<String> entryPoints;
   final bool excludeExported;
   final List<String> ignoreAnnotations;
-
-  /// **Deprecated** — every codegen preset is always on (freezed,
-  /// json_serializable, dart_mappable, go_router_builder, auto_route,
-  /// riverpod, injectable, hive, drift). The field is still parsed for
-  /// backward compatibility with older configs, but the value no
-  /// longer narrows the keep-alive set. See `keep_alive_presets.dart`
-  /// for the full annotation list.
-  final List<String> presets;
 
   /// Narrows the kinds emitted by the resolved-AST detector to this
   /// allow-list. Empty means "every kind". Honours
