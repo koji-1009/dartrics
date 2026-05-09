@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+### Breaking changes
+
+- **Three Dart-shape metrics removed: `widget-tree-depth`, `null-aware-chain-depth`, `async-chain-depth`.** All three were tool-originated lenses with no academic anchor and no Effective Dart consensus to point to — out of step with the catalogue's "every metric is anchored to its primary source" rule. `widget-tree-depth` was lint-shaped (deepest `InstanceCreationExpression` chain) and is better expressed as a `custom_lint` rule than as a metric. `null-aware-chain-depth` and `async-chain-depth` measure call-shape patterns the language already gives clean rewrites for (`?.` short-circuit + early-return for the former; `Future.wait` / hoisting for the latter), so the metric was re-deriving guidance the language semantics already imply. All three were off-by-default, so the impact is limited to projects that opted into them — drop the entries from `dartrics: { metrics: { ... } }`. The schema's `propertyNames.enum` no longer accepts the three ids.
+- **`FunctionMetric.references` is now abstract.** With the three lenses removed, every remaining built-in function metric overrides `references`, so the empty-default getter became dead code. Embedders implementing custom `FunctionMetric`s now need to declare `List<String> get references => const [];` explicitly when there is no primary citation — same shape `LibraryMetric` has always required. `ClassMetric.references` still defaults to `const []` (`number-of-methods` and `class-length` legitimately have no canonical reference).
+
+### README "Designed for the AI loop"
+
+- The differentiation pitch is promoted to a dedicated `### Designed for the AI loop` subsection inside "What it does", expanded into a 5-item feature list (auto-explain by default, stable IDs with reverse lookup, coverage-aware reading, output stability, docs in the binary). The previous "Who it's for" bullet is dropped — every other paragraph already pitches AI agents and the humans driving them as the audience. The "signals, not gates" framing remains in the lead paragraph where it belongs as operating philosophy rather than as a feature.
+
 ## 0.3.0
 
 ### Breaking changes
