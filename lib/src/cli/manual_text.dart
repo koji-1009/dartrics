@@ -113,7 +113,6 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 Each lens declares a `polarity`:
 
 - `down` — lower is better. The default. (CC, Cognitive, nesting, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC, Ce, Ca, instability, distance.)
-- `up` — higher is better. No built-in metric currently uses this; reserved for custom embedder metrics that want it.
 - `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume, abstractness in isolation.)
 
 You read this off the regression diff so you don't accidentally celebrate a metric that drifted the wrong way.

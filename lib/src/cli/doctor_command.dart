@@ -102,12 +102,8 @@ List<DoctorIssue> diagnose(Config config) {
 }
 
 /// For polarity=down (lower-is-better) metrics, error must be ≥ warning.
-/// For polarity=up (higher-is-better) metrics, error must be ≤ warning.
 /// neutral metrics skip the ordering check — there is no universally
 /// healthier direction.
-///
-/// `up` polarity is reserved for custom embedder metrics; no built-in
-/// metric uses it.
 DoctorIssue? checkThresholdOrdering(
   String id,
   MetricThresholds t,
@@ -125,16 +121,6 @@ DoctorIssue? checkThresholdOrdering(
               'but the metric is "down" (lower is better) — '
               'every error case is also a warning case, so error '
               'should be ≥ warning.',
-        );
-      }
-    case 'up':
-      if (e > w) {
-        return DoctorIssue(
-          message:
-              '"$id" has error=$e above warning=$w, '
-              'but the metric is "up" (higher is better) — '
-              'error should be ≤ warning so that the more permissive '
-              'level (warning) is reached first as the metric drops.',
         );
       }
     case 'neutral':

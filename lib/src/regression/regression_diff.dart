@@ -268,10 +268,6 @@ ChangeDirection _directionByPolarity({
       return after < before
           ? ChangeDirection.improved
           : ChangeDirection.regressed;
-    case MetricPolarity.up:
-      return after > before
-          ? ChangeDirection.improved
-          : ChangeDirection.regressed;
     case MetricPolarity.neutral:
       return ChangeDirection.neutralDelta;
   }

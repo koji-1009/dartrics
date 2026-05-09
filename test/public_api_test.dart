@@ -33,12 +33,7 @@ void main() {
   });
 
   test('FunctionMetric polarity enum values are reachable', () {
-    // MetricPolarity.up has no built-in metric, but the enum value
-    // stays exported so custom embedder metrics can register with up
-    // polarity; the regression-diff and doctor up-polarity branches
-    // are tested directly via their public helpers.
     expect(MetricPolarity.down.name, 'down');
-    expect(MetricPolarity.up.name, 'up');
     expect(MetricPolarity.neutral.name, 'neutral');
     expect(const HalsteadVolume().polarity, MetricPolarity.neutral);
   });

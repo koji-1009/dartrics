@@ -46,10 +46,6 @@ enum MetricPolarity {
   /// Lower values are healthier (e.g. cyclomatic complexity, SLOC).
   down,
 
-  /// Higher values are healthier. No built-in metric currently uses
-  /// this; reserved for custom embedder metrics.
-  up,
-
   /// Either direction can be a sign of improvement depending on the
   /// design role (e.g. instability, coupling totals). Regression diffs
   /// surface the delta but don't classify it.

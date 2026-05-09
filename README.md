@@ -60,7 +60,7 @@ dartrics ai-loop         # the setup → propose → apply → verify walkthroug
 | `regression` | Compare metrics between two git states; classify each delta as improved / regressed / unchanged / added / removed. |
 | `manual` | Print the AI-facing operator's manual (mirror of [`doc/manual.md`](doc/manual.md)). |
 | `ai-loop` | Print the AI-loop walkthrough (mirror of [`doc/ai-loop.md`](doc/ai-loop.md)). |
-| `doctor` | Validate the `dartrics:` block in `analysis_options.yaml` — flags unknown metric ids, unknown presets, and threshold orderings inconsistent with the metric's polarity. |
+| `doctor` | Validate the `dartrics:` block in `analysis_options.yaml` — flags unknown metric ids and threshold orderings inconsistent with the metric's polarity. |
 | `explain <id>` | Reverse-lookup a violation by its stable 16-hex-char id and print its rationale + refactor hints + references. Reads JSON from stdin or `--input <path>`. |
 
 ```
@@ -91,7 +91,7 @@ Common options:
 
 dartrics ships a curated set. Metrics that don't fit Dart's idioms (DIT, NOC; Dart's mixin + composition culture keeps inheritance chains shallow) are omitted; metrics whose predictive value over cyclomatic complexity has not held up empirically (Halstead Volume) ship **off by default** and must be opted in via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal.
 
-Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `up` / `neutral`). All four surface through `dartrics rules`, `dartrics explain <id>`, and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
+Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules`, `dartrics explain <id>`, and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
 
 ### Function / method level
 

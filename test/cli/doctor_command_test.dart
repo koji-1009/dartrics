@@ -62,29 +62,6 @@ void main() {
       expect(diagnose(config), isEmpty);
     });
 
-    test('up-polarity metric with error > warning is flagged', () {
-      // No built-in metric currently uses up polarity — exercise the
-      // public helper directly with a synthetic polarity.
-      final issue = checkThresholdOrdering(
-        'custom-up-metric',
-        const MetricThresholds(warning: 50, error: 80),
-        'up',
-      );
-      expect(issue, isNotNull);
-      expect(issue!.message, contains('"up"'));
-    });
-
-    test('up-polarity with error < warning is allowed', () {
-      expect(
-        checkThresholdOrdering(
-          'custom-up-metric',
-          const MetricThresholds(warning: 80, error: 50),
-          'up',
-        ),
-        isNull,
-      );
-    });
-
     test('partial threshold (warning only) skips ordering check', () {
       const config = Config(
         metricThresholds: {

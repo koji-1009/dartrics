@@ -77,31 +77,29 @@ void main() {
     expect(report.changes.single.direction, ChangeDirection.regressed);
   });
 
-  test('classifyChange treats up-polarity drops as regressed', () {
-    // No built-in metric currently uses up polarity; exercise the
-    // public helper directly with a synthetic polarity.
+  test('classifyChange treats neutral-polarity changes as neutralDelta', () {
+    // For neutral metrics (e.g. Halstead Volume, Abstractness in
+    // isolation), a numeric change exists but no universally
+    // healthier direction is defined.
     expect(
       classifyChange(
         before: 120,
         after: 100,
-        polarity: MetricPolarity.up,
+        polarity: MetricPolarity.neutral,
         scopeAdded: false,
         scopeRemoved: false,
       ),
-      ChangeDirection.regressed,
+      ChangeDirection.neutralDelta,
     );
-  });
-
-  test('classifyChange treats up-polarity rises as improved', () {
     expect(
       classifyChange(
         before: 100,
         after: 120,
-        polarity: MetricPolarity.up,
+        polarity: MetricPolarity.neutral,
         scopeAdded: false,
         scopeRemoved: false,
       ),
-      ChangeDirection.improved,
+      ChangeDirection.neutralDelta,
     );
   });
 
