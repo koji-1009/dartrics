@@ -137,7 +137,9 @@ abstract class LibraryMetric {
   List<String> get refactorHints;
 
   /// Original sources for the metric. See [FunctionMetric.references].
-  List<String> get references => const [];
+  /// Every concrete library metric ships with a citation, so this getter
+  /// is abstract — there is no `const []` default to fall back on.
+  List<String> get references;
 
   /// Direction in which the value moves when the code gets healthier.
   /// See `FunctionMetric.polarity`.
