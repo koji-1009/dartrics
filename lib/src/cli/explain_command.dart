@@ -166,28 +166,35 @@ class ExplainCommand extends Command<int> {
       );
     }
     if (desc != null) {
-      buf
-        ..writeln('explain:')
-        ..writeln('  metric: ${desc.id}')
-        ..writeln('  polarity: ${desc.polarity}')
-        ..writeln('  rationale: |')
-        ..writeln('    ${desc.rationale.replaceAll('\n', '\n    ')}')
-        ..writeln('  refactorHints:');
-      for (final h in desc.refactorHints) {
-        buf.writeln('    - ${_yamlInline(h)}');
-      }
-      if (desc.references.isNotEmpty) {
-        buf.writeln('  references:');
-        for (final ref in desc.references) {
-          buf.writeln('    - ${_yamlInline(ref)}');
-        }
-      }
+      _writeExplainBlock(buf, desc);
     } else {
       buf.writeln(
         'explain: null  # metric "${hit.metricId}" not in built-in catalogue',
       );
     }
     return buf.toString();
+  }
+
+  void _writeExplainBlock(StringBuffer buf, RuleDescription desc) {
+    buf
+      ..writeln('explain:')
+      ..writeln('  metric: ${desc.id}')
+      ..writeln('  polarity: ${desc.polarity}')
+      ..writeln('  rationale: |')
+      ..writeln('    ${desc.rationale.replaceAll('\n', '\n    ')}')
+      ..writeln('  refactorHints:');
+    for (final h in desc.refactorHints) {
+      buf.writeln('    - ${_yamlInline(h)}');
+    }
+    _writeReferences(buf, desc.references);
+  }
+
+  void _writeReferences(StringBuffer buf, List<String> references) {
+    if (references.isEmpty) return;
+    buf.writeln('  references:');
+    for (final ref in references) {
+      buf.writeln('    - ${_yamlInline(ref)}');
+    }
   }
 
   String _yamlInline(String value) {
