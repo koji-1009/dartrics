@@ -77,11 +77,11 @@ abstract class FunctionMetric {
 
   /// Original sources for the metric — papers, books, or specs the
   /// definition is anchored to. Each entry is a short citation
-  /// ("Author (Year). Title. Venue."). Empty for metrics that don't
-  /// trace to a published source. Surfaced by `dartrics rules`,
-  /// `dartrics explain`, and the AI report so an agent reading dartrics
-  /// output can verify a metric against its primary source.
-  List<String> get references => const [];
+  /// ("Author (Year). Title. Venue."). Return `const []` for metrics
+  /// that don't trace to a published source. Surfaced by `dartrics
+  /// rules`, `dartrics explain`, and the AI report so an agent reading
+  /// dartrics output can verify a metric against its primary source.
+  List<String> get references;
 
   /// Direction in which the value moves when the code gets healthier.
   /// Override to `neutral` for metrics where neither direction is
