@@ -62,6 +62,13 @@ void main() {
       final help = cc['help'] as Map<String, Object?>;
       expect(help['text'], contains('Refactor hints:'));
       expect(help['markdown'], contains('**Refactor hints:**'));
+      // References list is rendered into both the plain-text and the
+      // markdown help blocks so SARIF consumers (GitHub Code Scanning,
+      // VS Code's SARIF viewer) surface the citation alongside the
+      // rationale + refactor hints.
+      expect(help['text'], contains('References:'));
+      expect(help['markdown'], contains('**References:**'));
+      expect(help['text'], contains('McCabe'));
       final props = cc['properties'] as Map<String, Object?>;
       expect((props['tags'] as List), containsAll(['dartrics', 'function']));
       expect(props['defaultThreshold'], 10);

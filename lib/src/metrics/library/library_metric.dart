@@ -130,11 +130,16 @@ abstract class LibraryMetric {
   bool get defaultEnabled => true;
 
   /// One-paragraph explanation of what the metric measures, surfaced by
-  /// `dartrics rules` and the `--explain` flag.
+  /// `dartrics rules`, `dartrics explain`, and the auto-explain block.
   String get rationale;
 
   /// Concrete refactor moves to take when the metric trips.
   List<String> get refactorHints;
+
+  /// Original sources for the metric. See [FunctionMetric.references].
+  /// Every concrete library metric ships with a citation, so this getter
+  /// is abstract — there is no `const []` default to fall back on.
+  List<String> get references;
 
   /// Direction in which the value moves when the code gets healthier.
   /// See `FunctionMetric.polarity`.

@@ -12,10 +12,9 @@ import 'io_sinks.dart';
 
 /// `dartrics explain &lt;id&gt;` — looks up a violation by its stable
 /// 16-hex-char id and prints the matching entry plus the metric's
-/// rationale + refactor hints. Closes the loop on Round 4's stable id:
-/// AI agents that see the same id reappear across runs ("my fix didn't
-/// take") get a one-shot way to retrieve full context for that id
-/// without re-reading the entire report.
+/// rationale + refactor hints. AI agents that see the same id reappear
+/// across runs ("my fix didn't take") get a one-shot way to retrieve
+/// full context for that id without re-reading the entire report.
 ///
 /// Reads a JSON report (the format produced by `dartrics analyze
 /// --reporter json`) from stdin or `--input &lt;path&gt;`. Emits YAML by
@@ -135,6 +134,7 @@ class ExplainCommand extends Command<int> {
     'polarity': desc.polarity,
     'rationale': desc.rationale,
     'refactorHints': desc.refactorHints,
+    if (desc.references.isNotEmpty) 'references': desc.references,
   };
 
   String _renderAi(ExplainHit hit, RuleDescription? desc) {
@@ -166,22 +166,35 @@ class ExplainCommand extends Command<int> {
       );
     }
     if (desc != null) {
-      buf
-        ..writeln('explain:')
-        ..writeln('  metric: ${desc.id}')
-        ..writeln('  polarity: ${desc.polarity}')
-        ..writeln('  rationale: |')
-        ..writeln('    ${desc.rationale.replaceAll('\n', '\n    ')}')
-        ..writeln('  refactorHints:');
-      for (final h in desc.refactorHints) {
-        buf.writeln('    - ${_yamlInline(h)}');
-      }
+      _writeExplainBlock(buf, desc);
     } else {
       buf.writeln(
         'explain: null  # metric "${hit.metricId}" not in built-in catalogue',
       );
     }
     return buf.toString();
+  }
+
+  void _writeExplainBlock(StringBuffer buf, RuleDescription desc) {
+    buf
+      ..writeln('explain:')
+      ..writeln('  metric: ${desc.id}')
+      ..writeln('  polarity: ${desc.polarity}')
+      ..writeln('  rationale: |')
+      ..writeln('    ${desc.rationale.replaceAll('\n', '\n    ')}')
+      ..writeln('  refactorHints:');
+    for (final h in desc.refactorHints) {
+      buf.writeln('    - ${_yamlInline(h)}');
+    }
+    _writeReferences(buf, desc.references);
+  }
+
+  void _writeReferences(StringBuffer buf, List<String> references) {
+    if (references.isEmpty) return;
+    buf.writeln('  references:');
+    for (final ref in references) {
+      buf.writeln('    - ${_yamlInline(ref)}');
+    }
   }
 
   String _yamlInline(String value) {
@@ -194,7 +207,7 @@ class ExplainCommand extends Command<int> {
 
 /// One violation matched by id, with the parent record's contextual
 /// fields flattened so the emitter can print everything from a single
-/// struct. Exposed for tests + future programmatic consumers.
+/// struct.
 class ExplainHit {
   const ExplainHit({
     required this.id,

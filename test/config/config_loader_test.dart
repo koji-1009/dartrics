@@ -47,7 +47,7 @@ void main() {
     // Override one metric only; the rest must keep their built-in
     // warnings so an `analysis_options.yaml` that mentions a single
     // metric does not silently switch every other lens to "no
-    // threshold" — that was the 0.1.0 dogfood bug.
+    // threshold".
     await f.writeAsString('''
 dartrics:
   metrics:
@@ -119,19 +119,6 @@ dartrics:
     final t = config.metricThresholds['halstead-volume'];
     expect(t?.enabled, isTrue);
     expect(t?.warning, 1000);
-  });
-
-  test('parses unused.presets list', () async {
-    final f = File('${dir.path}/presets.yaml');
-    await f.writeAsString('''
-dartrics:
-  unused:
-    presets:
-      - freezed
-      - json_serializable
-''');
-    final config = await loadConfig(f.path);
-    expect(config.unused.presets, ['freezed', 'json_serializable']);
   });
 
   test('throws ConfigException on malformed YAML', () async {

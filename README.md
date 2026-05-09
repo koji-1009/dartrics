@@ -7,21 +7,18 @@
 
 Dart code-quality metrics and unused public-API detection, designed as the AI-loop counterpart of `dart analyze`.
 
-## In five lines
+## What it does
 
-- **What it does.** Computes a battery of code-quality metrics (CK, Halstead, McCabe, Martin, Cognitive Complexity, plus Dart-3-idiom lenses) on top of `package:analyzer` and detects unreachable public API à la Periphery.
-- **Who it's for.** AI agents and the humans driving them. Every report mode is shaped to be *consumed*, not just read — most prominently `--reporter ai` (token-efficient YAML-ish, sorted by actionability).
-- **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons. The CLI ships the manual (`dartrics manual`), an explain-by-id (`dartrics explain`), and a regression diff (`dartrics regression`) — designed for a *see → understand → fix → verify* loop.
-- **Quick start.** `dart pub global activate dartrics` then `dartrics analyze lib/ --reporter ai`. JSON Schemas for `analysis_options.yaml` and the report payload live under `schemas/`.
-- **Status.** JSON / AI / SARIF outputs carry contractual format headers (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header. The surface has not yet been stress-tested by external users.
+dartrics computes a battery of code-quality metrics — McCabe, Cognitive Complexity (Sonar), Chidamber & Kemerer, Martin, Halstead — on top of `package:analyzer`, alongside an analyzer-element BFS for unreachable public API à la Periphery. Every report mode is shaped to be *consumed*: `--reporter ai` ships a token-efficient YAML-ish bundle, sorted by actionability, with each metric's rationale, refactor hints, and primary-source citation embedded inline.
 
-## Why dartrics
+The wager: the academic catalogue is reusable now in a way it wasn't before — not because the metrics changed, but because the consumer did. Humans cannot compute LCOM4 by eye; the number alone doesn't tell you what to change; even when it does, the refactor isn't free. An AI loop absorbs all three costs. The CLI computes in milliseconds, auto-explain ships the rationale alongside every violation, the agent does the edit, and `dartrics regression` confirms the metric actually settled.
 
-Software engineering has spent fifty years publishing metrics that name specific kinds of "hard to read" — McCabe (1976), Halstead (1977), Chidamber & Kemerer (1994), Martin (1994), Cognitive Complexity (Sonar 2018) — and most of them never reached the working-day toolbox. The reasons recur: humans cannot compute LCOM4 by eye, the number alone doesn't tell you what to change, and even when it does the refactor isn't free.
+Each metric is treated as a **lens**: one specific dimension of "hard to read", anchored to its original paper. Lenses are independent — a function can be clean by cyclomatic complexity and tangled by cognitive complexity. dartrics does not gate; it surfaces what each lens reads, and leaves the accept / refactor / dismiss decision in the loop.
 
-An AI coding loop absorbs all three costs. The CLI computes in milliseconds. `--auto-explain` ships the rationale and the refactor moves alongside every violation. The agent does the edit; `dartrics regression` confirms the metric actually settled. dartrics is built on the wager that the academic catalogue is reusable now in a way it wasn't before — not because the metrics changed, but because the consumer did.
-
-Each metric is treated as a **lens**: one specific dimension of "hard to read", anchored to its original paper. Lenses are independent — a function can be clean by cyclomatic complexity and tangled by cognitive complexity; a class can be small by method count and incoherent by LCOM4. Multiple lenses firing on the same scope is signal, not noise. dartrics does not gate; it surfaces what each lens reads, and leaves the accept / refactor / dismiss decision in the loop.
+- **Who it's for.** AI agents and the humans driving them.
+- **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons.
+- **Output stability.** Every output format carries a contractual header (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header so consumers can match on it before parsing.
+- **Docs in the binary.** `dartrics manual` prints the operator's manual ([`doc/manual.md`](doc/manual.md)); `dartrics ai-loop` prints the four-station walkthrough ([`doc/ai-loop.md`](doc/ai-loop.md)). Both ship with the executable, so `dart pub global activate dartrics` is enough — no separate doc download needed.
 
 ## Install
 
@@ -35,20 +32,21 @@ dart pub global activate dartrics
 # Token-efficient YAML-ish report optimised for LLM consumption.
 dartrics analyze lib/ --reporter ai | claude -p "Refactor the threshold violations"
 
-# Same, with rationale + refactor hints for one metric injected.
-dartrics analyze lib/ --reporter ai --explain cyclomatic-complexity
-
-# Catalogue every metric (rationale + refactor hints).
+# Catalogue every metric (rationale + refactor hints + references).
 dartrics rules --reporter ai
+
+# Reverse-lookup a violation by its 16-hex stable id.
+dartrics explain a3f1c4e9b2d70218 --input report.json
 
 # After the agent applies a fix: confirm metrics actually improved.
 dartrics regression --before HEAD~1 --after HEAD --reporter ai
 
-# Markdown for PR comments / issue bodies.
-dartrics analyze lib/ --reporter md > report.md
-
 # CI quality gate scoped to the diff.
 dartrics analyze lib/ --since origin/main --fatal-warnings
+
+# In-binary references.
+dartrics manual          # the operator's manual
+dartrics ai-loop         # the setup → propose → apply → verify walkthrough
 ```
 
 ## Subcommands
@@ -58,16 +56,14 @@ dartrics analyze lib/ --since origin/main --fatal-warnings
 | `analyze` | Every metric + the public-API unused detector. |
 | `unused` | Public-API reachability only (fast path). |
 | `report <input.json>` | Re-emit a previously saved JSON report in another format. |
-| `rules` | Catalogue every metric with its rationale and refactor hints. |
+| `rules` | Catalogue every metric with its rationale, refactor hints, and references. |
 | `regression` | Compare metrics between two git states; classify each delta as improved / regressed / unchanged / added / removed. |
 | `manual` | Print the AI-facing operator's manual (mirror of [`doc/manual.md`](doc/manual.md)). |
-| `doctor` | Validate the `dartrics:` block in `analysis_options.yaml` — flags unknown metric ids, unknown presets, and threshold orderings inconsistent with the metric's polarity. |
-| `explain <id>` | Reverse-lookup a violation by its stable 16-hex-char id and print its rationale + refactor hints. Reads JSON from stdin or `--input <path>`. |
+| `ai-loop` | Print the AI-loop walkthrough (mirror of [`doc/ai-loop.md`](doc/ai-loop.md)). |
+| `doctor` | Validate the `dartrics:` block in `analysis_options.yaml` — flags unknown metric ids and threshold orderings inconsistent with the metric's polarity. |
+| `explain <id>` | Reverse-lookup a violation by its stable 16-hex-char id and print its rationale + refactor hints + references. Reads JSON from stdin or `--input <path>`. |
 
 ```
-Top-level options:
-  --version                print the dartrics version and exit
-
 Common options:
   --config <path>          configuration file (default: analysis_options.yaml)
   --reporter <name>        console | json | md | ai | sarif (default: console)
@@ -75,46 +71,40 @@ Common options:
   --root <path>            analysis root directory (default: cwd)
   --since <ref>            restrict output to .dart files changed vs the
                            given git ref (e.g. main, HEAD~1, origin/main)
-  --explain <metric-id>    inject the metric's rationale + refactor hints
-                           into the report (repeatable)
-  --snapshot <mode>        cache | baseline | none, or a custom path; overrides
-                           the analysis_options.yaml setting
+  --[no-]auto-explain      auto-attach rationale + refactor hints for every
+                           metric that fired (default: enabled)
+  --snapshot <mode>        cache | baseline | none, or a custom path
   --coverage <path>        attach lcov.info coverage to every violation;
-                           defaults to coverage/lcov.info when present;
-                           `--coverage none` to disable
-  --strict-dismiss         ignore every `dartrics:dismiss` directive
-                           (comment + YAML); useful in CI / final review
+                           defaults to coverage/lcov.info when present
+  --strict-dismiss         ignore every dismiss directive (comment + YAML)
   --concurrency <n>        max files resolved in parallel (default: host
                            CPU count, clamped to 16)
   --limit <n>              cap violations + unused entries shown by the ai
                            and md reporters (after the priority sort)
-  --[no-]auto-explain      auto-attach rationale + refactor hints for every
-                           metric that fired (default: enabled)
   --fatal-warnings         exit non-zero if any warning is reported
-  --fatal-style            exit non-zero if any info-level violation is reported
-                           (no built-in metric currently emits info; reserved for
-                           a future info-tier lens to land into)
   -v, --verbose            FINE-level logging
 ```
 
 ## Provided metrics
 
-dartrics ships a curated set; metrics that don't fit Dart's idioms (single inheritance, mixin / composition culture) are deliberately omitted, and metrics whose predictive value over cyclomatic complexity has not held up empirically (Halstead Volume) ship **off by default** and must be opted into via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are not provided — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal beyond what the underlying metrics already provide.
+dartrics ships a curated set. Metrics that don't fit Dart's idioms (DIT, NOC; Dart's mixin + composition culture keeps inheritance chains shallow) are omitted; metrics whose predictive value over cyclomatic complexity has not held up empirically (Halstead Volume) ship **off by default** and must be opted in via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal.
+
+Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules`, `dartrics explain <id>`, and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
 
 ### Function / method level
 
 | Metric                                | Default | Reference        | Notes                                                                       |
 | ------------------------------------- | ------- | ---------------- | --------------------------------------------------------------------------- |
-| Cyclomatic Complexity                 | on      | McCabe 1976      | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`. Sealed-aware: a `switch` whose subject is a sealed class doesn't count its case arms — the compiler enforces exhaustiveness so the reader carries no "did I forget a case?" load. |
+| Cyclomatic Complexity                 | on      | McCabe 1976      | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`. **Sealed-aware**: a `switch` whose subject is a sealed class doesn't count its case arms — the compiler enforces exhaustiveness. |
 | Cognitive Complexity                  | on      | SonarSource 2018 | B1 control-flow + B2 nesting penalty + B3 logical-op sequences              |
-| Maximum Nesting Level                 | on      | —                | depth of `if/for/while/do/switch/try/closure` blocks                        |
-| Number Of Parameters                  | on      | Fowler 1999      | positional only (required + optional positional). Named parameters carry their name at the call site, so the position-counting load Fowler's lens targets evaporates — same rule as `boolean-trap`. Default warning 4 |
-| Boolean Trap                          | on      | McConnell 2004; Bloch 2018 | count of `bool`-typed parameters; default warning 2                       |
-| Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects via `dartrics: { metrics: { widget-tree-depth: { enabled: true } } }` |
-| Null-Aware Chain Depth                | **off** | —                | longest chain of `?.` operators; default warning 4. Each `?.` step is an implicit non-null guard the reader holds in working memory — `a?.b?.c?.d?.e` reads at depth 5 |
-| Async Chain Depth                     | **off** | —                | deepest *nesting* of `await` expressions; default warning 3. Sequential awaits don't count — only `await foo(await bar(await baz()))`-style nests |
-| Source Lines Of Code                  | on      | —                | non-blank, non-comment-only lines                                           |
-| Method Length                         | **off** | —                | total source lines spanned by the body. Off by default — high correlation with SLOC in production code |
+| Maximum Nesting Level                 | on      | NIST SP 500-235  | depth of `if/for/while/do/switch/try/closure` blocks                        |
+| Number Of Parameters                  | on      | Fowler 1999      | positional only — named parameters carry their name at the call site, dissolving the position-counting load Fowler's lens targets. Default warning 4 |
+| Boolean Trap                          | on      | McConnell 2004; Bloch 2008 | count of *positional* `bool`-typed parameters; default warning 2  |
+| Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects |
+| Null-Aware Chain Depth                | **off** | —                | longest chain of `?.` operators; default warning 4 |
+| Async Chain Depth                     | **off** | —                | deepest *nesting* of `await` expressions; default warning 3. Sequential awaits don't count |
+| Source Lines Of Code                  | on      | Boehm 1981       | non-blank, non-comment-only lines                                           |
+| Method Length                         | **off** | Beck 1996        | total source lines spanned by the body. Off by default — high correlation with SLOC in production code |
 | Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size" |
 
 ### Class level
@@ -128,51 +118,34 @@ dartrics ships a curated set; metrics that don't fit Dart's idioms (single inher
 | Response For a Class       | CK 1994               | `\|methods ∪ method-names invoked from those methods\|`     |
 | Class Length               | —                     | total source lines spanned by the class declaration         |
 
-DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK 1994 are **not provided**: Dart's mixin + composition-over-inheritance culture keeps single-inheritance chains shallow, so they rarely produce signal.
-
-#### Dart-specific caveats on LCOM4 and RFC
-
-Both metrics use **name-based AST matching** scoped to the class declaration itself:
-
-- **LCOM4** only puts methods declared on the class into the graph. Mixin-applied methods, inherited methods, and extension methods are invisible. The trade-off avoids the false positives a "everything that resolves on this type" reading would produce, but it does mean methods that cohere only through a mixin (e.g. all call `log()` from a `Logger` mixin and don't share fields directly) appear as isolated components and get reported. Move the cohesion to a shared field on the class, or accept a dismissal with a load-bearing reason.
-- **RFC**'s "invoked methods" set comes from `MethodInvocation` (e.g. `foo.bar()`) and `InstanceCreationExpression` (e.g. `Foo()`) nodes inside the method bodies. Three Dart constructs are intentionally **not** counted toward the response set: extension-method tear-offs (`x.foo` without parens), callable-object invocations of `call()` written as `obj()`, and `super.x` redirections. The metric therefore under-reports rather than over-reports.
-
-If you have a concrete case where these caveats produce a misleading number, file an issue with the snippet — both rules can be tightened with element resolution if there's demand.
+LCOM4 and RFC use **name-based AST matching** scoped to the class declaration itself. LCOM4 only puts methods declared on the class into the graph (mixin-applied / inherited / extension methods are invisible); RFC's invoked-methods set comes from `MethodInvocation` and `InstanceCreationExpression` nodes only (extension tear-offs, callable-object `obj()`, and `super.x` are not counted). Both metrics intentionally under-report rather than over-report; file an issue with the snippet if you hit a misleading number.
 
 ### Library / file level (Martin 1994)
 
-| Metric                          | Notes                                                                   |
-| ------------------------------- | ----------------------------------------------------------------------- |
-| Efferent Coupling (Ce)          | distinct project-internal + `package:` dependencies (excludes `dart:*`) |
-| Afferent Coupling (Ca)          | incoming internal-import edges                                          |
-| Instability (I)                 | `Ce / (Ca + Ce)`                                                        |
-| Abstractness (A) **off**        | abstract-class + mixin / total class-like declarations. Off by default — Martin's framing assumes "package = release unit", and Dart's 1-file-1-library granularity makes the per-file value brittle |
+| Metric                                  | Notes                                                                   |
+| --------------------------------------- | ----------------------------------------------------------------------- |
+| Efferent Coupling (Ce)                  | distinct project-internal + `package:` dependencies (excludes `dart:*`) |
+| Afferent Coupling (Ca)                  | incoming internal-import edges                                          |
+| Instability (I)                         | `Ce / (Ca + Ce)`                                                        |
+| Abstractness (A) **off**                | abstract-class + mixin / total class-like declarations. Off by default — Martin's framing assumes "package = release unit", and Dart's 1-file-1-library granularity makes the per-file value brittle |
 | Distance from Main Sequence (D) **off** | `\|A + I − 1\|`. Off by default for the same reason as `abstractness` |
-
-Each metric exposes `rationale`, `refactorHints`, and `polarity` (`down` / `up` / `neutral`) so AI agents can act on a violation without re-deriving the metric's intent and so the regression diff knows which direction is "healthier".
 
 ## AI integration
 
-The CLI's `--reporter ai` is the primary integration point for AI tooling. The output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. Two companion docs aimed at the AI consumer:
+`--reporter ai` is the primary integration point. Output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. The reporter knobs compose into a tight refactor loop:
 
-- [`doc/manual.md`](doc/manual.md) — operator's manual. Each metric framed as a lens on "hard to read", with the accept-or-reject decision step made explicit. Also reachable from inside an agent loop as `dartrics manual`, which prints the same content to stdout (the manual ships with the executable so `dart pub global activate dartrics` is enough — no separate doc download needed).
-- [`doc/ai-loop.md`](doc/ai-loop.md) — end-to-end loop walkthrough (setup → propose → apply → verify) with sample prompts.
-
-These knobs compose into a tight refactor loop:
-
-- **`--explain <metric-id>`** (repeatable) injects the metric's paragraph rationale and concrete refactor hints alongside the violations. The catalogue lives in `dartrics rules` so you can also feed it once and have agents reference it.
-- **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints for every metric that produced at least one violation. Most loops never need the explicit `--explain` flag.
-- **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF.
+- **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints + references for every metric that produced at least one violation. To pre-load the full catalogue (e.g. when an agent needs every metric's intent up front), pipe `dartrics rules --reporter ai` separately.
+- **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF. `dartrics explain <id>` reverse-looks up the full context from a saved JSON report.
 - **`--limit <n>`** caps violations + unused entries shown by the AI / md reporters after the priority sort. Token-budget control for context-bounded agents; truncated entries are summarised in a `truncated:` block (AI) or `_+ N more_` line (md).
 - **`--coverage <path>`** (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key — low-coverage / high-severity entries land first, `complexityJustified` ones at the bottom.
-- **`complexityJustified: true`** flags CC / Cognitive violations whose scope has branch coverage `≥ 0.8` (or line `≥ 0.95` when `BRDA:` records are absent). The intent is *earned complexity*: a function that's complex but exhaustively tested is probably complex on purpose, so AI loops should leave it alone. Two sibling fields surface the engine's decision so consumers don't have to look it up: `complexityJustifiedBy` (`branch` or `line`) and `complexityJustifiedThreshold` (the literal cutoff that rule used). Both fields are absent when the flag is false.
-- **Deliberate dismissal** lets agents (and humans) suppress a specific `(file, scope, metric)` triple — see [Deliberate dismissal](#deliberate-dismissal) below.
-- **`--snapshot <mode>`** writes a per-file `sha256` after each run and emits only the records for files whose hash changed on the next invocation. Git-independent, so it works for AI loops, pre-commit hooks (dirty index), and non-git VCS (`jj`, `sapling`). `cache` (default) lands at `.dart_tool/dartrics/snapshot.json`; `baseline` at `dartrics-snapshot.json` for CI-shared baselines.
-- **`--since <git-ref>`** filters the output to declarations whose owning `.dart` file changed between `<ref>` and `HEAD` (per `git diff --name-only --diff-filter=AMR`). Cross-file analysis stays accurate; only the *emitted* records are filtered.
+- **`complexityJustified: true`** flags CC / Cognitive violations whose scope has branch coverage `≥ 0.8` (or line `≥ 0.95` when `BRDA:` records are absent). Two sibling fields surface the engine's decision: `complexityJustifiedBy` (`branch` or `line`) and `complexityJustifiedThreshold` (the literal cutoff). Intent: *earned complexity* — exhaustively-tested complex code is probably complex on purpose.
+- **`--snapshot <mode>`** writes a per-file `sha256` after each run and emits only records for files whose hash changed on the next invocation. Git-independent, so it works for AI loops, pre-commit hooks, and non-git VCS (`jj`, `sapling`). `cache` (default) lands at `.dart_tool/dartrics/snapshot.json`; `baseline` at `dartrics-snapshot.json` for CI-shared baselines.
+- **`--since <git-ref>`** filters output to declarations whose owning `.dart` file changed between `<ref>` and `HEAD`. Renames surface as the new path; untracked files are ignored. When `--since` and snapshot are both active, the git ref wins for filtering. Cross-file analysis stays accurate — only the *emitted* records are filtered.
+- **`--strict-dismiss`** ignores every dismissal (comment + YAML) — useful in CI / final review when the operator wants the raw triage list. Combine with `--fatal-warnings` for a clean CI gate.
 
 ### Deliberate dismissal
 
-Suppress a specific violation when a refactor would actually hide intent. dartrics treats dismissals as a triaged-but-still-visible bucket: violations stay in the report, but `dismissed: true` (with the carried `reason`) tells AI loops to leave them alone. Two channels, both opt-in via `analysis_options.yaml`:
+Suppress a specific violation when a refactor would actually hide intent. Dismissals are a triaged-but-still-visible bucket: violations stay in the report, but `dismissed: true` (with the carried `reason`) tells AI loops to leave them alone. Two channels, both opt-in via `analysis_options.yaml`:
 
 ```yaml
 dartrics:
@@ -214,33 +187,19 @@ dismissals:
     at: "2026-05-06T19:14:00Z"  # required when requireTimestamp: true
 ```
 
-Hits flow through the validator. Reasons that fall short of `minReasonLength` keep the violation **live** and stamp it with `dismissalRejected: <why>` (plus a stderr WARNING) so the agent can amend the entry. YAML always beats a colliding comment with the same key. `--strict-dismiss` makes the engine ignore every dismissal for that run — useful in CI / final review when the operator wants to see the raw triage list.
+Hits flow through the validator. Reasons that fall short of `minReasonLength` keep the violation **live** and stamp it with `dismissalRejected: <why>` (plus a stderr WARNING) so the agent can amend the entry. YAML always beats a colliding comment with the same key.
 
-**Stale-entry detection**: when `warnStale: true` (the default), dismissals that never matched a live violation in the analyzed file set are surfaced as a stderr WARNING and as a `staleDismissals:` block on the AI / JSON reports. This catches the case where a dismiss target was renamed, deleted, or refactored away — the engine can't quietly inherit a dead config forever. Entries whose file wasn't analyzed this run (filtered out by `--since` or snapshot) are not flagged as stale, since they simply weren't measured. Disable with `warnStale: false` if your CI inspects the dismiss file separately.
+**Stale-entry detection**: when `warnStale: true` (the default), dismissals that never matched a live violation in the analyzed file set are surfaced as a stderr WARNING and as a `staleDismissals:` block on the AI / JSON reports. Entries whose file wasn't analyzed this run (filtered out by `--since` or snapshot) are not flagged as stale.
 
 ### Regression check
 
-After the agent applies a fix, run:
+After the agent applies a fix:
 
 ```bash
 dartrics regression --before HEAD~1 --after HEAD --reporter ai
 ```
 
 The diff is per-scope, per-metric, classified as `improved` / `regressed` / `unchanged` / `added` / `removed` according to each metric's `MetricPolarity`. A built-in heuristic (`tinyHelpersAdded ≥ 3 AND slocDelta > 4·helpers AND ccReduction < 2·helpers`) flags refactors that look cosmetic — AI splitting one method into a swarm of one-line helpers without actually reducing branching — so the user notices.
-
-### `--since` (diff mode)
-
-```bash
-# AI-driven PR review: send only the changed-file violations.
-dartrics analyze --since origin/main --reporter ai | claude -p "Refactor the threshold violations"
-
-# CI quality gate scoped to the diff.
-dartrics analyze --since origin/main --fatal-warnings
-```
-
-Renames surface as the new path. Untracked files are ignored. When git is missing or the ref doesn't resolve, the command exits with `65 EX_DATAERR`.
-
-When `--since` and snapshot are both active, the git ref wins for filtering; the snapshot file is updated but not consulted.
 
 ## Configuration
 
@@ -280,8 +239,6 @@ dartrics:
       - "visibleForTesting"
       - "protected"
       - "JsonSerializable"
-    # presets: kept for backward compat; every codegen preset is
-    # always on, listing them here is no longer required.
 
   snapshot:
     mode: baseline           # cache | baseline | none
@@ -290,29 +247,11 @@ dartrics:
     - "lib/generated/**"
 ```
 
-The `dartrics:` section is read by both the CLI and the analyzer plugin.
-
-The leading `# yaml-language-server: $schema=…` directive turns on autocomplete + typo detection in editors that integrate with [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) — VS Code (with the Red Hat YAML extension), JetBrains, Neovim, Helix. The schema also covers the `dismissals:` block; see [JSON Schema files](#json-schema-files) for the dismissal sidecar's own schema.
+The `dartrics:` section is read by both the CLI and the analyzer plugin. The leading `# yaml-language-server` directive turns on autocomplete + typo detection in editors with [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) integration.
 
 ### Code-gen keep-alive annotations
 
-Every codegen-related annotation listed here is **always** treated as a reachability root for the unused detector, so source classes that depend on a yet-to-be-generated `.g.dart` / `.freezed.dart` / `.config.dart` partner aren't flagged as unused on a fresh checkout (before `dart run build_runner build` has run). No opt-in is required:
-
-| Package                                                       | Annotations                                                                                                                                |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| [freezed](https://pub.dev/packages/freezed)                   | `freezed`, `Freezed`, `unfreezed`                                                                                                          |
-| [json_serializable](https://pub.dev/packages/json_serializable) | `JsonSerializable`, `JsonEnum`                                                                                                             |
-| [dart_mappable](https://pub.dev/packages/dart_mappable)       | `MappableClass`, `MappableEnum`, `MappableLib`                                                                                             |
-| [go_router_builder](https://pub.dev/packages/go_router_builder) | `TypedGoRoute`, `TypedShellRoute`, `TypedStatefulShellRoute`                                                                               |
-| [auto_route](https://pub.dev/packages/auto_route)             | `RoutePage`, `AutoRouterConfig`                                                                                                            |
-| [riverpod_generator](https://pub.dev/packages/riverpod_generator) | `riverpod`, `Riverpod`                                                                                                                     |
-| [injectable](https://pub.dev/packages/injectable)             | `injectable`, `Injectable`, `singleton`, `Singleton`, `lazySingleton`, `LazySingleton`, `factoryMethod`, `FactoryMethod`, `module`, `Module`, `InjectableInit` |
-| [hive](https://pub.dev/packages/hive) / [hive_ce](https://pub.dev/packages/hive_ce) | `HiveType`, `HiveField`                                                                                                                    |
-| [drift](https://pub.dev/packages/drift)                       | `DriftDatabase`, `DriftAccessor`, `DataClassName`, `TableIndex`, `UseRowClass`                                                             |
-
-The annotations are looked up by **simple name only** (`@Freezed()` matches via the simple name `Freezed`). If your project doesn't use a given package, the corresponding annotation never appears in source and the entry has no effect — there's no per-project cost to leaving every preset on.
-
-The `dartrics: { unused: { presets: [...] } }` config field is still parsed for backward compatibility with older configs, but its value is ignored. If you need to keep additional annotations alive (e.g. an in-house codegen package), list them explicitly under `dartrics: { unused: { ignore-annotations: [...] } }`.
+Every popular Dart codegen package's keep-alive annotation is honoured by the unused detector out of the box (freezed, json_serializable, dart_mappable, go_router_builder, auto_route, riverpod, injectable, hive / hive_ce, drift, test_reflective_loader), so source classes that depend on a yet-to-be-generated `.g.dart` / `.freezed.dart` / `.config.dart` partner aren't flagged as unused on a fresh checkout. The full annotation list lives in `dartrics rules` and in [`lib/src/unused/keep_alive_presets.dart`](lib/src/unused/keep_alive_presets.dart). Lookup is by **simple name only** (`@Freezed()` matches the simple name `Freezed`); for in-house codegen, list annotations under `dartrics: { unused: { ignore-annotations: [...] } }`.
 
 ## Public-API unused-code detection
 
@@ -322,15 +261,13 @@ To keep per-member reports actionable, the detector auto-roots:
 
 - members marked `@override`,
 - the Object dunder names (`toString`, `hashCode`, `==`, `noSuchMethod`, `runtimeType`),
-- every public member of a class that carries a keep-alive annotation (`@JsonSerializable`, `@reflectiveTest`, every codegen preset). The reasoning: those annotations signal generator / reflective consumers that read members by name, which static analysis can't see.
+- every public member of a class that carries a keep-alive annotation (`@JsonSerializable`, `@reflectiveTest`, every codegen preset).
 
-Use `--filter <kinds>` (or `unused: { filter: [...] }` in `analysis_options.yaml`) to narrow the report to specific declaration kinds — `function`, `method`, `class`, `field`, `typedef`, `enum`, `extension`. `enum` targets individual enum constants; enum *type* declarations are filtered with `class`. Unknown names exit with a usage error so a typo doesn't silently drop every entry. Repeat the flag or comma-separate (`--filter method,field`).
+Use `--filter <kinds>` (or `unused: { filter: [...] }`) to narrow the report to specific declaration kinds — `function`, `method`, `class`, `field`, `typedef`, `enum`, `extension`. `enum` targets individual enum constants; enum *type* declarations are filtered with `class`. Unknown names exit with a usage error so a typo doesn't silently drop every entry.
 
-`dartrics unused --apply` deletes detected top-level declarations (functions / classes / typedefs / extensions) from disk in place — analogous to `dart fix --apply`. Refuses to run on a dirty git tree (override with `--force`), and skips files under `test/` / `integration_test/` by default (override with `--include-tests`). Instance methods, fields, and enum values are reported but not yet auto-deletable; the summary names how many were skipped for that reason. After applying, run `dart fix --apply` to clean up imports that became unused.
+`dartrics unused --apply` deletes detected top-level declarations (functions / classes / typedefs / extensions) from disk in place — analogous to `dart fix --apply`. Refuses to run on a dirty git tree (override with `--force`), and skips files under `test/` / `integration_test/` by default (override with `--include-tests`). Instance methods, fields, and enum values are reported but not yet auto-deletable. After applying, run `dart fix --apply` to clean up newly unused imports.
 
-Private (underscore-prefixed) names are intentionally skipped — `dart analyze`'s `dead_code` lint already covers them.
-
-Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`, `*.mocks.dart`, `*.pb*.dart`, `*.gen.dart`) are skipped during file collection; override with `AnalyzerRunner(includeGenerated: true)` if you really want metrics on them.
+Private (underscore-prefixed) names are intentionally skipped — `dart analyze`'s `dead_code` lint already covers them. Generated Dart files (`*.g.dart`, `*.freezed.dart`, `*.gr.dart`, `*.config.dart`, `*.mocks.dart`, `*.pb*.dart`, `*.gen.dart`) are skipped during file collection.
 
 ## Analyzer plugin
 
@@ -352,9 +289,7 @@ After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis S
 | `dartrics_number_of_parameters`  | 4                 |
 | `dartrics_boolean_trap`          | 2                 |
 
-Rule thresholds are read from the same `dartrics: { metrics: ... }` section the CLI uses; restart the analysis server after changes. The plugin honours `flutter: true` for the same skip rules as the CLI.
-
-Diagnostics surface at `info` severity. The current analyzer pipeline (`analysis_server_plugin 0.3.x` + `analyzer 13`) crashes the plugin isolate when a `LintCode` is constructed with anything other than `DiagnosticSeverity.INFO`, so the rules are pinned to INFO until that upstream constraint relaxes — they're still always-on, only the column prefix is fixed.
+Rule thresholds are read from the same `dartrics: { metrics: ... }` section the CLI uses; restart the analysis server after changes. Diagnostics surface at `info` severity — the current analyzer pipeline (`analysis_server_plugin 0.3.x` + `analyzer 13`) crashes the plugin isolate when a `LintCode` is constructed with anything other than `DiagnosticSeverity.INFO`, so the rules are pinned to INFO until that upstream constraint relaxes.
 
 Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused detector intentionally stay CLI-only because they require a project-wide index that an analysis-server plugin can't maintain efficiently per file.
 
@@ -368,51 +303,46 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 | `Widget.build()`                 | **Measured normally.** Control-flow nesting only counts `if/for/while/switch/try/closure`, so a healthy declarative tree gives 0; method length is informative even on declarative code |
 | Other methods on the same widget | Measured normally                                                       |
 
-Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Non-Flutter packages are unaffected because no class matches. Set `flutter: false` to force `number-of-parameters` on widget constructors too.
+Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Non-Flutter packages are unaffected. Set `flutter: false` to force `number-of-parameters` on widget constructors too.
 
-Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the separate `widget-tree-depth` lens, which is **off by default** and configurable independently. Opt in via `dartrics: { metrics: { widget-tree-depth: { enabled: true, warning: 7 } } }` — Flutter community practice is to extract a sub-widget once a build tree exceeds about 5–7 levels.
+Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the separate `widget-tree-depth` lens, which is **off by default**. Opt in via `dartrics: { metrics: { widget-tree-depth: { enabled: true, warning: 7 } } }`.
 
 ## Test-aware mode
 
-`dartrics: { test: true }` is also the default. When the file under analysis sits under `test/` or `integration_test/` and its basename ends in `_test.dart`, the size-and-shape lenses step aside — arrange/act/assert blocks legitimately exceed `method-length` thresholds calibrated for production code, and nested `group(...)` / `setUp(...)` / `test(...)` scaffolding pushes `maximum-nesting-level` past 4 before any user logic begins. Set `test: false` to apply the production-grade thresholds to test files too.
+`dartrics: { test: true }` is also the default. When the file under analysis sits under `test/` or `integration_test/` and its basename ends in `_test.dart`, the size-and-shape lenses step aside — arrange / act / assert blocks legitimately exceed `method-length` thresholds calibrated for production code, and nested `group(...)` / `setUp(...)` / `test(...)` scaffolding pushes `maximum-nesting-level` past 4 before any user logic begins.
 
 | Scope             | Skipped on test files                                                |
 | ----------------- | -------------------------------------------------------------------- |
 | Function / method | `method-length`, `source-lines-of-code`, `maximum-nesting-level`     |
 | Class             | `class-length`, `number-of-methods`                                  |
 
-Cyclomatic complexity, cognitive complexity, number-of-parameters, boolean-trap, LCOM4 / CBO / RFC, and the library-level lenses still apply — branchy or tangled tests are still hard to read. Helpers in `test/` that don't end in `_test.dart` (e.g. `test/helpers.dart`) stay under the strict thresholds, since they're imported by tests rather than being tests themselves.
+Cyclomatic complexity, cognitive complexity, number-of-parameters, boolean-trap, LCOM4 / CBO / RFC, and the library-level lenses still apply. Helpers in `test/` that don't end in `_test.dart` (e.g. `test/helpers.dart`) stay under the strict thresholds.
 
 ## AI report schema (v1)
 
 ```yaml
 # dartrics ai-report v1
-explain:                          # optional, only present when --explain is used
+explain:                          # only present when auto-explain is on (default) and at least one metric fired
   - metric: cyclomatic-complexity
     rationale: |
-      ...one-paragraph rationale...
+      …one-paragraph rationale…
     refactorHints:
       - hint sentence
-      - …
+    references:
+      - McCabe, T. J. (1976). A Complexity Measure. IEEE TSE.
 violations:
   - file: lib/foo.dart
+    id: a3f1c4e9b2d70218
     line: 42
     scope: Foo.bar
     metric: cyclomatic-complexity
     value: 12
     threshold: 10
     severity: warning
-    coverage: 0.34              # only when --coverage is engaged
-    branchCoverage: 0.20        # only when BRDA records exist
-    complexityJustified: true   # only when set
-    complexityJustifiedBy: branch        # branch | line — which rule fired
-    complexityJustifiedThreshold: 0.80   # 0.8 for branch / 0.95 for line
-    dismissed: true             # only when a dismissal accepted this violation
-    dismissedFrom: yaml         # comment | yaml
-    dismissReason: "…"          # carried verbatim from the dismissal
-    dismissedBy: "claude-opus-4-7"   # YAML form only
-    dismissedAt: "2026-05-06T19:14:00.000Z"  # YAML form only
-    dismissalRejected: "…"      # mutually exclusive with `dismissed`; entry matched but failed validation
+    coverage: 0.34                # only when --coverage is engaged
+    branchCoverage: 0.20          # only when BRDA records exist
+    complexityJustified: true     # only when set
+    dismissed: true               # only when a dismissal accepted this violation
     snippet: |
       …7 lines centred on `line`…
 unused:
@@ -420,46 +350,24 @@ unused:
     line: 88
     kind: function
     name: _legacyFormatter
-    snippet: |
-      …7 lines centred on `line`…
 ```
 
 Stable contract:
 
-- `# dartrics ai-report v1` header is present on every emission. Consumers can match on it to validate the format.
+- `# dartrics ai-report v1` header is present on every emission.
 - The snippet block is a YAML literal (`|`) of up to 7 lines (`line ± 3`).
-- Field names (`metric`, `severity`, `scope`, `coverage`, …) are stable within a header version; new fields may be added.
-- Breaking changes (renames, removals, semantic shifts) trigger a new header, e.g. `# dartrics ai-report v2`.
+- Field names are stable within a header version; new fields may be added.
+- Breaking changes (renames, removals, semantic shifts) trigger a new header (`# dartrics ai-report v2`).
 
-The JSON reporter emits the same logical model plus an `analyzedFiles` list that backs the snapshot diff:
-
-```json
-{
-  "version": "1.0",
-  "analyzedFiles": [
-    { "path": "lib/foo.dart", "sha256": "…" }
-  ],
-  "metrics": [...],
-  "unused": [...]
-}
-```
-
-`analyzedFiles` is JSON-only — the markdown / ai / sarif / console reporters omit it because the snapshot file is the source of truth for hash data.
+The JSON reporter emits the same logical model plus an `analyzedFiles` list (`{ path, sha256 }`) that backs the snapshot diff. `analyzedFiles` is JSON-only; the markdown / ai / sarif / console reporters omit it.
 
 ### JSON Schema files
 
 Machine-checkable schemas live under [`schemas/`](schemas/):
 
-- [`dartrics-report.schema.json`](schemas/dartrics-report.schema.json) — JSON reporter output (`dartrics analyze --reporter json`). Covers `version`, `analyzedFiles`, `metrics[].violations[]` (including the stable `id`, coverage, and dismissal fields), and `unused[]`.
-- [`dartrics-dismissals.schema.json`](schemas/dartrics-dismissals.schema.json) — the YAML sidecar (`dartrics-dismissals.yaml`). Drop a `# yaml-language-server: $schema=…` directive at the top of your sidecar to get IDE autocomplete + validation:
-
-  ```yaml
-  # yaml-language-server: $schema=https://raw.githubusercontent.com/koji-1009/dartrics/main/schemas/dartrics-dismissals.schema.json
-  version: 1
-  dismissals: []
-  ```
-
-- [`dartrics-config.schema.json`](schemas/dartrics-config.schema.json) — the `dartrics:` block of `analysis_options.yaml` (metrics / unused / exclude / flutter / snapshot / dismissals). The example at the top of [Configuration](#configuration) wires it in.
+- [`dartrics-report.schema.json`](schemas/dartrics-report.schema.json) — JSON reporter output.
+- [`dartrics-dismissals.schema.json`](schemas/dartrics-dismissals.schema.json) — the `dartrics-dismissals.yaml` sidecar. Drop a `# yaml-language-server: $schema=…` directive at the top to get IDE autocomplete + validation.
+- [`dartrics-config.schema.json`](schemas/dartrics-config.schema.json) — the `dartrics:` block of `analysis_options.yaml`.
 
 All three schemas are draft-2020-12. Field additions are non-breaking; renames trigger a major version bump (`1` → `2` for the dismissals sidecar, `1.0` → `2.0` for the JSON report `version`).
 
@@ -469,7 +377,7 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 - **json** — stable schema for `jq` pipelines and SARIF transformation.
 - **md** — Markdown for PR comments and issue bodies, finalised through `package:dapper`'s `formatMarkdown`.
 - **ai** — token-efficient YAML-ish report (see schema above).
-- **sarif** — SARIF 2.1.0 envelope ingestible by GitHub Code Scanning / GitLab. `tool.driver.rules` is populated for every metric that fired in the run — `fullDescription` carries the rationale, `help.markdown` carries the refactor hints, `helpUri` deep-links back to the README anchor — so the platform shows the full lens explanation inline next to each result.
+- **sarif** — SARIF 2.1.0 envelope ingestible by GitHub Code Scanning / GitLab. `tool.driver.rules` is populated for every metric that fired — `fullDescription` carries the rationale, `help.markdown` carries the refactor hints + references, `helpUri` deep-links back to the README anchor.
 
 ## Exit codes (sysexits)
 
@@ -484,7 +392,7 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 
 ## Embedding
 
-`lib/dartrics.dart` is intentionally tight — it exposes only the function-level metric calculators so a custom CI bot or editor extension can compute one metric on a parsed `CompilationUnit` without spinning up the full engine. Everything else (report shapes, regression diff, coverage attachment, dismissal, the unused detector, class- and library-level metrics, `MetricEngine` itself) is CLI-only; the supported integration point is `dartrics analyze --reporter json` parsed in your own pipeline.
+`lib/dartrics.dart` is intentionally tight — it exposes only the function-level metric calculators so a custom CI bot or editor extension can compute one metric on a parsed `CompilationUnit` without spinning up the full engine.
 
 | What you get | Names |
 | --- | --- |
@@ -492,37 +400,13 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 | Calculator interface | `FunctionMetric`, `FunctionMetricInput`, `MetricPolarity` |
 | Version string | `dartricsVersion` |
 
-The library is deliberately *not* in charge of report assembly, regression diff, dismiss validation, snapshot persistence, or unused-API detection. Those features all ship through the CLI; their on-wire format is the JSON reporter, documented under [JSON Schema files](#json-schema-files). Reaching into `package:dartrics/src/` is unsupported — internals shift between minor versions. If a use case warrants exposing additional shapes, please file an issue describing the use case so the surface grows incrementally and keeps its stability commitment realistic.
+Anything not in this table is CLI-only and unsupported as a Dart import; reach for `dartrics analyze --reporter json` instead. `example/main.dart` shows a 30-line standalone embedding against `CyclomaticComplexity`.
 
-`example/main.dart` shows a 30-line standalone embedding against `CyclomaticComplexity`.
-
-## Recommendation
-
-`dartrics` is **recommended for AI-driven Dart codebases** — projects where Claude Code, Cursor, Codex, or another agent is doing meaningful code review or refactor work and the maintainer wants the agent's quality judgements to be grounded in reproducible, citation-backed metrics rather than vibes.
-
-What's wired up for that use case:
-
-- **Resolution** — every violation carries its threshold, severity, scope coverage, branch coverage, `complexityJustified` tag, and (where applicable) `dismissed` / `dismissalRejected` state. The `--reporter ai` YAML is sorted so the most actionable items come first.
-- **Stability** — every violation has a 16-hex stable `id` so AI loops can correlate runs ("same id appeared again ⇒ my last refactor missed it"). Three published JSON Schemas (config / report / dismissals) cover the on-disk and on-wire surfaces. `# dartrics ai-report v1` is a contractual header.
-- **Actionability** — `--explain` (now with auto-explain default-on) inlines the metric's rationale and refactor hints. Each metric exposes a `polarity` so the regression diff knows which direction is "healthier". The dismiss channel turns "I don't agree with this metric here" into a tracked, validated, auditable decision instead of a silent disable.
-- **Noise control** — `--snapshot` / `--since` / `--limit` / `--strict-dismiss` compose into a noise floor that AI loops can actually live with; `--strict-dismiss --fatal-warnings` makes a clean CI gate.
-
-- AI-facing reference: [`doc/manual.md`](doc/manual.md).
-- End-to-end walkthrough with sample prompts: [`doc/ai-loop.md`](doc/ai-loop.md).
-
-### Honest limitations
+## Limitations
 
 - **The analyzer plugin covers only the five function-level rules** (CC, Cognitive, Max nesting, Number of parameters, Boolean-trap). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
-- **Cross-run memory is out of scope.** dartrics doesn't remember "this dismiss was rejected last iteration; don't propose it again." Stay session-local.
-- **Performance is modest.** `--concurrency` parallelises file resolution but the analyzer driver itself is single-isolate; expect ~10 % wall-time wins on small trees, more on large ones. CPU-bound.
-- **`package:analyzer` 13.x moves fast.** Major Dart SDK or analyzer bumps may require dartrics updates before they ship cleanly.
-- **Built-in metric set is not exhaustive.** The catalogue deliberately omits metrics whose predictive value over CC has not held up empirically (DIT, NOC) and ships Halstead Volume off-by-default. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent because they're pure derivations of the underlying counts and add no orthogonal signal. Bring your own opt-in for niche signals.
-
-### Who should not adopt dartrics yet
-
-- Teams that need **per-line metric thresholds** in the IDE for the full metric suite — the plugin is intentionally narrow.
-- Teams that don't engage with the dismiss channel at all — the validator is opinionated, and a pure-fail-fast linter (`dart analyze` + `--fatal-warnings`) is a better fit.
-- Teams using Dart < 3.10 or analyzer < 13.
+- **Built-in metric set is not exhaustive.** DIT / NOC / Halstead Difficulty / Halstead Effort / Maintainability Index are intentionally absent. Halstead Volume ships off-by-default. Bring your own opt-in for niche signals.
+- **Not a fit if** you need per-line metric thresholds in the IDE for the full metric suite, you don't engage with the dismiss channel at all (a pure-fail-fast linter is a better fit), or you're on Dart < 3.10 / analyzer < 13.
 
 ## Development
 

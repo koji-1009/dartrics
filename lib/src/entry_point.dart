@@ -49,8 +49,7 @@ Future<void> runApp(List<String> arguments) async {
 }
 
 /// Surfaces an unhandled async error from the [runApp] zone as an
-/// `EX_SOFTWARE` exit. Extracted as a top-level function so tests can
-/// reach it without having to construct a guarded zone themselves.
+/// `EX_SOFTWARE` exit.
 @visibleForTesting
 void handleUncaughtZoneError(Object error, StackTrace stack) {
   DartricsIO.stderrSink.writeln('Unhandled error: $error\n$stack');
@@ -75,9 +74,6 @@ bool isVersionRequest(List<String> arguments) {
 /// [DartricsIO.stdoutSink] / [DartricsIO.stderrSink] via
 /// [routeLogRecord]. Returns the subscription so [runApp] can cancel
 /// it on exit.
-///
-/// Marked `@visibleForTesting` so tests can call it directly to verify
-/// the wiring without spinning up the full [runApp].
 @visibleForTesting
 StreamSubscription<LogRecord> setupLogging() {
   Logger.root.level = Level.INFO;
@@ -85,11 +81,8 @@ StreamSubscription<LogRecord> setupLogging() {
 }
 
 /// Per-record dispatch for the listener installed by [setupLogging].
-/// Extracted so the WARNING / non-WARNING branches are unit-testable
-/// directly — dartrics never emits a `Logger.warning` during normal
-/// operation, so coverage of the WARNING branch from the [runApp]
-/// surface alone would require a synthetic post-run record, which
-/// would in turn race with the test's sink lifecycle.
+/// Routes WARNING-or-higher records to stderr and everything else to
+/// stdout.
 @visibleForTesting
 void routeLogRecord(LogRecord record) {
   final line = '${record.level.name}: ${record.message}';

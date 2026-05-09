@@ -5,8 +5,7 @@ import 'package:test/test.dart';
 import 'helpers.dart';
 
 /// Auto-explain smoke tests — making sure the rationale + refactor hints
-/// for the metrics that fired at least one violation land in the report
-/// without the user having to pass `--explain` for each one.
+/// for the metrics that fired at least one violation land in the report.
 void main() {
   late Directory dir;
 
@@ -80,30 +79,4 @@ dartrics:
     final body = await out.readAsString();
     expect(body, isNot(contains('explain:')));
   });
-
-  test(
-    '--explain takes priority + adds further metrics to the union',
-    () async {
-      final out = File('${dir.path}/r.yaml');
-      final code = await runQuietly([
-        'analyze',
-        dir.path,
-        '--reporter',
-        'ai',
-        '--output',
-        out.path,
-        '--config',
-        '${dir.path}/strict.yaml',
-        '--snapshot',
-        'none',
-        '--explain',
-        'method-length',
-      ]);
-      expect(code, 0);
-      final body = await out.readAsString();
-      // Both the explicit (method-length) and the fired (cc) entries land.
-      expect(body, contains('metric: method-length'));
-      expect(body, contains('metric: cyclomatic-complexity'));
-    },
-  );
 }

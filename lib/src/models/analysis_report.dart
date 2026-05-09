@@ -199,17 +199,24 @@ class AnalyzedFile {
 }
 
 /// Catalogue entry for a metric whose rationale should accompany the
-/// emitted report (`--explain <metric-id>`).
+/// emitted report. Populated by the auto-explain block when a metric
+/// fired at least one violation.
 class ExplainEntry {
   const ExplainEntry({
     required this.metricId,
     required this.rationale,
     required this.refactorHints,
+    this.references = const [],
   });
 
   final String metricId;
   final String rationale;
   final List<String> refactorHints;
+
+  /// Citations the metric is anchored to. Mirrors the metric
+  /// calculator's `references` getter; empty for metrics that don't
+  /// trace to a published source.
+  final List<String> references;
 }
 
 /// Top-level result returned by the analyzer.
@@ -249,8 +256,8 @@ class AnalysisReport {
   /// Snapshot mode active for this run — `'cache'`, `'baseline'`, or
   /// `'none'`. Carried into the report so reporters can disambiguate
   /// "0 violations because there really were none" from "0 violations
-  /// because the cache snapshot filtered them out". `'none'` is the
-  /// default for legacy callers that don't set it.
+  /// because the cache snapshot filtered them out". Defaults to
+  /// `'none'` when no diff filter is engaged.
   final String snapshotMode;
 
   /// Number of files whose hash differed from the snapshot (or whose

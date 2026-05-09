@@ -62,30 +62,6 @@ void main() {
       expect(diagnose(config), isEmpty);
     });
 
-    test('up-polarity metric with error > warning is flagged', () {
-      // No built-in metric currently uses up polarity (MI was retired
-      // in 0.1.0). The path stays live for custom embedder metrics —
-      // exercise it directly via the public helper.
-      final issue = checkThresholdOrdering(
-        'custom-up-metric',
-        const MetricThresholds(warning: 50, error: 80),
-        'up',
-      );
-      expect(issue, isNotNull);
-      expect(issue!.message, contains('"up"'));
-    });
-
-    test('up-polarity with error < warning is allowed', () {
-      expect(
-        checkThresholdOrdering(
-          'custom-up-metric',
-          const MetricThresholds(warning: 80, error: 50),
-          'up',
-        ),
-        isNull,
-      );
-    });
-
     test('partial threshold (warning only) skips ordering check', () {
       const config = Config(
         metricThresholds: {
@@ -106,24 +82,15 @@ void main() {
       expect(diagnose(config), isEmpty);
     });
 
-    test('unknown unused preset is flagged with did-you-mean', () {
-      const config = Config(unused: UnusedConfig(presets: ['frezed']));
-      final issues = diagnose(config);
-      expect(issues, hasLength(1));
-      expect(issues.single.message, contains('frezed'));
-      expect(issues.single.hint, contains('freezed'));
-    });
-
     test('multiple issues accumulate', () {
       const config = Config(
         metricThresholds: {
           'cyclomatic-complexity': MetricThresholds(warning: 20, error: 10),
           'cylomatic-complexity': MetricThresholds(warning: 1),
         },
-        unused: UnusedConfig(presets: ['frezed', 'unknown']),
       );
       final issues = diagnose(config);
-      expect(issues, hasLength(4));
+      expect(issues, hasLength(2));
     });
   });
 

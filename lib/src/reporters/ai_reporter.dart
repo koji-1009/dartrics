@@ -83,6 +83,12 @@ class AiReporter implements Reporter {
       for (final hint in e.refactorHints) {
         buf.writeln('      - ${_escape(hint)}');
       }
+      if (e.references.isNotEmpty) {
+        buf.writeln('    references:');
+        for (final ref in e.references) {
+          buf.writeln('      - ${_escape(ref)}');
+        }
+      }
     }
   }
 

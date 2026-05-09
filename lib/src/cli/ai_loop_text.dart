@@ -1,3 +1,21 @@
+// AUTO-MIRROR of doc/ai-loop.md.
+//
+// `dartrics ai-loop` prints this string verbatim. The mirror is enforced by
+// `test/cli/ai_loop_command_test.dart` which compares byte-for-byte against
+// the markdown file at the repo root, so the two cannot drift.
+//
+// Why a const string and not a runtime file read: `dart pub global
+// activate dartrics` does not preserve the package's `doc/` tree on the
+// consumer's machine, so a file-based read would 404 outside the dev
+// checkout. The walkthrough must travel with the executable bytes.
+//
+// When you edit doc/ai-loop.md, copy the new content into the raw
+// triple-quoted literal below and run `dart test test/cli/ai_loop_command_test.dart`
+// to confirm parity. Conversely, if you change this string, update
+// doc/ai-loop.md to match.
+
+/// AI-loop walkthrough printed by `dartrics ai-loop`. Mirrors doc/ai-loop.md.
+const String aiLoopText = r'''
 # AI loop walkthrough
 
 This guide shows how to plug `dartrics` into an AI-driven refactor loop. The flow is identical for Claude Code, Cursor, Codex, OpenHands, Aider, or any other agent that can shell out and read structured input — only the prompt-glue command differs.
@@ -201,3 +219,4 @@ dartrics analyze --strict-dismiss --fatal-warnings
 - **Cross-PR memory** — dartrics doesn't track "this dismiss was rejected once; don't propose it again." Stay session-local for now.
 - **Prompt templates per agent** — Claude Code, Cursor, Codex each have their own conventions. The shell-out pattern above works in all of them.
 - **Watch mode** — the analyzer plugin (`plugins: dartrics` in `analysis_options.yaml`) covers IDE feedback. The CLI is run-on-demand by design.
+''';

@@ -53,6 +53,11 @@ class CyclomaticComplexity extends FunctionMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'McCabe, T. J. (1976). A Complexity Measure. IEEE Transactions on Software Engineering, SE-2(4), 308–320.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final visitor = _CyclomaticVisitor();
     input.body.accept(visitor);

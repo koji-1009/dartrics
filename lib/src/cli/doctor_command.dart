@@ -4,7 +4,6 @@ import 'package:io/io.dart';
 import '../config/config.dart';
 import '../config/config_loader.dart';
 import '../metrics/metric_catalogue.dart';
-import '../unused/keep_alive_presets.dart';
 import 'io_sinks.dart';
 
 /// `dartrics doctor` — validates the `dartrics:` block in
@@ -66,9 +65,7 @@ class DoctorCommand extends Command<int> {
   }
 }
 
-/// One flagged item in the doctor report. Doctor only emits warnings
-/// today; the type stays open for future severities (e.g. `info`)
-/// without forcing every call site to plumb a tier through right now.
+/// One flagged item in the doctor report.
 class DoctorIssue {
   const DoctorIssue({required this.message, this.hint});
 
@@ -76,9 +73,8 @@ class DoctorIssue {
   final String? hint;
 }
 
-/// Pure-data diagnosis of a parsed [Config]. Exposed so callers (the
-/// CLI command, future `lib/dartrics.dart` exports) can reuse the same
-/// rules without having to re-load the YAML.
+/// Pure-data diagnosis of a parsed [Config]. Returns the issues
+/// without performing IO so callers can reuse the same rules.
 List<DoctorIssue> diagnose(Config config) {
   final issues = <DoctorIssue>[];
   final knownMetrics = collectRuleDescriptions();
@@ -102,33 +98,12 @@ List<DoctorIssue> diagnose(Config config) {
     if (orderingIssue != null) issues.add(orderingIssue);
   }
 
-  for (final preset in config.unused.presets) {
-    if (!keepAlivePresets.containsKey(preset)) {
-      final hint = _didYouMean(preset, keepAlivePresets.keys.toSet());
-      issues.add(
-        DoctorIssue(
-          message: 'unknown unused preset "$preset"',
-          hint: hint == null ? null : 'did you mean "$hint"?',
-        ),
-      );
-    }
-  }
-
   return issues;
 }
 
 /// For polarity=down (lower-is-better) metrics, error must be ≥ warning.
-/// For polarity=up (higher-is-better) metrics, error must be ≤ warning.
 /// neutral metrics skip the ordering check — there is no universally
 /// healthier direction.
-///
-/// The up-polarity branch is currently dormant for built-in metrics
-/// (the maintainability index was the only `up` metric and was retired
-/// in 0.1.0 because it adds no signal over CC + Halstead Volume + LOC).
-/// The path stays live because custom embedder metrics can register
-/// with up polarity. Exposed as a public top-level so tests can verify
-/// the up branch via a synthetic polarity string without depending on
-/// a built-in metric.
 DoctorIssue? checkThresholdOrdering(
   String id,
   MetricThresholds t,
@@ -146,16 +121,6 @@ DoctorIssue? checkThresholdOrdering(
               'but the metric is "down" (lower is better) — '
               'every error case is also a warning case, so error '
               'should be ≥ warning.',
-        );
-      }
-    case 'up':
-      if (e > w) {
-        return DoctorIssue(
-          message:
-              '"$id" has error=$e above warning=$w, '
-              'but the metric is "up" (higher is better) — '
-              'error should be ≤ warning so that the more permissive '
-              'level (warning) is reached first as the metric drops.',
         );
       }
     case 'neutral':

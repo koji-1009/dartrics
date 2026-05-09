@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// Process-runner indirection so tests can stub `git` invocations
-/// (e.g. simulate "git not installed" by throwing [ProcessException]).
+/// Indirection point for shelling out to `git`. Tests substitute a
+/// stub runner; the production path uses [Process.run].
 typedef GitProcessRunner =
     Future<ProcessResult> Function(
       String executable,

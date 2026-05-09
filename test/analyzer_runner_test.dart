@@ -136,9 +136,7 @@ void main() {
         // context …` on `sub/lib/c.dart`. dartrics's own file walker
         // sees the file (it does not consume `analyzer.exclude:`), so
         // before the catch in `resolve`, the whole run aborted on the
-        // first stray sub-package fixture in the tree — exactly the
-        // dogfood failure mode `tmp/sample/lib/violators.dart` produced
-        // on the dartrics repo itself.
+        // first stray sub-package fixture in the tree.
         await Directory('${dir.path}/sub/lib').create(recursive: true);
         await File(
           '${dir.path}/sub/pubspec.yaml',

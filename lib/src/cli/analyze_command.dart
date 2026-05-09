@@ -157,11 +157,8 @@ class AnalyzeCommand extends Command<int> {
         ? unused
         : unused.where((u) => allowed.contains(u.location.path)).toList();
     final resolvedExplainIds = req.options.autoExplain
-        ? _withAutoExplain(
-            explicit: req.options.explain,
-            records: filteredRecords,
-          )
-        : req.options.explain;
+        ? _autoExplainIds(filteredRecords)
+        : const <String>[];
     final staleDismissals = _collectStaleDismissals(
       dismissals: dismissals,
       config: req.config.dismissals,
@@ -214,16 +211,12 @@ class AnalyzeCommand extends Command<int> {
     return stale;
   }
 
-  /// Unions [explicit] (`--explain`) with the metric ids that fired at
-  /// least one violation in [records]. The output preserves the
-  /// explicit list's order so authored prompts stay deterministic, then
-  /// appends the auto-discovered ids in the order they were first seen.
-  List<String> _withAutoExplain({
-    required List<String> explicit,
-    required List<MetricRecord> records,
-  }) {
-    final seen = {...explicit};
-    final out = [...explicit];
+  /// Returns the metric ids that fired at least one violation in
+  /// [records], in first-seen order. Drives the auto-explain block on
+  /// the AI / md / SARIF reporters.
+  List<String> _autoExplainIds(List<MetricRecord> records) {
+    final seen = <String>{};
+    final out = <String>[];
     for (final r in records) {
       for (final v in r.violations) {
         if (seen.add(v.metricId)) out.add(v.metricId);

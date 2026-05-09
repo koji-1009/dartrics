@@ -189,11 +189,17 @@ class SarifReporter implements Reporter {
 
   String _helpText(RuleDescription desc) {
     final hints = desc.refactorHints.map((String h) => '- $h').join('\n');
-    return '${desc.rationale}\n\nRefactor hints:\n$hints';
+    final base = '${desc.rationale}\n\nRefactor hints:\n$hints';
+    if (desc.references.isEmpty) return base;
+    final refs = desc.references.map((String r) => '- $r').join('\n');
+    return '$base\n\nReferences:\n$refs';
   }
 
   String _helpMarkdown(RuleDescription desc) {
     final hints = desc.refactorHints.map((String h) => '- $h').join('\n');
-    return '${desc.rationale}\n\n**Refactor hints:**\n\n$hints';
+    final base = '${desc.rationale}\n\n**Refactor hints:**\n\n$hints';
+    if (desc.references.isEmpty) return base;
+    final refs = desc.references.map((String r) => '- $r').join('\n');
+    return '$base\n\n**References:**\n\n$refs';
   }
 }

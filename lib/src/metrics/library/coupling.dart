@@ -20,6 +20,12 @@ class EfferentCoupling extends LibraryMetric {
     'Hide a cluster of related dependencies behind a single facade package and depend on the facade instead.',
     'Move outgoing dependencies that exist only to support one method into that method\'s file.',
   ];
+
+  @override
+  List<String> get references => const [
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+  ];
+
   @override
   num compute(LibraryMetricInput input) => input.stats.internalImports.length;
 }
@@ -42,6 +48,12 @@ class AfferentCoupling extends LibraryMetric {
     'If `Cₐ` is high, treat the file as a public contract: keep it small, well-documented, and change-averse.',
     'Move volatile implementation details out into a separate file with low `Cₐ` so the high-`Cₐ` file holds only stable types.',
   ];
+
+  @override
+  List<String> get references => const [
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+  ];
+
   @override
   num compute(LibraryMetricInput input) {
     return input.index.importers[input.path]?.length ?? 0;
@@ -69,6 +81,12 @@ class Instability extends LibraryMetric {
     'Where a stable file imports an unstable one, invert the dependency by introducing an interface in the stable side.',
     'Either accept the file as a leaf consumer (high `I`, OK) or as a stable contract (low `I`, also OK) — middling values are where churn lives.',
   ];
+
+  @override
+  List<String> get references => const [
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+  ];
+
   @override
   num compute(LibraryMetricInput input) {
     final ce = const EfferentCoupling().compute(input);
@@ -82,8 +100,8 @@ class Instability extends LibraryMetric {
 /// Abstractness (A, Martin 1994) — fraction of class-like types in this
 /// file that are abstract or mixins.
 ///
-/// Off by default in 0.1.0: Martin's original metric assumes
-/// "package = release unit", and Dart's 1-file-1-library convention
+/// Off by default: Martin's original metric assumes "package = release
+/// unit", and Dart's 1-file-1-library convention
 /// gives the metric a granularity that's too fine for the design-layer
 /// reading it was built for. A file containing one `abstract class Foo`
 /// scores A=1.0, which says nothing about the broader design layer the
@@ -103,7 +121,7 @@ class Abstractness extends LibraryMetric {
       'declarations in the file that are abstract (`abstract class` '
       'or `mixin`). Combined with `Instability`, it places each file '
       'on the A–I plane that defines Martin\'s "Main Sequence". Off '
-      'by default in 0.1.0 because Martin\'s framing assumes '
+      'by default because Martin\'s framing assumes '
       '"package = release unit" while Dart\'s 1-file-1-library '
       'granularity makes the per-file value brittle (a single '
       '`abstract class Foo` in its own file scores 1.0 without '
@@ -114,6 +132,12 @@ class Abstractness extends LibraryMetric {
     'If a stable file has low `A`, consider extracting interfaces so consumers depend on contracts rather than concrete types.',
     'If an unstable file has high `A`, fold the abstractions back into concrete classes — abstraction without consumers is overhead.',
   ];
+
+  @override
+  List<String> get references => const [
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+  ];
+
   @override
   num compute(LibraryMetricInput input) {
     final total = input.stats.totalClasses;
@@ -140,8 +164,8 @@ class DistanceFromMainSequence extends LibraryMetric {
       'measures how far the file sits from the line `A + I = 1` on '
       'the A–I plane. `D = 0` is the ideal balance; `D ≈ 1` lands '
       'either in the "zone of pain" (stable + concrete) or the "zone '
-      'of uselessness" (unstable + abstract). Off by default in 0.1.0 '
-      'because the score depends on `Abstractness`, which itself is '
+      'of uselessness" (unstable + abstract). Off by default because '
+      'the score depends on `Abstractness`, which itself is '
       'off-by-default for Dart\'s 1-file-1-library granularity '
       'reasons (see that metric\'s rationale).';
 
@@ -150,6 +174,12 @@ class DistanceFromMainSequence extends LibraryMetric {
     'Pain zone (stable + concrete): extract an abstract layer that consumers depend on instead.',
     'Useless zone (unstable + abstract): collapse the abstraction into the consumers that actually need it.',
   ];
+
+  @override
+  List<String> get references => const [
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+  ];
+
   @override
   num compute(LibraryMetricInput input) {
     final a = const Abstractness().compute(input);

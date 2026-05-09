@@ -52,6 +52,11 @@ class Lcom4 extends ClassMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'Hitz, M., & Montazeri, B. (1995). Measuring Coupling and Cohesion in Object-Oriented Systems. Proc. International Symposium on Applied Corporate Computing.',
+  ];
+
+  @override
   num compute(ClassMetricInput input) {
     final view = _ClassView.of(input.declaration);
     if (view.methods.length <= 1) return view.methods.length;

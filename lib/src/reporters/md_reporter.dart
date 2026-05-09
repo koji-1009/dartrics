@@ -50,6 +50,15 @@ class MdReporter implements Reporter {
       for (final hint in e.refactorHints) {
         buf.writeln('- $hint');
       }
+      if (e.references.isNotEmpty) {
+        buf
+          ..writeln()
+          ..writeln('**References:**')
+          ..writeln();
+        for (final ref in e.references) {
+          buf.writeln('- $ref');
+        }
+      }
       buf.writeln();
     }
   }

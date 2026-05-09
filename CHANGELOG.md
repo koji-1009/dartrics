@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.3.0
+
+### Breaking changes
+
+- **`--explain <metric-id>` removed from `dartrics analyze` and `dartrics unused`.** Auto-explain has been the default since 0.1.0 and inlines every fired metric's rationale + refactorHints + references already; the only remaining role of `--explain` was injecting a metric's rationale even when it didn't fire, which is better served by piping `dartrics rules --reporter ai` into the agent's context separately. For post-hoc lookup of a single violation, use `dartrics explain <id> --input report.json`.
+- **`MetricPolarity.up` removed from the enum.** No built-in metric ever used it (the only `up` metric was the maintainability index, dropped in 0.1.0 as a derivation of CC + V + LOC). Custom embedder metrics that registered with `MetricPolarity.up` will fail to compile against 0.3.0; treat the metric as `neutral` (regression diff surfaces deltas without classifying them as improvement / regression). The up-polarity arms of `regression_diff.dart::_directionByPolarity` and `doctor_command.dart::checkThresholdOrdering` are removed.
+- **`dartrics: { unused: { presets: [...] } }` removed.** The field has been a no-op since 0.1.0 (every codegen preset is always honoured as a keep-alive root, regardless of the list). The loader, the `Config.UnusedConfig.presets` field, the `expandPresets` helper, the doctor's "unknown unused preset" validator, and the corresponding entry in `dartrics-config.schema.json` are all removed. Existing `analysis_options.yaml` files that still list `presets:` will fail validation against the schema; remove the key. For in-house codegen, list annotations under `unused: { ignore-annotations: [...] }`.
+
+### `dartrics ai-loop` subcommand
+
+- `dartrics ai-loop` prints the four-station AI-loop walkthrough (setup → propose → apply → verify) to stdout. The body is embedded as a const string mirrored byte-for-byte from [`doc/ai-loop.md`](doc/ai-loop.md), so it travels with `dart pub global activate dartrics` — agents that have just installed dartrics can read the loop contract from the binary itself without a separate doc download. Pairs with the existing `dartrics manual` (the lens reference) so the manual + walkthrough are both reachable from inside an agent loop. A parity test enforces byte-equality so the two cannot drift.
+
+### Structured `references` field on every metric
+
+- `FunctionMetric` / `ClassMetric` / `LibraryMetric` gain `List<String> get references` (default `const []` so custom embedder metrics are unaffected). Built-in metrics now expose their primary source as a structured list — McCabe 1976 for cyclomatic complexity, Campbell / SonarSource 2018 for cognitive complexity, NIST SP 500-235 for maximum nesting level, Beck 1996 for method length, Halstead 1977, Boehm 1981 for SLOC, Fowler 1999 for number-of-parameters, McConnell 2004 + Bloch 2008 for boolean-trap, Chidamber & Kemerer 1994 for WMC / CBO / RFC, Hitz & Montazeri 1995 for LCOM4, Martin 1994 for the library-coupling family. Empty by default for metrics that don't trace to a published source (max-nesting was already cited; Dart-3-idiom lenses and the simpler size lenses stay empty).
+- Surfaces in `dartrics rules` (ai / md / console / json), `dartrics explain <id>` (ai + json), the AI / md reporters' explain blocks, and SARIF `help.text` / `help.markdown` next to the rationale + refactor hints. Each reporter gates the references block on isNotEmpty; uncited metrics produce byte-identical output to 0.2.x. JSON omits the field when empty so existing schemas / consumers see no shape change.
+- `RuleDescription` and `ExplainEntry` carry the field through to every reporter; embedders consuming `dartrics analyze --reporter json` will see new `references: [...]` arrays on rule descriptors when a metric is cited.
+
+### Manual drift gate
+
+- `test/cli/manual_command_test.dart` now asserts both directions against the live metric catalogue: every id from `collectRuleDescriptions()` appears as a back-ticked token in `## The lens battery` of `doc/manual.md`, and every back-ticked id at the start of a lens-table row resolves back to a registered metric. Region-scoped to that section so back-ticked tokens elsewhere (`if`, `package:`, `MethodInvocation`, …) aren't mistaken for metric ids. The byte-equality test alone caught prose drift but not metric-vs-doc drift.
+
+### Documentation cleanup
+
+- README rewritten and trimmed (545 → 429 lines, –21 %). 'In five lines' / 'Why dartrics' / 'Recommendation' folded into a single 'What it does' section; 'Honest limitations' + 'Who should not adopt yet' merged into 'Limitations' (dropped three bullets that duplicated information in the AI-integration knob list or in `doc/ai-loop.md`); '--since (diff mode)' inlined into the AI-integration knob list; the AI-report YAML sample shortened (the full sample lives in `doc/ai-loop.md`); the per-package code-gen keep-alive annotation table replaced with a single paragraph pointing at `dartrics rules` and `lib/src/unused/keep_alive_presets.dart`; Embedding section trimmed.
+- AI-leftover prose swept from tracked artifacts: `tmp/` reference removed from `test/analyzer_runner_test.dart`; pre-0.1.0 / matches-0.1.0 wording removed from CLI help and rationale strings (CHANGELOG records 0.1.0 as the first public release); AI session-memory references ("Round 4's stable id", "Round 2-4 added", "Round 5") removed from explain_command, report_command_test, unused_apply_cli_test, coverage_cli_test; "in 0.1.0 / as of 0.1.0 / since 0.1.0" version stamps removed from ~25 sites across `lib/`, `test/`, `doc/manual.md`, and the byte-mirrored `manual_text.dart`; test-justification dartdoc ("Exposed for tests", "Extracted so tests can …") trimmed from public dartdoc on entry_point, regression_diff, doctor_command, git_diff, unused_detector, lint_options, explain_command, analysis_report. None of these change runtime behaviour.
+
 ## 0.2.2
 
 ### Bugfixes

@@ -43,6 +43,11 @@ class ResponseForClass extends ClassMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'Chidamber, S. R., & Kemerer, C. F. (1994). A Metrics Suite for Object Oriented Design. IEEE Transactions on Software Engineering, 20(6), 476–493.',
+  ];
+
+  @override
   num compute(ClassMetricInput input) {
     final cls = input.declaration;
     final declared = <String>{};

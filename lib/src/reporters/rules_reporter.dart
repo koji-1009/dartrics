@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:dapper/dapper.dart';
 
 /// Lightweight description of a single metric rule, used by the
-/// `dartrics rules` subcommand and by the `--explain` injection in the
-/// analyze/unused reporters.
+/// `dartrics rules` subcommand and by the auto-explain block injected
+/// into the AI / md / SARIF reporters.
 class RuleDescription {
   const RuleDescription({
     required this.id,
@@ -14,6 +14,7 @@ class RuleDescription {
     required this.defaultThreshold,
     required this.rationale,
     required this.refactorHints,
+    this.references = const [],
     this.polarity = 'down',
   });
 
@@ -35,6 +36,13 @@ class RuleDescription {
   /// List from the metric's `refactorHints` getter.
   final List<String> refactorHints;
 
+  /// Citations the metric is anchored to (papers, books, specs).
+  /// Mirrors the metric calculator's `references` getter; empty for
+  /// metrics that don't trace to a published source. Surfaced by every
+  /// reporter so an AI consumer can verify a metric against its
+  /// primary source rather than paraphrasing from training data.
+  final List<String> references;
+
   /// Direction in which the metric value moves when the code gets
   /// healthier. `'down'`, `'up'`, or `'neutral'` — mirrors
   /// `MetricPolarity` as a string so the JSON / AI / SARIF surfaces stay
@@ -50,6 +58,7 @@ class RuleDescription {
     'polarity': polarity,
     'rationale': rationale,
     'refactorHints': refactorHints,
+    if (references.isNotEmpty) 'references': references,
   };
 }
 
@@ -96,6 +105,12 @@ class RulesReporter {
       for (final hint in r.refactorHints) {
         buf.writeln('      - ${_escapeYamlInline(hint)}');
       }
+      if (r.references.isNotEmpty) {
+        buf.writeln('    references:');
+        for (final ref in r.references) {
+          buf.writeln('      - ${_escapeYamlInline(ref)}');
+        }
+      }
     }
     return buf.toString();
   }
@@ -120,6 +135,15 @@ class RulesReporter {
       for (final hint in r.refactorHints) {
         buf.writeln('- $hint');
       }
+      if (r.references.isNotEmpty) {
+        buf
+          ..writeln()
+          ..writeln('**References:**')
+          ..writeln();
+        for (final ref in r.references) {
+          buf.writeln('- $ref');
+        }
+      }
       buf.writeln();
     }
     return buf.toString();
@@ -136,6 +160,9 @@ class RulesReporter {
       buf.writeln('  ${r.rationale}');
       for (final hint in r.refactorHints) {
         buf.writeln('  - $hint');
+      }
+      for (final ref in r.references) {
+        buf.writeln('  ref: $ref');
       }
     }
     return buf.toString();

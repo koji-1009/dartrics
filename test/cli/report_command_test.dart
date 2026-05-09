@@ -81,14 +81,55 @@ void main() {
     expect(code, 65);
   });
 
+  test('throws FormatException when an `unused.kind` value is unknown', () {
+    // Pin the FormatException branch in `_decodeUnused` — re-loading a
+    // hand-edited or future-format report must surface the bad enum
+    // string rather than crash with a less actionable null!. The CLI
+    // entry point converts the throw into a `70 EX_SOFTWARE` exit;
+    // here we drive the raw runner so the contract on the message is
+    // visible.
+    final input = File('${dir.path}/bad-kind.json');
+    input.writeAsStringSync(
+      jsonEncode({
+        'version': '1.0',
+        'metrics': <Object>[],
+        'unused': [
+          {
+            'file': '/proj/lib/u.dart',
+            'name': 'leftover',
+            'kind': 'not-a-real-kind',
+            'line': 5,
+          },
+        ],
+      }),
+    );
+    expect(
+      () => runQuietly([
+        'report',
+        input.path,
+        '--reporter',
+        'json',
+        '--output',
+        '${dir.path}/out.json',
+        '--config',
+        '${dir.path}/no.yaml',
+      ]),
+      throwsA(
+        isA<FormatException>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('unused.kind'), contains('not-a-real-kind')),
+        ),
+      ),
+    );
+  });
+
   test(
     'preserves stable id, coverage, and dismiss state when re-emitting',
     () async {
-      // Field-for-field round-trip. Round 2-4 added id / coverage /
-      // complexityJustified / dismiss-* to the JSON shape; the report
-      // decoder used to drop them, so re-emitting through the AI / md /
-      // SARIF reporters silently lost the AI-loop continuity data. This
-      // pins the round-trip.
+      // Field-for-field round-trip. Pins that the JSON report's
+      // id / coverage / complexityJustified / dismiss-* fields survive
+      // re-emission through the AI / md / SARIF reporters.
       final input = File('${dir.path}/full.json');
       await input.writeAsString(
         jsonEncode({

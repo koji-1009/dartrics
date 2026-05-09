@@ -117,10 +117,13 @@ void main() {
       expect(body, contains('value: 24'));
       expect(body, contains('threshold: 15'));
       expect(body, contains('coverage: 0.91'));
-      // Auto-attached rationale + refactor hints from the catalogue.
+      // Auto-attached rationale + refactor hints + references from
+      // the catalogue.
       expect(body, contains('explain:'));
       expect(body, contains('rationale: |'));
       expect(body, contains('refactorHints:'));
+      expect(body, contains('references:'));
+      expect(body, contains('Campbell'));
     });
 
     test('--reporter json emits structured output', () async {
@@ -146,6 +149,8 @@ void main() {
       final explain = decoded['explain'] as Map<String, Object?>;
       expect(explain['metric'], 'cognitive-complexity');
       expect(explain['polarity'], 'down');
+      expect(explain['references'], isA<List<Object?>>());
+      expect((explain['references']! as List).first, contains('Campbell'));
     });
 
     test('exits 64 when id argument is missing', () async {

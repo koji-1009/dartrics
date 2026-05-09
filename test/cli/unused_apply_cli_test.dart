@@ -150,10 +150,9 @@ class Unused {
       },
     );
 
-    test('top-level const fields are now deletable through the CLI', () async {
-      // The 0.2.0 detector flags `const FOO = 42;` as
-      // UnusedKind.field; apply now handles fields end-to-end so
-      // the source is rewritten on success.
+    test('deletes a top-level const field', () async {
+      // `const FOO = 42;` parses as UnusedKind.field; --apply rewrites
+      // the source to remove it.
       await File('${dir.path}/lib/src/sample.dart').writeAsString('''
 const FOO = 42;
 ''');

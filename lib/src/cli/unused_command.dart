@@ -15,7 +15,6 @@ import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
 import 'io_sinks.dart';
-import 'rules_command.dart';
 import 'snapshot.dart';
 
 /// `dartrics unused` — runs only the public-API reachability analysis.
@@ -126,7 +125,7 @@ class UnusedCommand extends Command<int> {
       metrics: const [],
       unused: filtered,
       analyzedFiles: hashes,
-      explanations: buildExplanations(options.explain),
+      explanations: const [],
       snapshotMode: snapshotConfig.mode.name,
       changedFileCount: activeFilter?.length,
     )..attachAnalyzedFileCount(units.length);
@@ -239,16 +238,16 @@ String buildApplySummary(List<ApplyResult> outcomes) {
     );
   if (unsupported > 0) {
     buf.writeln(
-      '  unsupported kinds (method / field / enumValue) need range '
-      'computation relative to a containing declaration; left for a '
-      'future pass.',
+      '  unsupported kinds (method / field / enumValue) require range '
+      'computation relative to a containing declaration and are not '
+      'yet auto-deletable.',
     );
   }
   if (notFound > 0) {
     buf.writeln(
       '  "not found" entries indicate the source changed between '
       "detect and apply, or the declaration's name/line shape isn't "
-      'one this v1 of --apply walks. Re-run dartrics unused.',
+      'one `--apply` currently walks. Re-run `dartrics unused`.',
     );
   }
   return buf.toString();

@@ -34,6 +34,7 @@ List<RuleDescription> collectRuleDescriptions() {
         defaultThreshold: defaultMetricThresholds[m.id],
         rationale: m.rationale,
         refactorHints: m.refactorHints,
+        references: m.references,
         polarity: m.polarity.name,
       ),
     for (final m in defaultClassMetrics)
@@ -44,6 +45,7 @@ List<RuleDescription> collectRuleDescriptions() {
         defaultThreshold: defaultMetricThresholds[m.id],
         rationale: m.rationale,
         refactorHints: m.refactorHints,
+        references: m.references,
         polarity: m.polarity.name,
       ),
     for (final m in defaultLibraryMetrics)
@@ -54,14 +56,16 @@ List<RuleDescription> collectRuleDescriptions() {
         defaultThreshold: defaultMetricThresholds[m.id],
         rationale: m.rationale,
         refactorHints: m.refactorHints,
+        references: m.references,
         polarity: m.polarity.name,
       ),
   ];
 }
 
 /// Returns the [RuleDescription] for [metricId], or `null` if it is not
-/// among the built-in metrics. Used by the `--explain` flow and by the
-/// SARIF reporter when populating `tool.driver.rules`.
+/// among the built-in metrics. Used by the auto-explain flow,
+/// `dartrics explain`, and the SARIF reporter when populating
+/// `tool.driver.rules`.
 RuleDescription? findRuleDescription(String metricId) {
   for (final r in collectRuleDescriptions()) {
     if (r.id == metricId) return r;

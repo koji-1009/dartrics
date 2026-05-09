@@ -221,7 +221,6 @@ UnusedConfig _parseUnused(Object? node) {
       node['ignore-annotations'],
       fallback: const ['visibleForTesting', 'protected', 'JsonSerializable'],
     ),
-    presets: _parseStringList(node['presets']),
     filter: _parseStringList(node['filter']),
   );
 }

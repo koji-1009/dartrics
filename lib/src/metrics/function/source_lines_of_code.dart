@@ -29,6 +29,11 @@ class SourceLinesOfCode extends FunctionMetric {
   ];
 
   @override
+  List<String> get references => const [
+    'Boehm, B. W. (1981). Software Engineering Economics. Prentice Hall.',
+  ];
+
+  @override
   num compute(FunctionMetricInput input) {
     final text = input.source.substring(input.body.offset, input.body.end);
     final cursor = _CommentCursor();

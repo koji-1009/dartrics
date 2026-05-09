@@ -66,9 +66,10 @@ class RulesCommand extends Command<int> {
   }
 }
 
-/// Resolves the `--explain <metric-id>` option values to a list of
-/// [ExplainEntry]s. Unknown ids are written to stderr but otherwise
-/// silently dropped — callers stay in control of whether to fail.
+/// Resolves a list of metric ids to [ExplainEntry]s for the
+/// auto-explain block. Duplicates and blanks are dropped. Unknown ids
+/// are written to stderr but otherwise silently dropped — callers stay
+/// in control of whether to fail.
 List<ExplainEntry> buildExplanations(List<String> ids) {
   final out = <ExplainEntry>[];
   final seen = <String>{};
@@ -77,9 +78,7 @@ List<ExplainEntry> buildExplanations(List<String> ids) {
     if (id.isEmpty || !seen.add(id)) continue;
     final desc = findRuleDescription(id);
     if (desc == null) {
-      DartricsIO.stderrSink.writeln(
-        'dartrics: --explain: unknown metric "$id"',
-      );
+      DartricsIO.stderrSink.writeln('dartrics: explain: unknown metric "$id"');
       continue;
     }
     out.add(
@@ -87,6 +86,7 @@ List<ExplainEntry> buildExplanations(List<String> ids) {
         metricId: desc.id,
         rationale: desc.rationale,
         refactorHints: desc.refactorHints,
+        references: desc.references,
       ),
     );
   }
