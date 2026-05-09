@@ -103,9 +103,6 @@ Each metric exposes `rationale`, `refactorHints`, `references` (the primary sour
 | Maximum Nesting Level                 | on      | NIST SP 500-235  | depth of `if/for/while/do/switch/try/closure` blocks                        |
 | Number Of Parameters                  | on      | Fowler 1999      | positional only — named parameters carry their name at the call site, dissolving the position-counting load Fowler's lens targets. Default warning 4 |
 | Boolean Trap                          | on      | McConnell 2004; Bloch 2008 | count of *positional* `bool`-typed parameters; default warning 2  |
-| Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects |
-| Null-Aware Chain Depth                | **off** | —                | longest chain of `?.` operators; default warning 4 |
-| Async Chain Depth                     | **off** | —                | deepest *nesting* of `await` expressions; default warning 3. Sequential awaits don't count |
 | Source Lines Of Code                  | on      | Boehm 1981       | non-blank, non-comment-only lines                                           |
 | Method Length                         | **off** | Beck 1996        | total source lines spanned by the body. Off by default — high correlation with SLOC in production code |
 | Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size" |
@@ -307,8 +304,6 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 | Other methods on the same widget | Measured normally                                                       |
 
 Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Non-Flutter packages are unaffected. Set `flutter: false` to force `number-of-parameters` on widget constructors too.
-
-Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the separate `widget-tree-depth` lens, which is **off by default**. Opt in via `dartrics: { metrics: { widget-tree-depth: { enabled: true, warning: 7 } } }`.
 
 ## Test-aware mode
 

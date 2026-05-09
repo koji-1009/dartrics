@@ -34,9 +34,7 @@ void main() {
       // `maximum-nesting-level` already counts only control flow
       // (if/for/while/switch/try/closure), so a healthy declarative
       // Widget tree produces a depth of 0 — the metric doesn't need
-      // to be skipped to avoid noise. Visual depth from chained
-      // Widget literals belongs to a separate `widget-tree-depth`
-      // lens.
+      // to be skipped to avoid noise.
       final cls = _firstClass('''
 class W extends StatelessWidget {
   Widget build(BuildContext context) => Container();

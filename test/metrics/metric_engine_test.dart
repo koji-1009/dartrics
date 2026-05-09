@@ -179,10 +179,9 @@ enum Color {
       // `maximum-nesting-level` only counts control-flow
       // constructs (if/for/while/etc.) so a healthy Container-tree
       // produces 0 anyway, and `method-length` is informative even on
-      // declarative Widget trees. Widget literal nesting belongs to a
-      // separate `widget-tree-depth` lens. The constructor still
-      // skips `number-of-parameters` because key + multiple callbacks
-      // is the cultural norm.
+      // declarative Widget trees. The constructor still skips
+      // `number-of-parameters` because key + multiple callbacks is the
+      // cultural norm.
       final dir = await Directory.systemTemp.createTemp('flutter_engine_');
       addTearDown(() => dir.delete(recursive: true));
       await Directory('${dir.path}/lib').create(recursive: true);
@@ -333,49 +332,6 @@ String describeExpr(State s) => switch (s) {
         .firstWhere((r) => r.scope.name == 'describeExpr')
         .values['cyclomatic-complexity'];
     expect(exprCc, 1);
-  });
-
-  test('widget-tree-depth fires on a deep build() when opted in', () async {
-    final dir = await Directory.systemTemp.createTemp('wtd_engine_');
-    addTearDown(() => dir.delete(recursive: true));
-    await Directory('${dir.path}/lib').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
-    // Resolved analysis turns un-keyword'd `Container()` into an
-    // InstanceCreationExpression even without `const`/`new`, so the
-    // depth visitor sees every level.
-    await File('${dir.path}/lib/widget.dart').writeAsString('''
-class StatelessWidget {}
-class Container { Container({this.child}); final Container? child; }
-
-class Hello extends StatelessWidget {
-  Container build(Object? ctx) {
-    return Container(
-      child: Container(
-        child: Container(
-          child: Container(
-            child: Container(),
-          ),
-        ),
-      ),
-    );
-  }
-}
-''');
-    final runner = AnalyzerRunner(roots: [dir.path]);
-    final units = await runner.resolveAll();
-    final records = MetricEngine(
-      thresholds: const {
-        'widget-tree-depth': MetricThresholds(enabled: true, warning: 3),
-      },
-    ).analyzeResolved(units);
-    final build = records.firstWhere((r) => r.scope.name == 'Hello.build');
-    expect(build.values['widget-tree-depth'], 5);
-    final v = build.violations.firstWhere(
-      (v) => v.metricId == 'widget-tree-depth',
-    );
-    expect(v.severity, Severity.warning);
   });
 
   test('test mode relaxes size lenses on test/-resident files', () async {

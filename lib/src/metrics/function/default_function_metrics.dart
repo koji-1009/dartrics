@@ -1,15 +1,12 @@
 import '../metric.dart';
-import 'async_chain_depth.dart';
 import 'boolean_trap.dart';
 import 'cognitive_complexity.dart';
 import 'cyclomatic_complexity.dart';
 import 'halstead.dart';
 import 'max_nesting_level.dart';
 import 'method_length.dart';
-import 'null_aware_chain_depth.dart';
 import 'number_of_parameters.dart';
 import 'source_lines_of_code.dart';
-import 'widget_tree_depth.dart';
 
 /// Set of function-level metrics enabled by default.
 ///
@@ -24,7 +21,4 @@ const List<FunctionMetric> defaultFunctionMetrics = [
   BooleanTrap(),
   SourceLinesOfCode(),
   MethodLength(),
-  WidgetTreeDepth(),
-  NullAwareChainDepth(),
-  AsyncChainDepth(),
 ];

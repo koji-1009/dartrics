@@ -13,11 +13,6 @@ import 'package:analyzer/dart/ast/ast.dart';
 /// healthy `Container > Padding > Row > Column > ...` tree produces a
 /// nesting score of 0.
 ///
-/// Widget literal nesting itself is the responsibility of a separate
-/// `widget-tree-depth` lens (see `widget_tree_depth.dart`), which lets
-/// users tune Widget-tree depth thresholds independently from
-/// control-flow nesting.
-///
 /// What this helper still does: skip `number-of-parameters` on widget
 /// **constructors**. `key:` plus a long list of callback / typed-init
 /// parameters is the cultural norm for `StatelessWidget` /
