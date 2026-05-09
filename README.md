@@ -17,7 +17,7 @@ Each metric is treated as a **lens**: one specific dimension of "hard to read", 
 
 - **Who it's for.** AI agents and the humans driving them.
 - **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons.
-- **Status.** Output formats carry contractual headers (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header. Surface not yet stress-tested by external users.
+- **Output stability.** Every output format carries a contractual header (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header so consumers can match on it before parsing.
 - **Docs in the binary.** `dartrics manual` prints the operator's manual ([`doc/manual.md`](doc/manual.md)); `dartrics ai-loop` prints the four-station walkthrough ([`doc/ai-loop.md`](doc/ai-loop.md)). Both ship with the executable, so `dart pub global activate dartrics` is enough — no separate doc download needed.
 
 ## Install
@@ -251,21 +251,7 @@ The `dartrics:` section is read by both the CLI and the analyzer plugin. The lea
 
 ### Code-gen keep-alive annotations
 
-Every codegen-related annotation listed below is **always** treated as a reachability root for the unused detector, so source classes that depend on a yet-to-be-generated `.g.dart` / `.freezed.dart` / `.config.dart` partner aren't flagged as unused on a fresh checkout. No opt-in is required:
-
-| Package                                                       | Annotations                                                                                                                                |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| [freezed](https://pub.dev/packages/freezed)                   | `freezed`, `Freezed`, `unfreezed`                                                                                                          |
-| [json_serializable](https://pub.dev/packages/json_serializable) | `JsonSerializable`, `JsonEnum`                                                                                                             |
-| [dart_mappable](https://pub.dev/packages/dart_mappable)       | `MappableClass`, `MappableEnum`, `MappableLib`                                                                                             |
-| [go_router_builder](https://pub.dev/packages/go_router_builder) | `TypedGoRoute`, `TypedShellRoute`, `TypedStatefulShellRoute`                                                                               |
-| [auto_route](https://pub.dev/packages/auto_route)             | `RoutePage`, `AutoRouterConfig`                                                                                                            |
-| [riverpod_generator](https://pub.dev/packages/riverpod_generator) | `riverpod`, `Riverpod`                                                                                                                     |
-| [injectable](https://pub.dev/packages/injectable)             | `injectable`, `Injectable`, `singleton`, `Singleton`, `lazySingleton`, `LazySingleton`, `factoryMethod`, `FactoryMethod`, `module`, `Module`, `InjectableInit` |
-| [hive](https://pub.dev/packages/hive) / [hive_ce](https://pub.dev/packages/hive_ce) | `HiveType`, `HiveField`                                                                                                                    |
-| [drift](https://pub.dev/packages/drift)                       | `DriftDatabase`, `DriftAccessor`, `DataClassName`, `TableIndex`, `UseRowClass`                                                             |
-
-Annotations are looked up by **simple name only** (`@Freezed()` matches the simple name `Freezed`). If your project doesn't use a given package, the entry has no effect — there's no per-project cost to leaving every preset on. For in-house codegen, list annotations under `dartrics: { unused: { ignore-annotations: [...] } }`.
+Every popular Dart codegen package's keep-alive annotation is honoured by the unused detector out of the box (freezed, json_serializable, dart_mappable, go_router_builder, auto_route, riverpod, injectable, hive / hive_ce, drift, test_reflective_loader), so source classes that depend on a yet-to-be-generated `.g.dart` / `.freezed.dart` / `.config.dart` partner aren't flagged as unused on a fresh checkout. The full annotation list lives in `dartrics rules` and in [`lib/src/unused/keep_alive_presets.dart`](lib/src/unused/keep_alive_presets.dart). Lookup is by **simple name only** (`@Freezed()` matches the simple name `Freezed`); for in-house codegen, list annotations under `dartrics: { unused: { ignore-annotations: [...] } }`.
 
 ## Public-API unused-code detection
 
@@ -414,16 +400,11 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 | Calculator interface | `FunctionMetric`, `FunctionMetricInput`, `MetricPolarity` |
 | Version string | `dartricsVersion` |
 
-Everything else (report shapes, regression diff, coverage attachment, dismissal, the unused detector, class- and library-level metrics, `MetricEngine` itself) is CLI-only; the supported integration point is `dartrics analyze --reporter json` parsed in your own pipeline. Reaching into `package:dartrics/src/` is unsupported — internals shift between minor versions.
-
-`example/main.dart` shows a 30-line standalone embedding against `CyclomaticComplexity`.
+Anything not in this table is CLI-only and unsupported as a Dart import; reach for `dartrics analyze --reporter json` instead. `example/main.dart` shows a 30-line standalone embedding against `CyclomaticComplexity`.
 
 ## Limitations
 
 - **The analyzer plugin covers only the five function-level rules** (CC, Cognitive, Max nesting, Number of parameters, Boolean-trap). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
-- **Cross-run memory is out of scope.** dartrics doesn't remember "this dismiss was rejected last iteration; don't propose it again." Stay session-local.
-- **Performance is modest.** `--concurrency` parallelises file resolution but the analyzer driver itself is single-isolate; expect ~10 % wall-time wins on small trees, more on large ones. CPU-bound.
-- **`package:analyzer` 13.x moves fast.** Major Dart SDK or analyzer bumps may require dartrics updates before they ship cleanly.
 - **Built-in metric set is not exhaustive.** DIT / NOC / Halstead Difficulty / Halstead Effort / Maintainability Index are intentionally absent. Halstead Volume ships off-by-default. Bring your own opt-in for niche signals.
 - **Not a fit if** you need per-line metric thresholds in the IDE for the full metric suite, you don't engage with the dismiss channel at all (a pure-fail-fast linter is a better fit), or you're on Dart < 3.10 / analyzer < 13.
 
