@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:dartrics/src/cli/manual_text.dart';
 import 'package:dartrics/src/cli/runner.dart';
+import 'package:dartrics/src/metrics/metric_catalogue.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart';
@@ -48,7 +49,56 @@ void main() {
       expect(usage, contains('manual'));
       expect(usage, contains("operator's manual"));
     });
+
+    test('documents every built-in lens', () {
+      final ids = collectRuleDescriptions().map((r) => r.id).toList();
+      for (final id in ids) {
+        expect(
+          manualText,
+          contains('`$id`'),
+          reason:
+              '`$id` is in collectRuleDescriptions() but no `\\`$id\\`` '
+              'token appears in doc/manual.md. Add a row for it under '
+              '"## The lens battery" or remove the metric.',
+        );
+      }
+    });
+
+    test('does not document lenses that no longer exist', () {
+      final knownIds = collectRuleDescriptions().map((r) => r.id).toSet();
+      // Walk only the `## The lens battery` section so back-ticked
+      // tokens in other sections (`if`, `package:`, `MethodInvocation`,
+      // …) are not mistaken for metric ids.
+      final region = _lensBatterySection(manualText);
+      // Each lens row starts with `| \`<id>\``; pull the leading id
+      // from every such row, ignoring the `(off)` / `(Ce)` suffixes.
+      final pattern = RegExp(r'^\|\s*`([a-z][a-z0-9-]+)`', multiLine: true);
+      final mentioned = pattern
+          .allMatches(region)
+          .map((m) => m.group(1)!)
+          .toSet();
+      final stale = mentioned.difference(knownIds);
+      expect(
+        stale,
+        isEmpty,
+        reason:
+            'doc/manual.md mentions $stale under `## The lens battery` '
+            'but $stale is not registered with collectRuleDescriptions(). '
+            'Remove the stale row or re-register the metric.',
+      );
+    });
   });
+}
+
+/// Slices `manualText` to the `## The lens battery` body — from that
+/// heading up to (but not including) the next `## ` heading. Returns an
+/// empty string if the section is missing, which fails the caller's
+/// assertion with a clear "manual layout changed" reason.
+String _lensBatterySection(String text) {
+  final start = text.indexOf('## The lens battery');
+  if (start < 0) return '';
+  final after = text.indexOf('\n## ', start + 1);
+  return after < 0 ? text.substring(start) : text.substring(start, after);
 }
 
 /// Walk the cwd ancestors until `doc/manual.md` is found. Tests can run
