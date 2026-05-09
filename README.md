@@ -15,10 +15,13 @@ The wager: the academic catalogue is reusable now in a way it wasn't before — 
 
 Each metric is treated as a **lens**: one specific dimension of "hard to read", anchored to its original paper. Lenses are independent — a function can be clean by cyclomatic complexity and tangled by cognitive complexity. dartrics does not gate; it surfaces what each lens reads, and leaves the accept / refactor / dismiss decision in the loop.
 
-- **Who it's for.** AI agents and the humans driving them.
-- **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons.
-- **Output stability.** Every output format carries a contractual header (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header so consumers can match on it before parsing.
-- **Docs in the binary.** `dartrics manual` prints the operator's manual ([`doc/manual.md`](doc/manual.md)); `dartrics ai-loop` prints the four-station walkthrough ([`doc/ai-loop.md`](doc/ai-loop.md)). Both ship with the executable, so `dart pub global activate dartrics` is enough — no separate doc download needed.
+### Designed for the AI loop
+
+- **Auto-explain by default** — rationale, refactor hints, and the primary-source citation ride alongside every fired metric, so an agent reads the *why* without a second tool call.
+- **Coverage-aware reading** — `complexityJustified` exempts well-tested complex code (branch ≥ 0.8 / line ≥ 0.95) from the threshold list; violations sort by coverage so low-tested entries land first.
+- **Stable IDs with reverse lookup** — every violation carries a 16-hex-char id; `dartrics explain <id> --input report.json` reverse-looks up the full context for a saved report. The same id reappears across runs so AI loops can detect "my fix didn't take".
+- **Output stability** — every emission starts with a contractual header (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header so consumers can pin to it before parsing.
+- **Docs in the binary** — `dartrics manual` and `dartrics ai-loop` print the operator's manual ([`doc/manual.md`](doc/manual.md)) / four-station walkthrough ([`doc/ai-loop.md`](doc/ai-loop.md)); `dart pub global activate dartrics` is enough, no separate doc download.
 
 ## Install
 
