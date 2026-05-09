@@ -12,9 +12,9 @@ Conventions for AI coding agents (Claude Code, Cursor, Codex, etc.) and human co
 - `lib/src/config/` — YAML loader for the `dartrics:` section in `analysis_options.yaml`.
 - `lib/src/coverage/` — lcov.info parser (`lcov_reader.dart`) and the CLI loader (`coverage_loader.dart`).
 - `lib/src/lint/` — analyzer plugin: `DartricsPlugin` plus the five `AnalysisRule`s under `rules/` (CC, Cognitive, Max nesting, Number of parameters, Boolean-trap). Each rule wraps a function-level metric calculator and reports through `LintCode` with `{0}`/`{1}` placeholders.
-- `lib/src/metrics/{function,class,library}/` — per-scope metric calculators. Each implements `FunctionMetric` / `ClassMetric` / `LibraryMetric`, including the `rationale`, `refactorHints`, and `polarity` getters.
+- `lib/src/metrics/{function,class,library}/` — per-scope metric calculators. Each implements `FunctionMetric` / `ClassMetric` / `LibraryMetric`, including the `rationale`, `refactorHints`, `references`, and `polarity` getters.
 - `lib/src/metrics/metric_engine.dart` — orchestrator that resolves every Dart file once and runs the registered calculators, attaching coverage / `complexityJustified` to violations when supplied.
-- `lib/src/metrics/metric_catalogue.dart` — `defaultMetricThresholds`, `collectRuleDescriptions`, and `findRuleDescription`. Single source of truth for "which metrics ship with what default threshold + rationale"; consumed by `dartrics rules`, the `--explain` flow, and the SARIF reporter so the three stay in sync.
+- `lib/src/metrics/metric_catalogue.dart` — `defaultMetricThresholds`, `collectRuleDescriptions`, and `findRuleDescription`. Single source of truth for "which metrics ship with what default threshold + rationale"; consumed by `dartrics rules`, auto-explain, `dartrics explain <id>`, and the SARIF reporter so they all stay in sync.
 - `lib/src/metrics/flutter_aware.dart` — pure-AST helpers used by both the engine and the plugin to skip noisy widget patterns.
 - `lib/src/metrics/test_aware.dart` — pure-path helper that recognises `_test.dart` files under `test/` or `integration_test/` so the engine and the plugin can step aside on size-and-shape lenses for legitimate AAA / group-setUp scaffolding.
 - `lib/src/models/` — `AnalysisReport`, `MetricRecord`, `MetricViolation`, `ScopeRef`, `UnusedDeclaration`, `SourceLocation`, `RegressionReport` family, `AnalyzedFile`, `ExplainEntry`. Stable JSON schema lives here.
@@ -45,11 +45,12 @@ Why each step:
 
 1. Pick the right scope file under `lib/src/metrics/`.
 2. Implement the calculator, anchoring its docstring to the original paper / spec. Don't paraphrase the formula; quote it.
-3. Implement the four metadata getters every metric must expose:
+3. Implement the metadata getters every metric must expose:
    - `id` — stable kebab-case identifier (used as JSON key and threshold key).
-   - `rationale` — one paragraph anchored in the original paper. Used by `dartrics rules` and `--explain`.
+   - `rationale` — one paragraph anchored in the original paper. Used by `dartrics rules`, auto-explain, and `dartrics explain <id>`.
    - `refactorHints` — list of single-sentence imperative refactor moves.
-   - `polarity` — `MetricPolarity.down` (lower is better, the default), `up` (higher is better; reserved for custom embedder metrics, no built-in uses it), or `neutral` (regression diff surfaces deltas without classifying).
+   - `references` — primary-source citations (paper / book / spec). Return `const []` if the metric has no published anchor.
+   - `polarity` — `MetricPolarity.down` (lower is better, the default) or `neutral` (regression diff surfaces deltas without classifying).
 4. Register the calculator in the corresponding `default_*_metrics.dart` list so the engine picks it up.
 5. Add a golden test in `test/metrics/.../<metric>_test.dart` with hand-verified values from a paper example or a small fixture you can verify by inspection.
 6. Update `README.md`'s metric table.
