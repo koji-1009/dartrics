@@ -53,8 +53,7 @@ Ask dartrics for a focused, AI-shaped report. Three flags carry most of the weig
 dartrics analyze \
   --reporter ai \
   --since origin/main \
-  --limit 30 \
-  --explain cognitive-complexity   # optional — auto-explain handles it for you
+  --limit 30
 ```
 
 What each flag does for the AI:
@@ -181,7 +180,7 @@ dartrics analyze --strict-dismiss --fatal-warnings
 | `dismissalRejected: missing required by:` | `requireAuthor: true` in config | Add `by: <agent-id>` to the YAML entry; comment dismissals can't carry author |
 | `exit 78` | `analysis_options.yaml` `dartrics:` block invalid | stderr message names the offending key; the JSON Schema (`dartrics-config.schema.json`) catches most of these in-editor |
 | AI report empty after change | `--snapshot cache` filtered to changed files only | First run wrote the snapshot; subsequent runs need a code change or `--snapshot none` to see everything |
-| AI report missing `explain:` | `--no-auto-explain` is set, or no metric fired | Drop the flag, or add `--explain <metric>` for the specific rationale you want |
+| AI report missing `explain:` | `--no-auto-explain` is set, or no metric fired | Drop the flag; the rationale is auto-attached for every metric that fires |
 
 ## Reference flag map
 
@@ -192,8 +191,8 @@ dartrics analyze --strict-dismiss --fatal-warnings
 | Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
 | Cap output for token budget | `--limit <n>` | Applied after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
-| Force rationale | `--explain <id>` | Repeatable; unions with auto-explain |
 | Drop auto-explain | `--no-auto-explain` | Lean reports without rationale + refactor hints attached |
+| Recover rationale post hoc | `dartrics explain <id>` | Reads a saved JSON report and prints one violation's full context |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
 

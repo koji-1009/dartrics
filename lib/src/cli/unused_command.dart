@@ -15,7 +15,6 @@ import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
 import 'io_sinks.dart';
-import 'rules_command.dart';
 import 'snapshot.dart';
 
 /// `dartrics unused` — runs only the public-API reachability analysis.
@@ -126,7 +125,7 @@ class UnusedCommand extends Command<int> {
       metrics: const [],
       unused: filtered,
       analyzedFiles: hashes,
-      explanations: buildExplanations(options.explain),
+      explanations: const [],
       snapshotMode: snapshotConfig.mode.name,
       changedFileCount: activeFilter?.length,
     )..attachAnalyzedFileCount(units.length);

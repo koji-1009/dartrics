@@ -306,7 +306,7 @@ There is no third option of "ignore it again."
 | Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
 | Cap output for token budget | `--limit <n>` | Applied after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
-| Force rationale | `--explain <id>` | Repeatable; unions with auto-explain |
+| Recover rationale post hoc | `dartrics explain <id> --input report.json` | Looks up a single violation from a saved JSON report |
 | Drop auto-explain | `--no-auto-explain` | Lean reports without rationale + refactor hints attached |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |

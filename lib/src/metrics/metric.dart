@@ -66,8 +66,9 @@ abstract class FunctionMetric {
 
   /// One-paragraph explanation of what the metric measures, the source it
   /// is taken from, and the reasoning behind the default threshold. Surfaced
-  /// by `dartrics rules` and the `--explain` flag so AI loops can learn the
-  /// metric's intent without re-deriving it from training data.
+  /// by `dartrics rules`, `dartrics explain`, and the auto-explain block
+  /// of the AI / md / SARIF reporters so AI loops can learn the metric's
+  /// intent without re-deriving it from training data.
   String get rationale;
 
   /// Concrete refactor moves a developer (or AI agent) can take when the
@@ -78,13 +79,13 @@ abstract class FunctionMetric {
   /// definition is anchored to. Each entry is a short citation
   /// ("Author (Year). Title. Venue."). Empty for metrics that don't
   /// trace to a published source. Surfaced by `dartrics rules`,
-  /// `--explain`, and the AI report so an agent reading dartrics output
-  /// can verify a metric against its primary source.
+  /// `dartrics explain`, and the AI report so an agent reading dartrics
+  /// output can verify a metric against its primary source.
   List<String> get references => const [];
 
   /// Direction in which the value moves when the code gets healthier.
-  /// Override to `up` for custom metrics where higher is better, or
-  /// `neutral` for metrics where neither direction is universally good.
+  /// Override to `neutral` for metrics where neither direction is
+  /// universally good (e.g. Halstead Volume, Abstractness in isolation).
   MetricPolarity get polarity => MetricPolarity.down;
 
   /// Computes the metric. Implementations must be deterministic.

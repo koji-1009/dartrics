@@ -31,14 +31,6 @@ void addCommonOptions(ArgParser parser) {
           '(e.g. "main", "HEAD~1", "origin/main"). Resolution still uses '
           'the full project so cross-file analysis stays accurate.',
     )
-    ..addMultiOption(
-      'explain',
-      help:
-          'Inject the metric\'s rationale and refactor hints into the '
-          'report. Repeat the flag (or use a comma-separated list) to '
-          'include several metrics at once.',
-      splitCommas: true,
-    )
     ..addOption(
       'snapshot',
       help:
@@ -109,7 +101,6 @@ class CommonOptions {
     required this.output,
     required this.root,
     required this.since,
-    required this.explain,
     required this.snapshot,
     required this.coverage,
     required this.strictDismiss,
@@ -158,7 +149,6 @@ class CommonOptions {
       output: results['output'] as String,
       root: results['root'] as String,
       since: results['since'] as String?,
-      explain: List<String>.from(results['explain'] as List<String>),
       snapshot: results['snapshot'] as String?,
       coverage: results['coverage'] as String?,
       strictDismiss: results['strict-dismiss'] as bool,
@@ -176,7 +166,6 @@ class CommonOptions {
   final String output;
   final String root;
   final String? since;
-  final List<String> explain;
   final String? snapshot;
   final String? coverage;
   final bool strictDismiss;
@@ -184,7 +173,7 @@ class CommonOptions {
   /// `--concurrency` override. `null` ⇒ defaults to the host CPU count.
   final int? concurrency;
 
-  /// When `true`, attach `--explain`-style rationale to every metric
+  /// When `true`, attach the rationale + refactor hints to every metric
   /// that produced at least one violation in the report. Toggleable via
   /// `--no-auto-explain`.
   final bool autoExplain;

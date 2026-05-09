@@ -134,33 +134,6 @@ void main() {
     expect(explanations.single.metricId, 'cyclomatic-complexity');
   });
 
-  test('analyze --explain injects an explanation block in JSON', () async {
-    final dir = await Directory.systemTemp.createTemp('rules_inject_');
-    addTearDown(() => dir.delete(recursive: true));
-    await Directory('${dir.path}/lib').create();
-    await File('${dir.path}/lib/a.dart').writeAsString('void a() {}\n');
-    // Snapshot off — we already exercised that path elsewhere.
-    final out = '${dir.path}/run.json';
-    final code = await runQuietly([
-      'analyze',
-      '${dir.path}/lib',
-      '--reporter',
-      'ai',
-      '--output',
-      out,
-      '--explain',
-      'cyclomatic-complexity',
-      '--snapshot',
-      'none',
-      '--config',
-      '${dir.path}/no.yaml',
-    ]);
-    expect(code, 0);
-    final body = await File(out).readAsString();
-    expect(body, contains('explain:'));
-    expect(body, contains('cyclomatic-complexity'));
-  });
-
   test('AnalysisReport carries explanations + analyzedFiles in JSON', () {
     final report = AnalysisReport(
       version: '1.0',

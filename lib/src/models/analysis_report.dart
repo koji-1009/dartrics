@@ -199,7 +199,8 @@ class AnalyzedFile {
 }
 
 /// Catalogue entry for a metric whose rationale should accompany the
-/// emitted report (`--explain <metric-id>`).
+/// emitted report. Populated by the auto-explain block when a metric
+/// fired at least one violation.
 class ExplainEntry {
   const ExplainEntry({
     required this.metricId,

@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:dapper/dapper.dart';
 
 /// Lightweight description of a single metric rule, used by the
-/// `dartrics rules` subcommand and by the `--explain` injection in the
-/// analyze/unused reporters.
+/// `dartrics rules` subcommand and by the auto-explain block injected
+/// into the AI / md / SARIF reporters.
 class RuleDescription {
   const RuleDescription({
     required this.id,

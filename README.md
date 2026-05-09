@@ -71,8 +71,6 @@ Common options:
   --root <path>            analysis root directory (default: cwd)
   --since <ref>            restrict output to .dart files changed vs the
                            given git ref (e.g. main, HEAD~1, origin/main)
-  --explain <metric-id>    inject a metric's rationale + refactor hints
-                           into the report (repeatable)
   --[no-]auto-explain      auto-attach rationale + refactor hints for every
                            metric that fired (default: enabled)
   --snapshot <mode>        cache | baseline | none, or a custom path
@@ -136,8 +134,7 @@ LCOM4 and RFC use **name-based AST matching** scoped to the class declaration it
 
 `--reporter ai` is the primary integration point. Output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. The reporter knobs compose into a tight refactor loop:
 
-- **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints + references for every metric that produced at least one violation. Most loops never need explicit `--explain` flags.
-- **`--explain <metric-id>`** (repeatable) injects a specific metric's rationale even when it didn't fire — useful when feeding the catalogue once for downstream agent reference.
+- **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints + references for every metric that produced at least one violation. To pre-load the full catalogue (e.g. when an agent needs every metric's intent up front), pipe `dartrics rules --reporter ai` separately.
 - **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF. `dartrics explain <id>` reverse-looks up the full context from a saved JSON report.
 - **`--limit <n>`** caps violations + unused entries shown by the AI / md reporters after the priority sort. Token-budget control for context-bounded agents; truncated entries are summarised in a `truncated:` block (AI) or `_+ N more_` line (md).
 - **`--coverage <path>`** (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key — low-coverage / high-severity entries land first, `complexityJustified` ones at the bottom.
@@ -339,7 +336,7 @@ Cyclomatic complexity, cognitive complexity, number-of-parameters, boolean-trap,
 
 ```yaml
 # dartrics ai-report v1
-explain:                          # only present when --auto-explain is on or --explain was passed
+explain:                          # only present when auto-explain is on (default) and at least one metric fired
   - metric: cyclomatic-complexity
     rationale: |
       …one-paragraph rationale…
