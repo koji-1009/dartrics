@@ -504,7 +504,7 @@ What's wired up for that use case:
 
 - **Resolution** — every violation carries its threshold, severity, scope coverage, branch coverage, `complexityJustified` tag, and (where applicable) `dismissed` / `dismissalRejected` state. The `--reporter ai` YAML is sorted so the most actionable items come first.
 - **Stability** — every violation has a 16-hex stable `id` so AI loops can correlate runs ("same id appeared again ⇒ my last refactor missed it"). Three published JSON Schemas (config / report / dismissals) cover the on-disk and on-wire surfaces. `# dartrics ai-report v1` is a contractual header.
-- **Actionability** — `--explain` (now with auto-explain default-on) inlines the metric's rationale and refactor hints. Each metric exposes a `polarity` so the regression diff knows which direction is "healthier". The dismiss channel turns "I don't agree with this metric here" into a tracked, validated, auditable decision instead of a silent disable.
+- **Actionability** — auto-explain (default on; `--no-auto-explain` to opt out) inlines the metric's rationale and refactor hints inside every report; `dartrics explain <id>` retrieves the same context for a single id from a saved JSON report. Each metric exposes a `polarity` so the regression diff knows which direction is "healthier". The dismiss channel turns "I don't agree with this metric here" into a tracked, validated, auditable decision instead of a silent disable.
 - **Noise control** — `--snapshot` / `--since` / `--limit` / `--strict-dismiss` compose into a noise floor that AI loops can actually live with; `--strict-dismiss --fatal-warnings` makes a clean CI gate.
 
 - AI-facing reference: [`doc/manual.md`](doc/manual.md).

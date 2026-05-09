@@ -47,7 +47,7 @@ void main() {
     // Override one metric only; the rest must keep their built-in
     // warnings so an `analysis_options.yaml` that mentions a single
     // metric does not silently switch every other lens to "no
-    // threshold" — that was the 0.1.0 dogfood bug.
+    // threshold".
     await f.writeAsString('''
 dartrics:
   metrics:

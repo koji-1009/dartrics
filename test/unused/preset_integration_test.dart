@@ -9,12 +9,8 @@ UnusedSource _src(String path, String content) {
 }
 
 void main() {
-  // Every codegen-keep-alive annotation is always honoured as of 0.1.0
-  // — the per-package opt-in via `presets:` was dropped because the cost
-  // of leaving an annotation in the keep-alive set when the project
-  // doesn't use that package is essentially zero (a PascalCase name
-  // from an external package never appears in source you didn't write).
-  // These tests pin that always-on behaviour for each ecosystem.
+  // Every codegen-keep-alive annotation is honored unconditionally;
+  // these tests pin that always-on behaviour for each ecosystem.
 
   test(
     '@freezed-annotated classes stay alive without explicit opt-in',

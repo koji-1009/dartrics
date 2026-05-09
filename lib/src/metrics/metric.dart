@@ -46,8 +46,8 @@ enum MetricPolarity {
   /// Lower values are healthier (e.g. cyclomatic complexity, SLOC).
   down,
 
-  /// Higher values are healthier. No built-in metric uses this in
-  /// 0.1.0; reserved for custom embedder metrics.
+  /// Higher values are healthier. No built-in metric currently uses
+  /// this; reserved for custom embedder metrics.
   up,
 
   /// Either direction can be a sign of improvement depending on the

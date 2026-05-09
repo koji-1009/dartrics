@@ -6,13 +6,13 @@
 ///
 /// Class- and library-level metrics, the report / regression / coverage
 /// / dismissal / unused-detector model shapes, and `MetricEngine` itself
-/// are intentionally **not** exported in 0.1.0. The supported integration
-/// point for those scopes is `dartrics analyze --reporter json`, parsed
-/// in your own pipeline. This keeps the public Dart API tight enough
-/// that internal evolution doesn't trigger breaking changes for
-/// consumers we don't yet have. If you need a Dart-level handle on a
-/// shape that isn't exported here, please file an issue describing the
-/// use case before reaching into `package:dartrics/src/`.
+/// are intentionally **not** exported. The supported integration point
+/// for those scopes is `dartrics analyze --reporter json`, parsed in
+/// your own pipeline. This keeps the public Dart API tight enough that
+/// internal evolution doesn't trigger breaking changes for consumers we
+/// don't yet have. If you need a Dart-level handle on a shape that
+/// isn't exported here, please file an issue describing the use case
+/// before reaching into `package:dartrics/src/`.
 library;
 
 export 'src/metrics/function/boolean_trap.dart' show BooleanTrap;

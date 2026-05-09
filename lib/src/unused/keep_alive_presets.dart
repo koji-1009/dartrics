@@ -9,13 +9,13 @@
 /// listed here as an implicit reachability root so the detector
 /// doesn't false-positive on idiomatic codegen-driven code.
 ///
-/// **All presets are active out of the box** as of 0.1.0. The
-/// per-package opt-in (`dartrics: { unused: { presets: [...] } }`) was
-/// dropped because the cost of always-on is essentially zero — these
-/// names are PascalCase identifiers from specific external packages,
-/// so listing one your project doesn't use just adds an unused entry
-/// to a Set. Listing `presets:` in `analysis_options.yaml` is still
-/// accepted for backward compatibility, but the value is ignored.
+/// **All presets are active out of the box.** The cost of always-on
+/// is essentially zero — these names are PascalCase identifiers from
+/// specific external packages, so listing one your project doesn't use
+/// just adds an unused entry to a Set. The
+/// `dartrics: { unused: { presets: [...] } }` field in
+/// `analysis_options.yaml` is still parsed for backward compatibility,
+/// but its value is ignored.
 const Map<String, List<String>> keepAlivePresets = {
   // freezed (2.x and 3.x)
   'freezed': ['freezed', 'Freezed', 'unfreezed'],
@@ -71,8 +71,9 @@ final Set<String> allKeepAliveAnnotations = {
 };
 
 /// Expands a list of preset names to the union of their annotation sets.
-/// Unknown names are silently ignored. Retained for backward
-/// compatibility — the engine itself uses [allKeepAliveAnnotations] now.
+/// Unknown names are silently ignored. Kept on the public surface for
+/// backward-compatible config parsing; the unused detector roots every
+/// preset annotation regardless via [allKeepAliveAnnotations].
 Set<String> expandPresets(Iterable<String> presetNames) {
   final out = <String>{};
   for (final name in presetNames) {

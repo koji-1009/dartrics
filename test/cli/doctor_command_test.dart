@@ -63,9 +63,8 @@ void main() {
     });
 
     test('up-polarity metric with error > warning is flagged', () {
-      // No built-in metric currently uses up polarity (MI was retired
-      // in 0.1.0). The path stays live for custom embedder metrics —
-      // exercise it directly via the public helper.
+      // No built-in metric currently uses up polarity — exercise the
+      // public helper directly with a synthetic polarity.
       final issue = checkThresholdOrdering(
         'custom-up-metric',
         const MetricThresholds(warning: 50, error: 80),

@@ -249,8 +249,8 @@ class AnalysisReport {
   /// Snapshot mode active for this run — `'cache'`, `'baseline'`, or
   /// `'none'`. Carried into the report so reporters can disambiguate
   /// "0 violations because there really were none" from "0 violations
-  /// because the cache snapshot filtered them out". `'none'` is the
-  /// default for legacy callers that don't set it.
+  /// because the cache snapshot filtered them out". Defaults to
+  /// `'none'` when no diff filter is engaged.
   final String snapshotMode;
 
   /// Number of files whose hash differed from the snapshot (or whose

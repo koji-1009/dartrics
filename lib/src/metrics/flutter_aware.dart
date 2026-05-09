@@ -3,9 +3,9 @@ import 'package:analyzer/dart/ast/ast.dart';
 /// Pure-AST helpers used by the metric engine and the analyzer plugin to
 /// recognise idiomatic Flutter widgets.
 ///
-/// As of 0.1.0, dartrics measures the same control-flow signals on
-/// `Widget.build()` as it does on any other method — `maximum-nesting-level`
-/// and `method-length` apply, because deeply-nested control flow inside
+/// dartrics measures the same control-flow signals on `Widget.build()`
+/// as it does on any other method — `maximum-nesting-level` and
+/// `method-length` apply, because deeply-nested control flow inside
 /// `build()` is just as hard to read as it is anywhere else. The visual
 /// depth from chained Widget literals does **not** affect those metrics
 /// (`MaxNestingLevel` only counts `if` / `for` / `while` / `do` / `switch`
@@ -48,7 +48,7 @@ abstract final class FlutterAware {
 
   /// Returns the set of metric ids that should be skipped for [decl] in
   /// Flutter-aware mode. Empty for non-widget code, for widget
-  /// `build()` (= measured normally as of 0.1.0), and for declarations
+  /// `build()` (which is measured normally), and for declarations
   /// inside a widget that aren't the constructor.
   static Set<String> skipsFor(Declaration decl) {
     if (decl is ConstructorDeclaration) {

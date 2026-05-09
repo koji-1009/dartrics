@@ -67,7 +67,7 @@ class LintOptions {
   }
 
   /// Parses the `dartrics:` section out of an `analysis_options.yaml`
-  /// content string. Exposed for testability.
+  /// content string.
   static LintOptions parse(String content) {
     final Object? root;
     try {

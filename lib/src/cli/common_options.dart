@@ -80,7 +80,7 @@ void addCommonOptions(ArgParser parser) {
       help:
           'Auto-attach the rationale + refactor hints for every metric '
           'that fired at least one violation. Pass --no-auto-explain to '
-          'opt out (matches pre-0.1.0 behaviour).',
+          'opt out.',
       defaultsTo: true,
     )
     ..addFlag(

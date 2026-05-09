@@ -47,7 +47,7 @@ These lenses ship default-off (everything else in the catalogue below is on by d
 - **Widget Tree Depth** — Flutter-specific; opt in for projects that want the deep-`Container(child: ...)` reading
 - **Null-Aware Chain Depth** / **Async Chain Depth** — Dart-3-idiom signals; opt in when project conventions on "too deep" `?.` chains or nested `await` calls are settled enough to threshold
 
-Halstead Difficulty / Effort and the Maintainability Index were dropped in 0.1.0: both are pure derivations of the underlying token counts and `CC + V + LOC` respectively — they add no orthogonal signal beyond what the underlying lenses already provide.
+Halstead Difficulty / Effort and the Maintainability Index are not provided: both are pure derivations of the underlying token counts and `CC + V + LOC` respectively — they add no orthogonal signal beyond what the underlying lenses already provide.
 
 Each entry below names: **the felt reaction** it captures, **what the lens computes**, the **default warning threshold**, and **when to refactor vs. dismiss**.
 
@@ -95,7 +95,7 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 Each lens declares a `polarity`:
 
 - `down` — lower is better. The default. (CC, Cognitive, nesting, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC, Ce, Ca, instability, distance.)
-- `up` — higher is better. No built-in metric uses this in 0.1.0; reserved for custom embedder metrics that want it.
+- `up` — higher is better. No built-in metric currently uses this; reserved for custom embedder metrics that want it.
 - `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume, abstractness in isolation.)
 
 You read this off the regression diff so you don't accidentally celebrate a metric that drifted the wrong way.

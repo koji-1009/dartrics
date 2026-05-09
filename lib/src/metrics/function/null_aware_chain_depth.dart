@@ -38,8 +38,8 @@ class NullAwareChainDepth extends FunctionMetric {
       'guard that the reader has to hold in working memory; deep '
       'chains (`a?.b?.c?.d?.e`) read as conditional dataflow that '
       'neither `maximum-nesting-level` nor the basic `cognitive-'
-      'complexity` rules surface separately. Off by default in 0.1.0 '
-      'because project conventions vary on what counts as "too deep"; '
+      'complexity` rules surface separately. Off by default because '
+      'project conventions vary on what counts as "too deep"; '
       'opt in with a threshold tuned for your codebase. A starting '
       'warning of 4 catches the spots where extracting an early-return '
       'guard or a local variable would clean up the chain.';

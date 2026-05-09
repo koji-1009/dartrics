@@ -78,10 +78,8 @@ void main() {
   });
 
   test('classifyChange treats up-polarity drops as regressed', () {
-    // No built-in metric uses up polarity in 0.1.0 (the maintainability
-    // index was retired). The path stays live for custom embedder
-    // metrics; exercise it directly via the public helper instead of
-    // relying on a built-in.
+    // No built-in metric currently uses up polarity; exercise the
+    // public helper directly with a synthetic polarity.
     expect(
       classifyChange(
         before: 120,

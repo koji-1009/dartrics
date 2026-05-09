@@ -5,9 +5,7 @@ import '../metrics/metric.dart';
 import '../models/analysis_report.dart';
 import '../models/regression_report.dart';
 
-/// Configuration constants for the cosmetic-split heuristic. Exposed so
-/// tests can pin them and so future configurability has one place to
-/// touch.
+/// Configuration constants for the cosmetic-split heuristic.
 class RegressionConfig {
   const RegressionConfig({this.smallBodyThreshold = 3});
 
@@ -150,9 +148,8 @@ class RegressionDiff {
     );
   }
 
-  /// Per-scope contribution to the cosmetic-split detector. Bundles the
-  /// "is this a tiny new helper?" + SLOC delta + CC reduction so the
-  /// outer loop just sums three integers per scope.
+  /// Per-scope contribution to the cosmetic-split detector — the
+  /// "tiny new helper?" flag + SLOC delta + CC reduction.
   ({int tinyHelpers, int slocDelta, int ccReduction}) _scopeContribution(
     MetricRecord? before,
     MetricRecord after,
@@ -241,12 +238,8 @@ class _ScopeKey {
   int get hashCode => Object.hash(file, kind, name);
 }
 
-/// Pure classifier extracted so up-polarity behaviour stays testable
-/// even when no built-in metric currently uses [MetricPolarity.up]. The
-/// up branch is dormant for now (the maintainability index was the
-/// only `up` metric and was retired in 0.1.0 because it adds no signal
-/// over CC + Halstead Volume + LOC), but custom embedder metrics may
-/// still register with up polarity, so the path stays live.
+/// Classifies a metric value change between two runs given the
+/// metric's [polarity] and whether the scope was added or removed.
 ChangeDirection classifyChange({
   required num? before,
   required num? after,
@@ -264,8 +257,7 @@ ChangeDirection classifyChange({
 
 /// Polarity-aware leg of [classifyChange]. Both inputs are guaranteed
 /// non-null and unequal at this point — the caller has already
-/// short-circuited those cases. Pulled out so the polarity switch is
-/// not gated behind early-return noise.
+/// short-circuited those cases.
 ChangeDirection _directionByPolarity({
   required num before,
   required num after,

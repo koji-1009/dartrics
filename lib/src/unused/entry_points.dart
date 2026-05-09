@@ -15,13 +15,8 @@ List<DeclarationRecord> resolveEntryPoints(
   }
   final keepAliveAnnotations = <String>{
     ...config.ignoreAnnotations,
-    // Every codegen preset is always on as of 0.1.0 — the per-package
-    // opt-in via `presets:` was dropped because the cost of including
-    // an annotation name your project doesn't use is essentially zero
-    // (a PascalCase identifier from a specific external package will
-    // never appear in source you didn't write). `config.presets` is
-    // kept on the schema for backward compat but no longer narrows
-    // the keep-alive set.
+    // Every codegen preset is always honored as a keep-alive root;
+    // `config.presets` is parsed but no longer narrows the set.
     ...allKeepAliveAnnotations,
   };
   for (final d in declarations) {

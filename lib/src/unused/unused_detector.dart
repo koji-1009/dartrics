@@ -10,9 +10,8 @@ import 'entry_points.dart';
 import 'reachability_graph.dart';
 import 'resolved_reachability.dart';
 
-/// Input record accepted by [UnusedDetector]. Both `ResolvedUnitResult` and
-/// `parseString`-style results fit this shape, so tests can drive the
-/// detector with cheap parse-only fixtures.
+/// Input record accepted by [UnusedDetector]. Both `ResolvedUnitResult`
+/// and `parseString` results fit this shape.
 typedef UnusedSource = ({String path, CompilationUnit unit, LineInfo lineInfo});
 
 typedef _RootResolutionInputs = ({

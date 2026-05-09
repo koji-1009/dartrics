@@ -84,11 +84,9 @@ void main() {
   test(
     'preserves stable id, coverage, and dismiss state when re-emitting',
     () async {
-      // Field-for-field round-trip. Round 2-4 added id / coverage /
-      // complexityJustified / dismiss-* to the JSON shape; the report
-      // decoder used to drop them, so re-emitting through the AI / md /
-      // SARIF reporters silently lost the AI-loop continuity data. This
-      // pins the round-trip.
+      // Field-for-field round-trip. Pins that the JSON report's
+      // id / coverage / complexityJustified / dismiss-* fields survive
+      // re-emission through the AI / md / SARIF reporters.
       final input = File('${dir.path}/full.json');
       await input.writeAsString(
         jsonEncode({

@@ -141,8 +141,8 @@ enum Color {
       final keys = records.expand((r) => r.values.keys).toSet();
       expect(keys, isNot(contains('halstead-volume')));
       // halstead-difficulty / halstead-effort / maintainability-index
-      // were removed in 0.1.0 — they're derivations of halstead-volume +
-      // CC + LOC and added no orthogonal signal.
+      // are not provided — they're derivations of halstead-volume +
+      // CC + LOC and add no orthogonal signal.
       // Sanity: the core metrics still land.
       expect(keys, contains('cyclomatic-complexity'));
     },
@@ -175,8 +175,8 @@ enum Color {
   test(
     'Flutter aware mode keeps build() measured + skips ctor `number-of-parameters`',
     () async {
-      // Contract as of 0.1.0: Widget.build() is **not** specially
-      // skipped — `maximum-nesting-level` only counts control-flow
+      // Contract: Widget.build() is **not** specially skipped —
+      // `maximum-nesting-level` only counts control-flow
       // constructs (if/for/while/etc.) so a healthy Container-tree
       // produces 0 anyway, and `method-length` is informative even on
       // declarative Widget trees. Widget literal nesting belongs to a
@@ -220,8 +220,8 @@ class Hello extends StatelessWidget {
       // build() is measured for every default-on metric, regardless of
       // flutter mode — control-flow nesting on a declarative Widget
       // tree is naturally 0, so the metric doesn't false-positive on
-      // healthy code. (method-length became default-off in 0.1.0
-      // because of its high correlation with SLOC; opt-in only.)
+      // healthy code. (method-length is default-off because of its
+      // high correlation with SLOC; opt-in only.)
       final buildKeys = records
           .firstWhere((r) => r.scope.name == 'Hello.build')
           .values
@@ -439,8 +439,8 @@ class SampleTest {
     expect(clsKeys, isNot(contains('number-of-methods')));
 
     // Pinning test:false re-enables size-and-shape metrics on test
-    // files. method-length is default-off as of 0.1.0, so explicitly
-    // opt it in via thresholds for this assertion.
+    // files. method-length is default-off, so explicitly opt it in
+    // via thresholds for this assertion.
     final strictRecords = MetricEngine(
       test: false,
       thresholds: const {'method-length': MetricThresholds(enabled: true)},

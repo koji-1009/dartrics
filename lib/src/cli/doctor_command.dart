@@ -66,9 +66,7 @@ class DoctorCommand extends Command<int> {
   }
 }
 
-/// One flagged item in the doctor report. Doctor only emits warnings
-/// today; the type stays open for future severities (e.g. `info`)
-/// without forcing every call site to plumb a tier through right now.
+/// One flagged item in the doctor report.
 class DoctorIssue {
   const DoctorIssue({required this.message, this.hint});
 
@@ -76,9 +74,8 @@ class DoctorIssue {
   final String? hint;
 }
 
-/// Pure-data diagnosis of a parsed [Config]. Exposed so callers (the
-/// CLI command, future `lib/dartrics.dart` exports) can reuse the same
-/// rules without having to re-load the YAML.
+/// Pure-data diagnosis of a parsed [Config]. Returns the issues
+/// without performing IO so callers can reuse the same rules.
 List<DoctorIssue> diagnose(Config config) {
   final issues = <DoctorIssue>[];
   final knownMetrics = collectRuleDescriptions();
@@ -122,13 +119,8 @@ List<DoctorIssue> diagnose(Config config) {
 /// neutral metrics skip the ordering check — there is no universally
 /// healthier direction.
 ///
-/// The up-polarity branch is currently dormant for built-in metrics
-/// (the maintainability index was the only `up` metric and was retired
-/// in 0.1.0 because it adds no signal over CC + Halstead Volume + LOC).
-/// The path stays live because custom embedder metrics can register
-/// with up polarity. Exposed as a public top-level so tests can verify
-/// the up branch via a synthetic polarity string without depending on
-/// a built-in metric.
+/// `up` polarity is reserved for custom embedder metrics; no built-in
+/// metric uses it.
 DoctorIssue? checkThresholdOrdering(
   String id,
   MetricThresholds t,

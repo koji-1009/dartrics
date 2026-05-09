@@ -82,9 +82,9 @@ bool _isOperand(Token token) =>
 /// predictive advantage over cyclomatic complexity, and modern Dart's
 /// codegen output / record literals / freezed-style boilerplate inflate
 /// the token counts in ways that don't track human reading effort.
-/// Halstead Difficulty and Halstead Effort were both removed in 0.1.0
-/// because they are pure derivations of the same `(n1, n2, N1, N2)`
-/// counts and add no orthogonal signal over Volume itself. Opt in via
+/// Halstead Difficulty and Halstead Effort are not provided because
+/// they are pure derivations of the same `(n1, n2, N1, N2)` counts and
+/// add no orthogonal signal over Volume itself. Opt in via
 /// `dartrics: { metrics: { halstead-volume: { enabled: true } } }`.
 class HalsteadVolume extends FunctionMetric {
   const HalsteadVolume();
