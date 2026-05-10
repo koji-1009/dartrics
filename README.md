@@ -62,16 +62,18 @@ dartrics ships a curated set anchored to published sources. For the audit trail 
 
 Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules` and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
 
+Lenses marked **off** ship disabled by default; opt in via `dartrics: { metrics: { <id>: { enabled: true } } }`.
+
 ### Function / method level
 
-| Metric                                | Default | Reference        | Notes                                                                       |
-| ------------------------------------- | ------- | ---------------- | --------------------------------------------------------------------------- |
-| Cyclomatic Complexity                 | on      | McCabe 1976      | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`     |
-| Cognitive Complexity                  | on      | SonarSource 2017 (rev.) | B1 control-flow + B2 nesting penalty + B3 logical-op sequences       |
-| Number Of Parameters                  | on      | Fowler 1999      | positional only; default warning 4                                          |
-| Source Lines Of Code                  | on      | Boehm 1981       | non-blank, non-comment-only lines                                           |
-| Method Length                         | **off** | Beck 1996        | total source lines spanned by the body                                      |
-| Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size"                                  |
+| Metric                          | Reference               | Notes                                                                       |
+| ------------------------------- | ----------------------- | --------------------------------------------------------------------------- |
+| Cyclomatic Complexity           | McCabe 1976             | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`     |
+| Cognitive Complexity            | SonarSource 2017 (rev.) | B1 control-flow + B2 nesting penalty + B3 logical-op sequences              |
+| Number Of Parameters            | Fowler 1999             | positional only; default warning 4                                          |
+| Source Lines Of Code            | Boehm 1981              | non-blank, non-comment-only lines                                           |
+| Method Length **off**           | Beck 1996               | total source lines spanned by the body                                      |
+| Halstead Volume **off**         | Halstead 1977           | `N · log₂(η)` — token-based program "size"                                  |
 
 ### Class level
 
