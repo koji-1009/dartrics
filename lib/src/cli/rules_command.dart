@@ -4,7 +4,6 @@ import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 
 import '../metrics/metric_catalogue.dart';
-import '../models/analysis_report.dart';
 import '../reporters/rules_reporter.dart';
 import 'io_sinks.dart';
 
@@ -64,31 +63,4 @@ class RulesCommand extends Command<int> {
     }
     return ExitCode.success.code;
   }
-}
-
-/// Resolves a list of metric ids to [ExplainEntry]s for the
-/// auto-explain block. Duplicates and blanks are dropped. Unknown ids
-/// are written to stderr but otherwise silently dropped — callers stay
-/// in control of whether to fail.
-List<ExplainEntry> buildExplanations(List<String> ids) {
-  final out = <ExplainEntry>[];
-  final seen = <String>{};
-  for (final raw in ids) {
-    final id = raw.trim();
-    if (id.isEmpty || !seen.add(id)) continue;
-    final desc = findRuleDescription(id);
-    if (desc == null) {
-      DartricsIO.stderrSink.writeln('dartrics: explain: unknown metric "$id"');
-      continue;
-    }
-    out.add(
-      ExplainEntry(
-        metricId: desc.id,
-        rationale: desc.rationale,
-        refactorHints: desc.refactorHints,
-        references: desc.references,
-      ),
-    );
-  }
-  return out;
 }

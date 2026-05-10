@@ -159,7 +159,7 @@ class AnalyzeCommand extends Command<int> {
     final filteredUnused = allowed == null
         ? unused
         : unused.where((u) => allowed.contains(u.location.path)).toList();
-    final resolvedExplainIds = _autoExplainIds(filteredRecords);
+    final explanations = _firedExplanations(filteredRecords);
     final staleDismissals = _collectStaleDismissals(
       dismissals: dismissals,
       config: req.config.dismissals,
@@ -170,7 +170,7 @@ class AnalyzeCommand extends Command<int> {
       metrics: filteredRecords,
       unused: filteredUnused,
       analyzedFiles: hashes,
-      explanations: buildExplanations(resolvedExplainIds),
+      explanations: explanations,
       staleDismissals: staleDismissals,
       snapshotMode: req.snapshotConfig.mode.name,
       changedFileCount: allowed?.length,
@@ -212,15 +212,27 @@ class AnalyzeCommand extends Command<int> {
     return stale;
   }
 
-  /// Returns the metric ids that fired at least one violation in
-  /// [records], in first-seen order. Drives the auto-explain block on
-  /// the AI / md / SARIF reporters.
-  List<String> _autoExplainIds(List<MetricRecord> records) {
+  /// Returns the auto-explain payload — one [ExplainEntry] per metric
+  /// that fired at least one violation in [records], in first-seen
+  /// order. The metric id is guaranteed to resolve through
+  /// [findRuleDescription] because every violation's `metricId` comes
+  /// from the same default-metrics catalogue [findRuleDescription]
+  /// walks; the bang on the lookup encodes that invariant.
+  List<ExplainEntry> _firedExplanations(List<MetricRecord> records) {
     final seen = <String>{};
-    final out = <String>[];
+    final out = <ExplainEntry>[];
     for (final r in records) {
       for (final v in r.violations) {
-        if (seen.add(v.metricId)) out.add(v.metricId);
+        if (!seen.add(v.metricId)) continue;
+        final desc = findRuleDescription(v.metricId)!;
+        out.add(
+          ExplainEntry(
+            metricId: desc.id,
+            rationale: desc.rationale,
+            refactorHints: desc.refactorHints,
+            references: desc.references,
+          ),
+        );
       }
     }
     return out;
