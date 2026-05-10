@@ -92,41 +92,49 @@ abstract class FunctionMetric {
   num compute(FunctionMetricInput input);
 }
 
-FunctionBody _bodyOf(Declaration d) {
-  if (d is FunctionDeclaration) return d.functionExpression.body;
-  if (d is MethodDeclaration) return d.body;
-  return (d as ConstructorDeclaration).body;
+FunctionBody _bodyOf(Declaration d) => switch (d) {
+  FunctionDeclaration(:final functionExpression) => functionExpression.body,
+  MethodDeclaration(:final body) => body,
+  ConstructorDeclaration(:final body) => body,
+  _ => throw ArgumentError('Unsupported declaration kind: ${d.runtimeType}'),
+};
+
+FormalParameterList? _parametersOf(Declaration d) => switch (d) {
+  FunctionDeclaration(:final functionExpression) =>
+    functionExpression.parameters,
+  MethodDeclaration(:final parameters) => parameters,
+  ConstructorDeclaration(:final parameters) => parameters,
+  _ => throw ArgumentError('Unsupported declaration kind: ${d.runtimeType}'),
+};
+
+String _scopeNameOf(Declaration d) => switch (d) {
+  FunctionDeclaration(:final name) => name.lexeme,
+  MethodDeclaration() => _methodScopeName(d),
+  ConstructorDeclaration() => _ctorScopeName(d),
+  _ => throw ArgumentError('Unsupported declaration kind: ${d.runtimeType}'),
+};
+
+String _methodScopeName(MethodDeclaration d) {
+  final cls = _enclosingClassName(d);
+  return cls == null ? d.name.lexeme : '$cls.${d.name.lexeme}';
 }
 
-FormalParameterList? _parametersOf(Declaration d) {
-  if (d is FunctionDeclaration) return d.functionExpression.parameters;
-  if (d is MethodDeclaration) return d.parameters;
-  return (d as ConstructorDeclaration).parameters;
-}
-
-String _scopeNameOf(Declaration d) {
-  if (d is FunctionDeclaration) return d.name.lexeme;
-  if (d is MethodDeclaration) {
-    final cls = _enclosingClassName(d);
-    final method = d.name.lexeme;
-    return cls == null ? method : '$cls.$method';
-  }
-  final ctor = (d as ConstructorDeclaration);
-  final cls = _enclosingClassName(ctor) ?? '<anonymous>';
-  final name = ctor.name?.lexeme;
+String _ctorScopeName(ConstructorDeclaration d) {
+  final cls = _enclosingClassName(d) ?? '<anonymous>';
+  final name = d.name?.lexeme;
   return name == null ? cls : '$cls.$name';
 }
 
 String? _enclosingClassName(AstNode node) {
-  AstNode? parent = node.parent;
-  while (parent != null) {
-    if (parent is ClassDeclaration) return parent.namePart.typeName.lexeme;
-    if (parent is MixinDeclaration) return parent.name.lexeme;
-    if (parent is ExtensionDeclaration) {
-      return parent.name?.lexeme ?? '<extension>';
-    }
-    if (parent is EnumDeclaration) return parent.namePart.typeName.lexeme;
-    parent = parent.parent;
+  for (var parent = node.parent; parent != null; parent = parent.parent) {
+    final name = switch (parent) {
+      ClassDeclaration(:final namePart) => namePart.typeName.lexeme,
+      MixinDeclaration(:final name) => name.lexeme,
+      ExtensionDeclaration(:final name) => name?.lexeme ?? '<extension>',
+      EnumDeclaration(:final namePart) => namePart.typeName.lexeme,
+      _ => null,
+    };
+    if (name != null) return name;
   }
   return null;
 }

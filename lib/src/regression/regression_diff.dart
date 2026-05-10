@@ -201,23 +201,15 @@ class RegressionDiff {
     return a.metricId.compareTo(b.metricId);
   }
 
-  int _directionOrder(ChangeDirection d) {
-    // Regressions first (loudest), then improvements, then bookkeeping.
-    switch (d) {
-      case ChangeDirection.regressed:
-        return 0;
-      case ChangeDirection.added:
-        return 1;
-      case ChangeDirection.removed:
-        return 2;
-      case ChangeDirection.improved:
-        return 3;
-      case ChangeDirection.neutralDelta:
-        return 4;
-      case ChangeDirection.unchanged:
-        return 5;
-    }
-  }
+  // Regressions first (loudest), then improvements, then bookkeeping.
+  int _directionOrder(ChangeDirection d) => switch (d) {
+    ChangeDirection.regressed => 0,
+    ChangeDirection.added => 1,
+    ChangeDirection.removed => 2,
+    ChangeDirection.improved => 3,
+    ChangeDirection.neutralDelta => 4,
+    ChangeDirection.unchanged => 5,
+  };
 }
 
 class _ScopeKey {

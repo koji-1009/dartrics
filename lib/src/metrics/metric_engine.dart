@@ -404,38 +404,39 @@ class MetricEngine {
       );
     }
     final check = validateDismissal(hit, dismissalConfig);
-    if (check is DismissalAccepted) {
-      return MetricViolation(
-        id: id,
-        metricId: metricId,
-        severity: severity,
-        threshold: threshold,
-        scopeCoverage: lineCoverage,
-        scopeBranchCoverage: branchCoverage,
-        complexityJustified: justification.justified,
-        complexityJustifiedBy: justification.by,
-        complexityJustifiedThreshold: justification.threshold,
-        dismissed: true,
-        dismissReason: hit.reason,
-        dismissedBy: hit.by,
-        dismissedAt: hit.at,
-        dismissedFrom: hit.source,
-      );
+    switch (check) {
+      case DismissalAccepted():
+        return MetricViolation(
+          id: id,
+          metricId: metricId,
+          severity: severity,
+          threshold: threshold,
+          scopeCoverage: lineCoverage,
+          scopeBranchCoverage: branchCoverage,
+          complexityJustified: justification.justified,
+          complexityJustifiedBy: justification.by,
+          complexityJustifiedThreshold: justification.threshold,
+          dismissed: true,
+          dismissReason: hit.reason,
+          dismissedBy: hit.by,
+          dismissedAt: hit.at,
+          dismissedFrom: hit.source,
+        );
+      case DismissalRejected(:final dismissal, :final reason):
+        onDismissalRejection?.call(dismissal, reason);
+        return MetricViolation(
+          id: id,
+          metricId: metricId,
+          severity: severity,
+          threshold: threshold,
+          scopeCoverage: lineCoverage,
+          scopeBranchCoverage: branchCoverage,
+          complexityJustified: justification.justified,
+          complexityJustifiedBy: justification.by,
+          complexityJustifiedThreshold: justification.threshold,
+          dismissalRejected: reason,
+        );
     }
-    final rejected = check as DismissalRejected;
-    onDismissalRejection?.call(rejected.dismissal, rejected.reason);
-    return MetricViolation(
-      id: id,
-      metricId: metricId,
-      severity: severity,
-      threshold: threshold,
-      scopeCoverage: lineCoverage,
-      scopeBranchCoverage: branchCoverage,
-      complexityJustified: justification.justified,
-      complexityJustifiedBy: justification.by,
-      complexityJustifiedThreshold: justification.threshold,
-      dismissalRejected: rejected.reason,
-    );
   }
 
   /// Decides which (if any) coverage rule justifies the violation.
