@@ -104,9 +104,9 @@ class HalsteadVolume extends FunctionMetric {
       '(Alfadel et al. 2018, defect-density evaluation on a Java '
       'corpus) find Halstead Volume strongly correlated with '
       'cyclomatic complexity and SLOC (~0.9 mean correlation) and '
-      'roughly equivalent in predictive power, so emitting Volume '
-      'alongside CC and SLOC produces redundant rather than '
-      'orthogonal signal. Halstead Difficulty and Halstead Effort '
+      'roughly equivalent in predictive power for defect density, so '
+      'emitting Volume alongside CC and SLOC produces redundant '
+      'rather than orthogonal signal. Halstead Difficulty and Halstead Effort '
       'were dropped because both are derivations of the same '
       '`(n₁, n₂, N₁, N₂)` counts and add no orthogonal signal over '
       'Volume.';
