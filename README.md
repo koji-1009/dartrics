@@ -111,12 +111,12 @@ Each metric exposes `rationale`, `refactorHints`, `references` (the primary sour
 
 | Metric                     | Reference             | Notes                                                       |
 | -------------------------- | --------------------- | ----------------------------------------------------------- |
-| Number Of Methods          | —                     | members with non-empty bodies                               |
-| Weighted Methods Per Class | CK 1994               | sum of cyclomatic complexity across methods                 |
-| LCOM4                      | Hitz & Montazeri 1995 | connected components in the field-share + method-call graph |
-| Coupling Between Objects   | CK 1994               | distinct other types referenced anywhere in the class       |
-| Response For a Class       | CK 1994               | `\|methods ∪ method-names invoked from those methods\|`     |
-| Class Length               | —                     | total source lines spanned by the class declaration         |
+| Number Of Methods          | Lorenz & Kidd 1994; CK 1994   | members with non-empty bodies. Equivalent to WMC with uniform weight=1 |
+| Weighted Methods Per Class | CK 1994                       | sum of cyclomatic complexity across methods                            |
+| LCOM4                      | Hitz & Montazeri 1995         | connected components in the field-share + method-call graph            |
+| Coupling Between Objects   | CK 1994                       | distinct other types referenced anywhere in the class                  |
+| Response For a Class       | CK 1994                       | `\|methods ∪ method-names invoked from those methods\|`                |
+| Class Length               | Beck 1996; Fowler 1999; Lippert & Roock 2006 | total source lines spanned by the class declaration. "Large class" code smell (Beck / Fowler); threshold side via the "Rule of 30" (Lippert & Roock) |
 
 LCOM4 and RFC use **name-based AST matching** scoped to the class declaration itself. LCOM4 only puts methods declared on the class into the graph (mixin-applied / inherited / extension methods are invisible); RFC's invoked-methods set comes from `MethodInvocation` and `InstanceCreationExpression` nodes only (extension tear-offs, callable-object `obj()`, and `super.x` are not counted). Both metrics intentionally under-report rather than over-report; file an issue with the snippet if you hit a misleading number.
 
