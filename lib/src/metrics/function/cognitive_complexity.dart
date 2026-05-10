@@ -3,7 +3,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 
 import '../metric.dart';
 
-/// Cognitive Complexity (G. Ann Campbell, SonarSource 2018).
+/// Cognitive Complexity (G. Ann Campbell, SonarSource 2017, rev.).
 ///
 /// Differs from Cyclomatic Complexity by reflecting the difficulty of
 /// understanding control flow rather than the difficulty of testing it.
@@ -21,7 +21,9 @@ import '../metric.dart';
 /// independently of inner methods (each function gets its own score).
 ///
 /// Reference: G. Ann Campbell, *Cognitive Complexity — A new way of measuring
-/// understandability*, SonarSource white paper, 2018.
+/// understandability*, SonarSource white paper, first published 2017
+/// (subsequent revisions in 2018, 2021, 2023). The source is an industry
+/// white paper, not peer-reviewed; see `doc/calibration.md` for context.
 class CognitiveComplexity extends FunctionMetric {
   const CognitiveComplexity();
 
@@ -30,15 +32,18 @@ class CognitiveComplexity extends FunctionMetric {
 
   @override
   String get rationale =>
-      'Campbell (SonarSource, 2018) introduces cognitive complexity to '
-      'reflect "how hard the control flow is to understand" rather than '
-      '"how hard it is to test". Three rule families add to the score: '
-      '(B1) every break in linear flow adds 1, (B2) nesting-aware '
-      'constructs additionally add the current nesting depth, and (B3) '
-      'each chain of like logical operators adds 1. Unlike cyclomatic '
-      'complexity, deeply-nested code is penalized more than flat code '
-      'with the same number of branches, which is closer to a human '
-      'reviewer\'s experience. A common starting threshold is 15.';
+      'Campbell (SonarSource, 2017; rev.) introduces cognitive '
+      'complexity to reflect "how hard the control flow is to '
+      'understand" rather than "how hard it is to test". Three rule '
+      'families add to the score: (B1) every break in linear flow adds '
+      '1, (B2) nesting-aware constructs additionally add the current '
+      'nesting depth, and (B3) each chain of like logical operators '
+      'adds 1. Unlike cyclomatic complexity, deeply-nested code is '
+      'penalized more than flat code with the same number of branches, '
+      'which is closer to a human reviewer\'s experience. The source '
+      'is a SonarSource white paper, not peer-reviewed; predictive '
+      'value beyond McCabe\'s CC has not been independently validated. '
+      'A common starting threshold is 15 (Sonar convention).';
 
   @override
   List<String> get refactorHints => const [
@@ -50,7 +55,7 @@ class CognitiveComplexity extends FunctionMetric {
 
   @override
   List<String> get references => const [
-    'Campbell, G. A. (2018). Cognitive Complexity: A new way of measuring understandability. SonarSource technical paper.',
+    'Campbell, G. A. (2017, rev.). Cognitive Complexity: A new way of measuring understandability. SonarSource white paper.',
   ];
 
   @override

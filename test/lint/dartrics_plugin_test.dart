@@ -16,7 +16,6 @@ void main() {
       containsAll([
         'dartrics_cyclomatic_complexity',
         'dartrics_cognitive_complexity',
-        'dartrics_maximum_nesting_level',
         'dartrics_number_of_parameters',
       ]),
     );

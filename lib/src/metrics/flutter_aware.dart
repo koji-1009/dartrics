@@ -4,23 +4,18 @@ import 'package:analyzer/dart/ast/ast.dart';
 /// recognise idiomatic Flutter widgets.
 ///
 /// dartrics measures the same control-flow signals on `Widget.build()`
-/// as it does on any other method — `maximum-nesting-level` and
-/// `method-length` apply, because deeply-nested control flow inside
-/// `build()` is just as hard to read as it is anywhere else. The visual
-/// depth from chained Widget literals does **not** affect those metrics
-/// (`MaxNestingLevel` only counts `if` / `for` / `while` / `do` / `switch`
-/// / `try` / closure bodies, not `InstanceCreationExpression`s), so a
-/// healthy `Container > Padding > Row > Column > ...` tree produces a
-/// nesting score of 0.
+/// as it does on any other method — `method-length` applies, because
+/// deeply-nested control flow inside `build()` is just as hard to read
+/// as it is anywhere else.
 ///
 /// What this helper still does: skip `number-of-parameters` on widget
 /// **constructors**. `key:` plus a long list of callback / typed-init
 /// parameters is the cultural norm for `StatelessWidget` /
 /// `StatefulWidget` constructors, and it does not carry the same call-
-/// site readability penalty that arbitrary boolean / positional
-/// parameters do. Other methods on the same widget — including helper
-/// builders, lifecycle hooks, and `_buildSomething` private helpers —
-/// are measured normally.
+/// site readability penalty that arbitrary positional parameters do.
+/// Other methods on the same widget — including helper builders,
+/// lifecycle hooks, and `_buildSomething` private helpers — are measured
+/// normally.
 abstract final class FlutterAware {
   /// Superclass names that mark a class as a widget for skip purposes.
   /// Covers stock Flutter, Riverpod's `ConsumerWidget`/`ConsumerStatefulWidget`,
@@ -38,7 +33,7 @@ abstract final class FlutterAware {
   /// Metrics skipped when the declaration is a widget's constructor.
   /// `key:` plus a long list of callbacks is the idiom for stateless /
   /// stateful widget constructors and shouldn't be flagged as
-  /// boolean-trap-style call-site noise.
+  /// long-parameter-list noise.
   static const Set<String> constructorSkips = {'number-of-parameters'};
 
   /// Returns the set of metric ids that should be skipped for [decl] in

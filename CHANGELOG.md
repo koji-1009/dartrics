@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6.0
+
+A calibration release. Two metrics drop because their academic anchoring did not survive a re-audit against original sources; four citations are corrected; the Dart-specific deviations from cited definitions consolidate into a single `doc/calibration.md` audit page so the relationship between dartrics' implementation and its source papers is legible from one place.
+
+### Breaking changes
+
+- **`maximum-nesting-level` removed.** A re-audit found the cited authority — "NIST SP 500-235 §4 reports a strong correlation between deep nesting and bug density" — to be incorrect: §4 of that document is "Simplified Complexity Calculation", not nesting research. With the misciting removed, the metric had no peer-reviewed source establishing a defect-correlated threshold for raw nesting depth — only PMD / Checkstyle / SonarLint convention. Dropped rather than shipped on tooling-convention backing. The `MaxNestingLevel` calculator, the `MaximumNestingLevelRule` analyzer-plugin rule, the `dartrics_maximum_nesting_level` lint id, the `maximum-nesting-level` config key, and the `MaxNestingLevel` public-API export are all removed. CI configs that pinned a `maximum-nesting-level: { warning: <n> }` block must drop the entry — the schema's `propertyNames.enum` no longer accepts the id and `dartrics doctor` will flag it.
+- **`boolean-trap` removed.** A re-audit found the McConnell *Code Complete* and Bloch *Effective Java* item 36 attributions wrong: the term "boolean trap" was coined by Ariya Hidayat (2011) in a community blog post, and Bloch's item 36 in the 2nd edition is "Consistently use the Override annotation" — unrelated. With the academic backing reduced to a community blog post, and the `dart-lang/linter` rule `avoid_positional_boolean_parameters` already covering the same ground with a stricter binary threshold (it flags any positional bool, not just two or more), the count-based dartrics framing was both weaker than the official lint and unanchored. Recommendation: enable `avoid_positional_boolean_parameters` in `analysis_options.yaml`. The `BooleanTrap` calculator, the `BooleanTrapRule` analyzer-plugin rule, the `dartrics_boolean_trap` lint id, the `boolean-trap` config key, and the `BooleanTrap` public-API export are all removed.
+
+### Citation corrections
+
+- `cognitive-complexity` — Campbell / SonarSource white paper is **2017** (with revisions in 2018, 2021, 2023), not 2018. Title kept; year corrected. The rationale now flags the source as "industry white paper, not peer-reviewed" and notes that predictive value beyond McCabe's CC has not been independently validated.
+- `halstead-volume` — Alfadel et al. is **2017**, **9th IEEE-GCC Conference and Exhibition (GCCCE), pp. 1–9**, not 2018 / "IEEE Conference on Computer and Information Technology". The "~0.9 mean correlation" specific figure is softened to "strong positive linear correlation" because the underlying paper's text could not be confirmed for the precise numeric claim during the re-audit.
+- `lcom4` — Hitz & Montazeri (1995) introduced the connected-components cohesion variant; the "LCOM4" label is a later community convention (Henderson-Sellers' LCOM1–LCOM5 numbering). The rationale now reflects that distinction.
+- `martin 1994` — full bibliographic citation expanded in the library-coupling family's `references` from the bare "Martin, R. C. (1994)" to "Self-published essay, August 14, 1994 (rev. June 20, 1995); cross-posted to comp.object and comp.lang.c++. Content later folded into Martin (2002), *Agile Software Development: Principles, Patterns, and Practices*, Ch. 28, Prentice Hall." The C++ Report attribution that some downstream sources use is incorrect — Martin became Editor-in-Chief of C++ Report in 1996, after the essay was already in circulation.
+
+### `doc/calibration.md` — new audit trail
+
+A single page documenting the relationship between dartrics' implementation and its cited sources: selection principles, counting-rule deviations from the literal source definitions (sealed-aware CC, positional-only NOP, declared-methods-only LCOM4), off-by-default rationales, and the lenses deliberately not implemented (DIT, NOC, Halstead Difficulty/Effort, Maintainability Index, plus the two dropped above). Threshold *numbers* (CC warn 10, CBO warn 14, …) follow the cited sources unchanged; the page enumerates only the cases where dartrics deviates from those sources, and why. README's "Provided metrics" preamble and `doc/manual.md`'s "The lens battery" preamble link out to it instead of duplicating the rationale inline.
+
+### Analyzer plugin
+
+- `plugins: dartrics` now enables three function-level rules — `dartrics_cyclomatic_complexity` / `_cognitive_complexity` / `_number_of_parameters`. The previous `_maximum_nesting_level` and `_boolean_trap` rules are gone with their underlying metrics.
+
 ## 0.5.1
 
 A maintenance release. No metric, threshold, exit-code, or wire-format change — `# dartrics ai-report v1`, every JSON / SARIF schema, and the public Dart API (`FunctionMetric`, `FunctionMetricInput`, `MetricPolarity`, `dartricsVersion`) stay byte-compatible with 0.5.0. The release modernises internals against the Dart 3.10 idiom now that the SDK floor (`environment: sdk: ^3.10.0`) has settled, plus two CI / docs hygiene items.

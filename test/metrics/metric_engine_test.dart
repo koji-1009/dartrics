@@ -176,11 +176,9 @@ enum Color {
   test(
     'Flutter aware mode keeps build() measured + skips ctor `number-of-parameters`',
     () async {
-      // Contract: Widget.build() is **not** specially skipped —
-      // `maximum-nesting-level` only counts control-flow
-      // constructs (if/for/while/etc.) so a healthy Container-tree
-      // produces 0 anyway, and `method-length` is informative even on
-      // declarative Widget trees. The constructor still skips
+      // Contract: Widget.build() is **not** specially skipped — a
+      // healthy declarative Container-tree produces zero control-flow
+      // signal anyway. The constructor still skips
       // `number-of-parameters` because key + multiple callbacks is the
       // cultural norm.
       final dir = await Directory.systemTemp.createTemp('flutter_engine_');
@@ -227,7 +225,6 @@ class Hello extends StatelessWidget {
           .values
           .keys
           .toSet();
-      expect(buildKeys, contains('maximum-nesting-level'));
       expect(buildKeys, contains('source-lines-of-code'));
       expect(buildKeys, contains('cyclomatic-complexity'));
 
@@ -263,7 +260,7 @@ class Hello extends StatelessWidget {
           .values
           .keys
           .toSet();
-      expect(helperKeys, contains('maximum-nesting-level'));
+      expect(helperKeys, contains('cyclomatic-complexity'));
     },
   );
 
@@ -343,8 +340,7 @@ String describeExpr(State s) => switch (s) {
       '${dir.path}/pubspec.yaml',
     ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     // A test method that is intentionally tall: AAA blocks legitimately
-    // exceed `method-length`'s production-grade thresholds, and group/
-    // setUp scaffolding pushes `maximum-nesting-level` past 4.
+    // exceed `method-length`'s production-grade thresholds.
     await File('${dir.path}/test/sample_test.dart').writeAsString('''
 class SampleTest {
   void test_arrange_act_assert() {
@@ -371,9 +367,9 @@ class SampleTest {
     final runner = AnalyzerRunner(roots: [dir.path]);
     final units = await runner.resolveAll();
 
-    // Default mode (test:true) skips method-length / SLOC / max-nesting
-    // on the test method; class-length and number-of-methods are
-    // skipped on the whole class.
+    // Default mode (test:true) skips method-length / SLOC on the test
+    // method; class-length and number-of-methods are skipped on the
+    // whole class.
     final defaultRecords = MetricEngine().analyzeResolved(units);
     final fnKeys = defaultRecords
         .firstWhere((r) => r.scope.name == 'SampleTest.test_arrange_act_assert')
@@ -382,7 +378,6 @@ class SampleTest {
         .toSet();
     expect(fnKeys, isNot(contains('method-length')));
     expect(fnKeys, isNot(contains('source-lines-of-code')));
-    expect(fnKeys, isNot(contains('maximum-nesting-level')));
     // Branchy tests are still hard to read, so CC stays measured.
     expect(fnKeys, contains('cyclomatic-complexity'));
     final clsKeys = defaultRecords
@@ -409,7 +404,6 @@ class SampleTest {
         .toSet();
     expect(fnStrict, contains('method-length'));
     expect(fnStrict, contains('source-lines-of-code'));
-    expect(fnStrict, contains('maximum-nesting-level'));
     final clsStrict = strictRecords
         .firstWhere(
           (r) => r.scope.name == 'SampleTest' && r.values.containsKey('lcom4'),

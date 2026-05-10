@@ -15,13 +15,11 @@
 /// before reaching into `package:dartrics/src/`.
 library;
 
-export 'src/metrics/function/boolean_trap.dart' show BooleanTrap;
 export 'src/metrics/function/cognitive_complexity.dart'
     show CognitiveComplexity;
 export 'src/metrics/function/cyclomatic_complexity.dart'
     show CyclomaticComplexity;
 export 'src/metrics/function/halstead.dart' show HalsteadCounts, HalsteadVolume;
-export 'src/metrics/function/max_nesting_level.dart' show MaxNestingLevel;
 export 'src/metrics/function/method_length.dart' show MethodLength;
 export 'src/metrics/function/number_of_parameters.dart' show NumberOfParameters;
 export 'src/metrics/function/source_lines_of_code.dart' show SourceLinesOfCode;

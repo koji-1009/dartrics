@@ -2,11 +2,10 @@
 /// metrics on test files. Symmetric to [FlutterAware] but file-scoped:
 /// the trigger is "this file lives under `test/` or `integration_test/`",
 /// not "this declaration is a particular AST shape." Test files use
-/// arrange/act/assert blocks that are legitimately long, deeply-nested
-/// `group`/`setUp`/`test` scaffolding, and N-test-method classes — so
-/// the size-and-shape lenses fire by default and AI loops churn on
-/// them. Cyclomatic / cognitive / boolean-trap stay engaged because a
-/// branchy test is still hard to read.
+/// arrange/act/assert blocks that are legitimately long and N-test-method
+/// classes — so the size-and-shape lenses fire by default and AI loops
+/// churn on them. Cyclomatic / cognitive complexity stay engaged because
+/// a branchy test is still hard to read.
 abstract final class TestAware {
   /// Path segments that mark the enclosing tree as test code. Directly
   /// matches the standard `dart test` conventions: `test/...` and
@@ -17,16 +16,12 @@ abstract final class TestAware {
 
   /// Function- and method-level metrics skipped on test files.
   ///
-  /// - `method-length` / `source-lines-of-code`: AAA blocks legitimately
-  ///   exceed the function-body length thresholds calibrated for
-  ///   production code.
-  /// - `maximum-nesting-level`: nested `group(...)` / `setUp(...)` /
-  ///   `test(...)` scaffolding routinely reaches depth 4–5 before any
-  ///   user logic begins.
+  /// `method-length` / `source-lines-of-code`: AAA blocks legitimately
+  /// exceed the function-body length thresholds calibrated for
+  /// production code.
   static const Set<String> functionSkips = {
     'method-length',
     'source-lines-of-code',
-    'maximum-nesting-level',
   };
 
   /// Class-level metrics skipped on test files. Test classes legitimately

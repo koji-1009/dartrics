@@ -9,7 +9,7 @@ void main() {
   test('counts positional params, ignores named', () {
     // `a` and `b` are positional; `c` (optional named) and `d`
     // (required named) carry their names at the call site, so they
-    // contribute zero to the lens — same rule as `boolean-trap`.
+    // contribute zero to the lens.
     final input = inputFor('''
 int f(int a, int b, {int? c, required int d}) => a;
 ''', name: 'f');

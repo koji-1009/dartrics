@@ -57,15 +57,7 @@ Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, LCOM4 1995, Cogn
 
 ## The lens battery
 
-These lenses ship default-off (everything else in the catalogue below is on by default):
-
-- **Halstead Volume** — strongly correlated with both cyclomatic complexity and SLOC (~0.9 in Alfadel et al. 2018), so emitting it alongside both is redundant signal; opt in if you want a token-weighted "size" reading
-- **Method Length** — by definition = SLOC + blank lines + comment-only lines, so SLOC alone carries the same signal plus a known offset; opt in when you specifically want screen-real-estate instead of pure code volume
-- **Abstractness** / **Distance from Main Sequence** — Martin's framing assumes "package = release unit"; Dart's 1-file-1-library granularity makes the per-file values brittle until aggregation lands
-- **Widget Tree Depth** — Flutter-specific; opt in for projects that want the deep-`Container(child: ...)` reading
-- **Null-Aware Chain Depth** / **Async Chain Depth** — Dart-3-idiom signals; opt in when project conventions on "too deep" `?.` chains or nested `await` calls are settled enough to threshold
-
-Halstead Difficulty / Effort and the Maintainability Index are not provided: both are pure derivations of the underlying token counts and `CC + V + LOC` respectively — they add no orthogonal signal beyond what the underlying lenses already provide.
+For the full audit trail — selection principles, deviations from the cited definitions, off-by-default rationale, and the lenses deliberately not implemented — see [`doc/calibration.md`](calibration.md).
 
 Each entry below names: **the felt reaction** it captures, **what the lens computes**, the **default warning threshold**, and **when to refactor vs. dismiss**.
 
@@ -73,11 +65,9 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 
 | Lens | "Hard to read" feeling | What it measures | Default warning |
 | --- | --- | --- | --- |
-| `cyclomatic-complexity` | "I'd have to trace too many paths to know this is correct." | `1 + d` decision points: `if`, `for`, `while`, `do`, `switch case`, `&&`, `\|\|`, `?:`, `catch`. (McCabe 1976) **Sealed-aware**: case arms of a switch whose subject is a sealed class don't count — exhaustiveness is compiler-enforced so the reader carries no "did I forget a case" cognitive load. | 10 |
-| `cognitive-complexity` | "It's not just branchy, it's *tangled*." | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (Sonar 2018) | 15 |
-| `maximum-nesting-level` | "I can't tell which scope I'm in." | Max depth of `if`, `for`, `while`, `do`, `switch`, `try`, closure blocks. | 4 |
-| `number-of-parameters` | "Too many knobs at the call site to remember by position." | Number of *positional* parameters (required + optional positional). Named parameters are weight-zero — they carry their name at the call site, which dissolves the position-counting load Fowler (1999) flagged. Same rule as `boolean-trap`. | 4 |
-| `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of *positional* `bool`-typed parameters. Named bool parameters are intentionally not counted because Dart's named call-site `foo(animated: true)` carries the intent on the spot. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
+| `cyclomatic-complexity` | "I'd have to trace too many paths to know this is correct." | `1 + d` decision points: `if`, `for`, `while`, `do`, `switch case`, `&&`, `\|\|`, `?:`, `catch`. (McCabe 1976) | 10 |
+| `cognitive-complexity` | "It's not just branchy, it's *tangled*." | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (SonarSource 2017, rev.) | 15 |
+| `number-of-parameters` | "Too many knobs at the call site to remember by position." | Number of *positional* parameters (required + optional positional). (Fowler 1999) | 4 |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
 | `method-length` (off) | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | opt-in |
 | `halstead-volume` (off) | — | `N · log₂(η)`. Token-based program "size". (Halstead 1977) | opt-in |
@@ -126,9 +116,7 @@ The metric points at a real readability problem and the structure is **decomposa
 | --- | --- |
 | `cyclomatic-complexity` | Extract Method · Replace Conditional with Polymorphism · Guard Clauses · Replace nested ternary with named branches |
 | `cognitive-complexity` | Extract the deepest branch · Replace `if/else if` chain with typed dispatch · Collapse boolean spaghetti via early returns |
-| `maximum-nesting-level` | Early return / continue · Extract inner block · Invert the condition to flatten the happy path |
 | `number-of-parameters` | Promote positional parameters to named (`foo({required T a, …})`) — the call site reads as `foo(a: …)` and the metric drops to zero · Group related positional parameters into a record · Move method onto the type that owns most of the inputs |
-| `boolean-trap` | Split into intent-named methods (`show()` / `hide()`) · Replace bool flags with a typed enum · Promote an "options" record so the call site reads as named fields |
 | `method-length` | Extract Method along the comment seams · Move bookkeeping to a helper |
 | `lcom4` | Split the class along the connected components. The components are usually two responsibilities pretending to be one. |
 | `coupling-between-objects` | Hide concrete types behind an interface · Move the orchestration to a coordinator class |
@@ -188,8 +176,8 @@ The lens reads it but you genuinely don't know whether the structure is load-bea
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:
 
-- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`), the **constructor** skips `number-of-parameters` because `key:` plus a long callback list is the cultural norm. `Widget.build()` is **measured normally** — `maximum-nesting-level` only counts control-flow constructs (`if`/`for`/`while`/`switch`/`try`/closure), so a healthy declarative tree gives 0 without special-casing. Non-Flutter packages are unaffected because no class matches.
-- **`test: true`** (default). On files under `test/` or `integration_test/` whose basename ends in `_test.dart`: function-level `method-length` / `source-lines-of-code` / `maximum-nesting-level` step aside (AAA blocks and nested `group`/`setUp`/`test` scaffolding are normal); class-level `class-length` / `number-of-methods` step aside (test classes legitimately hold many `@Test` methods). Helpers like `test/helpers.dart` stay under strict thresholds because they're imported by tests rather than being tests.
+- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`), the **constructor** skips `number-of-parameters` because `key:` plus a long callback list is the cultural norm. `Widget.build()` is **measured normally**. Non-Flutter packages are unaffected because no class matches.
+- **`test: true`** (default). On files under `test/` or `integration_test/` whose basename ends in `_test.dart`: function-level `method-length` / `source-lines-of-code` step aside (AAA blocks are normal); class-level `class-length` / `number-of-methods` step aside (test classes legitimately hold many `@Test` methods). Helpers like `test/helpers.dart` stay under strict thresholds because they're imported by tests rather than being tests.
 
 Both default to on because the failure mode of "the lens fires on a healthy Flutter widget / test method" is far more common than the failure mode of "the lens didn't fire when it should have." Flip either to `false` in `analysis_options.yaml` if you want the strict thresholds applied uniformly.
 
@@ -238,7 +226,6 @@ dartrics:
     cyclomatic-complexity: { warning: 10, error: 20 }
     cognitive-complexity:  { warning: 15, error: 25 }
     method-length:         { warning: 30, error: 60 }
-    maximum-nesting-level: { warning: 4 }
     number-of-parameters:  { warning: 4, error: 8 }
   dismissals: {}                 # opt into the dismiss channel
   snapshot:

@@ -3,16 +3,19 @@ import 'package:analyzer/dart/ast/visitor.dart';
 
 import 'class_metric.dart';
 
-/// LCOM4 (Hitz & Montazeri 1995) — *Lack of Cohesion of Methods*, version 4.
+/// LCOM4 — *Lack of Cohesion of Methods*. Connected-components variant
+/// introduced by Hitz & Montazeri (1995); the "LCOM4" label is a later
+/// community convention (Henderson-Sellers' LCOM1–LCOM5 numbering),
+/// not the authors' own naming.
 ///
 /// Treats the class as an undirected graph where each method/constructor is
 /// a vertex and an edge exists between two methods when:
 ///   1. they access at least one field in common, or
 ///   2. one of them invokes the other.
 ///
-/// `LCOM4` = the number of connected components in that graph. A perfectly
-/// cohesive class returns 1; a class that mixes unrelated responsibilities
-/// returns higher values, and is a candidate for splitting.
+/// The metric is the number of connected components in that graph. A
+/// perfectly cohesive class returns 1; a class that mixes unrelated
+/// responsibilities returns higher values, and is a candidate for splitting.
 ///
 /// Field/method matching is name-based on the AST. This trades a small risk
 /// of cross-shadow false-positives for not requiring full element resolution
@@ -25,24 +28,23 @@ class Lcom4 extends ClassMetric {
 
   @override
   String get rationale =>
-      'LCOM4 (Hitz & Montazeri, *Measuring Coupling and Cohesion in '
-      'Object-Oriented Systems*, 1995) builds an undirected graph '
-      'where each method is a vertex and an edge exists when two '
-      'methods share a field or one calls the other. The metric is '
-      'the number of connected components: 1 means a perfectly '
-      'cohesive class, anything higher hints that unrelated '
+      'Connected-components cohesion (Hitz & Montazeri, *Measuring '
+      'Coupling and Cohesion in Object-Oriented Systems*, 1995; '
+      'widely labeled "LCOM4" in the secondary literature) builds an '
+      'undirected graph where each method is a vertex and an edge '
+      'exists when two methods share a field or one calls the other. '
+      'The metric is the number of connected components: 1 means a '
+      'perfectly cohesive class, anything higher hints that unrelated '
       'responsibilities are coexisting in one type. Hitz and Montazeri '
-      'argue this connected-components reading is closer to a '
-      'designer\'s intuition than the original LCOM1 score.\n\n'
-      'Dart caveat: only methods declared on the class itself are '
+      'argue this reading is closer to a designer\'s intuition than '
+      'the original LCOM1 score.\n\n'
+      'Dart deviation: only methods declared on the class itself are '
       'vertices in the graph — mixin-applied methods and inherited '
       'methods are invisible. The trade-off avoids the false '
       'positives a "include everything that resolves on this type" '
       'reading would create, but it does mean methods that cohere '
-      'only via a mixin (e.g. all call `log()` from a Logger mixin '
-      'and don\'t share fields directly) appear as isolated '
-      'components and get reported. Move the cohesion to a shared '
-      'field, or accept the dismiss with a load-bearing reason.';
+      'only via a mixin appear as isolated components. See '
+      '`doc/calibration.md` for the full deviation rationale.';
 
   @override
   List<String> get refactorHints => const [

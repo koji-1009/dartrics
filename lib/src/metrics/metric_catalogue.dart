@@ -11,9 +11,7 @@ import 'library/default_library_metrics.dart';
 const Map<String, num> defaultMetricThresholds = {
   'cyclomatic-complexity': 10,
   'cognitive-complexity': 15,
-  'maximum-nesting-level': 4,
   'number-of-parameters': 4,
-  'boolean-trap': 2,
 };
 
 /// Aggregates every default metric calculator into a list of

@@ -30,11 +30,9 @@ void main() {
     });
 
     test('build method on a widget is measured normally', () {
-      // Contract: build() is measured for every default metric.
-      // `maximum-nesting-level` already counts only control flow
-      // (if/for/while/switch/try/closure), so a healthy declarative
-      // Widget tree produces a depth of 0 — the metric doesn't need
-      // to be skipped to avoid noise.
+      // Contract: build() is measured for every default metric. Healthy
+      // declarative Widget trees produce zero control-flow signal, so
+      // no special-casing is needed.
       final cls = _firstClass('''
 class W extends StatelessWidget {
   Widget build(BuildContext context) => Container();

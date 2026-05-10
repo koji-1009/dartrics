@@ -90,7 +90,7 @@ Metrics-reading overlays (analyze only):
 
 ## Provided metrics
 
-dartrics ships a curated set. Metrics that don't fit Dart's idioms (DIT, NOC; Dart's mixin + composition culture keeps inheritance chains shallow) are omitted; metrics that overlap with simpler signals already provided — Halstead Volume (strongly correlated with both cyclomatic complexity and SLOC: ~0.9 mean correlation in Alfadel et al. 2018) and Method Length (= SLOC + blank lines + comment-only lines by definition, so SLOC alone carries the same signal plus a known offset) — ship **off by default** and must be opted in via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal.
+dartrics ships a curated set anchored to published sources. For the full audit trail — selection principles, deviations from the cited definitions, off-by-default rationale, and the lenses deliberately not implemented — see [`doc/calibration.md`](doc/calibration.md).
 
 Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules` and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
 
@@ -98,14 +98,12 @@ Each metric exposes `rationale`, `refactorHints`, `references` (the primary sour
 
 | Metric                                | Default | Reference        | Notes                                                                       |
 | ------------------------------------- | ------- | ---------------- | --------------------------------------------------------------------------- |
-| Cyclomatic Complexity                 | on      | McCabe 1976      | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`. **Sealed-aware**: a `switch` whose subject is a sealed class doesn't count its case arms — the compiler enforces exhaustiveness. |
-| Cognitive Complexity                  | on      | SonarSource 2018 | B1 control-flow + B2 nesting penalty + B3 logical-op sequences              |
-| Maximum Nesting Level                 | on      | NIST SP 500-235  | depth of `if/for/while/do/switch/try/closure` blocks                        |
-| Number Of Parameters                  | on      | Fowler 1999      | positional only — named parameters carry their name at the call site, dissolving the position-counting load Fowler's lens targets. Default warning 4 |
-| Boolean Trap                          | on      | McConnell 2004; Bloch 2008 | count of *positional* `bool`-typed parameters; default warning 2  |
+| Cyclomatic Complexity                 | on      | McCabe 1976      | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`     |
+| Cognitive Complexity                  | on      | SonarSource 2017 (rev.) | B1 control-flow + B2 nesting penalty + B3 logical-op sequences       |
+| Number Of Parameters                  | on      | Fowler 1999      | positional only; default warning 4                                          |
 | Source Lines Of Code                  | on      | Boehm 1981       | non-blank, non-comment-only lines                                           |
-| Method Length                         | **off** | Beck 1996        | total source lines spanned by the body. Off by default — high correlation with SLOC in production code |
-| Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size" |
+| Method Length                         | **off** | Beck 1996        | total source lines spanned by the body                                      |
+| Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size"                                  |
 
 ### Class level
 
@@ -127,8 +125,8 @@ LCOM4 and RFC use **name-based AST matching** scoped to the class declaration it
 | Efferent Coupling (Ce)                  | distinct project-internal + `package:` dependencies (excludes `dart:*`) |
 | Afferent Coupling (Ca)                  | incoming internal-import edges                                          |
 | Instability (I)                         | `Ce / (Ca + Ce)`                                                        |
-| Abstractness (A) **off**                | abstract-class + mixin / total class-like declarations. Off by default — Martin's framing assumes "package = release unit", and Dart's 1-file-1-library granularity makes the per-file value brittle |
-| Distance from Main Sequence (D) **off** | `\|A + I − 1\|`. Off by default for the same reason as `abstractness` |
+| Abstractness (A) **off**                | abstract-class + mixin / total class-like declarations                  |
+| Distance from Main Sequence (D) **off** | `\|A + I − 1\|`                                                         |
 
 ## AI integration
 
@@ -231,8 +229,6 @@ dartrics:
       warning: 15
     lcom4:
       warning: 2
-    maximum-nesting-level:
-      warning: 4
     number-of-parameters:
       warning: 4
       error: 8
@@ -280,7 +276,7 @@ Private (underscore-prefixed) names are intentionally skipped — `dart analyze`
 
 ## Analyzer plugin
 
-`dartrics` ships its own analyzer plugin so the five lightweight function-level rules surface inline in `dart analyze` and the IDE.
+`dartrics` ships its own analyzer plugin so the three lightweight function-level rules surface inline in `dart analyze` and the IDE.
 
 ```yaml
 # analysis_options.yaml in your project
@@ -288,15 +284,13 @@ plugins:
   dartrics:
 ```
 
-After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin enables five rules by default:
+After saving, restart the analysis server (in VS Code: "Dart: Restart Analysis Server"). The plugin enables three rules by default:
 
 | Rule                             | Default threshold |
 | -------------------------------- | ----------------- |
 | `dartrics_cyclomatic_complexity` | 10                |
 | `dartrics_cognitive_complexity`  | 15                |
-| `dartrics_maximum_nesting_level` | 4                 |
 | `dartrics_number_of_parameters`  | 4                 |
-| `dartrics_boolean_trap`          | 2                 |
 
 Rule thresholds are read from the same `dartrics: { metrics: ... }` section the CLI uses; restart the analysis server after changes. Diagnostics surface at `info` severity — the current analyzer pipeline (`analysis_server_plugin 0.3.x` + `analyzer 13`) crashes the plugin isolate when a `LintCode` is constructed with anything other than `DiagnosticSeverity.INFO`, so the rules are pinned to INFO until that upstream constraint relaxes.
 
@@ -316,14 +310,14 @@ Detection is AST-only — a class counts as a widget when it directly extends `S
 
 ## Test-aware mode
 
-`dartrics: { test: true }` is also the default. When the file under analysis sits under `test/` or `integration_test/` and its basename ends in `_test.dart`, the size-and-shape lenses step aside — arrange / act / assert blocks legitimately exceed `method-length` thresholds calibrated for production code, and nested `group(...)` / `setUp(...)` / `test(...)` scaffolding pushes `maximum-nesting-level` past 4 before any user logic begins.
+`dartrics: { test: true }` is also the default. When the file under analysis sits under `test/` or `integration_test/` and its basename ends in `_test.dart`, the size-and-shape lenses step aside — arrange / act / assert blocks legitimately exceed `method-length` thresholds calibrated for production code.
 
 | Scope             | Skipped on test files                                                |
 | ----------------- | -------------------------------------------------------------------- |
-| Function / method | `method-length`, `source-lines-of-code`, `maximum-nesting-level`     |
+| Function / method | `method-length`, `source-lines-of-code`                              |
 | Class             | `class-length`, `number-of-methods`                                  |
 
-Cyclomatic complexity, cognitive complexity, number-of-parameters, boolean-trap, LCOM4 / CBO / RFC, and the library-level lenses still apply. Helpers in `test/` that don't end in `_test.dart` (e.g. `test/helpers.dart`) stay under the strict thresholds.
+Cyclomatic complexity, cognitive complexity, number-of-parameters, LCOM4 / CBO / RFC, and the library-level lenses still apply. Helpers in `test/` that don't end in `_test.dart` (e.g. `test/helpers.dart`) stay under the strict thresholds.
 
 ## AI report schema (v1)
 
@@ -403,7 +397,7 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 
 | What you get | Names |
 | --- | --- |
-| Function-level metric calculators | `CyclomaticComplexity`, `CognitiveComplexity`, `MaxNestingLevel`, `NumberOfParameters`, `BooleanTrap`, `MethodLength`, `SourceLinesOfCode`, `HalsteadCounts` / `HalsteadVolume` |
+| Function-level metric calculators | `CyclomaticComplexity`, `CognitiveComplexity`, `NumberOfParameters`, `MethodLength`, `SourceLinesOfCode`, `HalsteadCounts` / `HalsteadVolume` |
 | Calculator interface | `FunctionMetric`, `FunctionMetricInput`, `MetricPolarity` |
 | Version string | `dartricsVersion` |
 
@@ -411,8 +405,8 @@ Anything not in this table is CLI-only and unsupported as a Dart import; reach f
 
 ## Limitations
 
-- **The analyzer plugin covers only the five function-level rules** (CC, Cognitive, Max nesting, Number of parameters, Boolean-trap). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
-- **Built-in metric set is not exhaustive.** DIT / NOC / Halstead Difficulty / Halstead Effort / Maintainability Index are intentionally absent. Halstead Volume ships off-by-default. Bring your own opt-in for niche signals.
+- **The analyzer plugin covers only the three function-level rules** (CC, Cognitive, Number of parameters). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
+- **Built-in metric set is not exhaustive.** DIT / NOC / Halstead Difficulty / Halstead Effort / Maintainability Index / Maximum Nesting Level / Boolean Trap are intentionally absent — see [`doc/calibration.md`](doc/calibration.md) for the rationale on each. Halstead Volume ships off-by-default. Bring your own opt-in for niche signals.
 - **Not a fit if** you need per-line metric thresholds in the IDE for the full metric suite, you don't engage with the dismiss channel at all (a pure-fail-fast linter is a better fit), or you're on Dart < 3.10 / analyzer < 13.
 
 ## Development

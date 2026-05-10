@@ -17,9 +17,7 @@ void main() {
     final metrics = <FunctionMetric>[
       const CyclomaticComplexity(),
       const CognitiveComplexity(),
-      const MaxNestingLevel(),
       const NumberOfParameters(),
-      const BooleanTrap(),
       const MethodLength(),
       const SourceLinesOfCode(),
       const HalsteadVolume(),
@@ -27,9 +25,9 @@ void main() {
     final ids = metrics.map((m) => m.id).toSet();
     // Each calculator declares a unique id.
     expect(ids, hasLength(metrics.length));
-    // Pin BooleanTrap explicitly so a future export-drop is caught
-    // even if the list shape changes.
-    expect(ids, contains('boolean-trap'));
+    // Pin CyclomaticComplexity explicitly so a future export-drop is
+    // caught even if the list shape changes.
+    expect(ids, contains('cyclomatic-complexity'));
   });
 
   test('FunctionMetric polarity enum values are reachable', () {

@@ -5,7 +5,7 @@ analyzer:
     - tmp/**
 
 # Dogfood: dartrics on dartrics. Defaults match the rules surface
-# (CC 10, Cognitive 15, Max nesting 4, NOP 4, Boolean-trap 2).
+# (CC 10, Cognitive 15, NOP 4).
 # Dismissals via either `// dartrics:dismiss` comments or the
 # `dartrics-dismissals.yaml` sidecar are honoured.
 dartrics:

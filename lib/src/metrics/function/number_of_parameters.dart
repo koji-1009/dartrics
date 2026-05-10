@@ -10,8 +10,8 @@ import '../metric.dart';
 /// so the reader's working memory cost is constant in the number of
 /// names. The metric therefore counts only positional parameters
 /// (required + optional positional); named parameters — required or
-/// optional — are intentionally weight-zero, mirroring how
-/// [`boolean-trap`](boolean_trap.dart) treats the same axis.
+/// optional — are intentionally weight-zero. See `doc/calibration.md`
+/// for the deviation from Fowler's literal definition and why.
 ///
 /// This also pushes back on a real failure mode of AI-authored Dart:
 /// agents trained on Java / TypeScript / Python tend to default to
@@ -36,10 +36,9 @@ class NumberOfParameters extends FunctionMetric {
       'positions. Dart\'s named-parameter call site `foo(a: …, b: …)` '
       'dissolves that load: every argument carries its name on the '
       'spot, so a function with many named parameters reads cleanly '
-      'regardless of count. Named parameters are therefore weight-zero, '
-      'matching how `boolean-trap` treats the same axis. Default '
-      'warning threshold is 4 — the smallest positional count where the '
-      'call site loses self-documentation.';
+      'regardless of count. Named parameters are therefore weight-zero. '
+      'Default warning threshold is 4 — the smallest positional count '
+      'where the call site loses self-documentation.';
 
   @override
   List<String> get refactorHints => const [
@@ -63,7 +62,7 @@ class NumberOfParameters extends FunctionMetric {
       // Named parameters carry their name at the call site, which
       // dissolves the position-counting load Fowler's lens targets.
       // Only positional parameters (required + optional positional)
-      // contribute to the count — same rule as `boolean-trap`.
+      // contribute to the count.
       if (p.isNamed) continue;
       count++;
     }
