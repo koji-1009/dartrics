@@ -227,12 +227,20 @@ dartrics:
     mode: cache                  # `.dart_tool/dartrics/snapshot.json`
 ```
 
-Generate coverage so `complexityJustified` works:
+Generate coverage so `complexityJustified` works. Pure Dart:
 
 ```bash
 dart pub global activate coverage
 dart pub run coverage:test_with_coverage
 ```
+
+Flutter:
+
+```bash
+flutter test --coverage
+```
+
+Either flow writes `coverage/lcov.info` at the project root, which `dartrics analyze` auto-loads on its next invocation.
 
 ### 2. Read through the lenses
 

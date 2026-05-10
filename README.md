@@ -143,6 +143,15 @@ LCOM4 and RFC use **name-based AST matching** scoped to the class declaration it
 - **`--since <git-ref>`** filters output to declarations whose owning `.dart` file changed between `<ref>` and `HEAD`. Renames surface as the new path; untracked files are ignored. When `--since` and snapshot are both active, the git ref wins for filtering. Cross-file analysis stays accurate — only the *emitted* records are filtered.
 - **`--strict-dismiss`** ignores every dismissal (comment + YAML) — useful in CI / final review when the operator wants the raw triage list. Combine with `--fatal-warnings` for a clean CI gate.
 
+### Generating the coverage data
+
+dartrics does not run your test suite — `--coverage` and `complexityJustified` consume `coverage/lcov.info` produced by a separate test-with-coverage run. Run one of the two canonical generators *before* `dartrics analyze`:
+
+- **Flutter packages**: `flutter test --coverage`
+- **Pure Dart packages**: `dart pub global activate coverage` (one-time), then `dart pub run coverage:test_with_coverage`
+
+Both write `coverage/lcov.info` at the project root, which dartrics auto-loads on the subsequent run. Pass `--coverage <path>` if your tooling writes elsewhere, or `--coverage none` to disable auto-detection explicitly. Without an lcov file the AI / md / SARIF reporters simply omit `coverage`, `branchCoverage`, `complexityJustified`, and the related sibling fields — every other field is unchanged, so coverage is strictly additive.
+
 ### Deliberate dismissal
 
 Suppress a specific violation when a refactor would actually hide intent. Dismissals are a triaged-but-still-visible bucket: violations stay in the report, but `dismissed: true` (with the carried `reason`) tells AI loops to leave them alone. Two channels, both opt-in via `analysis_options.yaml`:
