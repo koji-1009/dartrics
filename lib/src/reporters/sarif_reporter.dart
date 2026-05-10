@@ -131,15 +131,18 @@ class SarifReporter implements Reporter {
 
   /// SARIF rule object for a built-in metric. The `name` is a
   /// PascalCased form of the kebab-case id (GitHub Code Scanning's
-  /// preference). `helpUri` points at the README anchor — every metric
-  /// section in README has a stable lower-cased anchor matching its id.
+  /// preference). `helpUri` points at the package's `Provided metrics`
+  /// section on pub.dev — that anchor exists and lists every shipped
+  /// metric with its citation. (Per-metric anchors aren't generated
+  /// because metrics live in tables rather than under their own
+  /// headings; the section anchor is the closest stable target.)
   Map<String, Object?> _metricRule(RuleDescription desc) {
     return {
       'id': desc.id,
       'name': _toPascalCase(desc.id),
       'shortDescription': {'text': _firstSentence(desc.rationale)},
       'fullDescription': {'text': desc.rationale},
-      'helpUri': 'https://pub.dev/packages/dartrics#${desc.id}',
+      'helpUri': 'https://pub.dev/packages/dartrics#provided-metrics',
       'help': {'text': _helpText(desc), 'markdown': _helpMarkdown(desc)},
       'properties': {
         'tags': ['dartrics', desc.scope],

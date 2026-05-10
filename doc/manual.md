@@ -41,8 +41,8 @@ Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, LCOM4 1995, Cogn
 
 These lenses ship default-off (everything else in the catalogue below is on by default):
 
-- **Halstead Volume** — predictive value over cyclomatic complexity hasn't held up empirically; opt in if you want a token-weighted "size" reading
-- **Method Length** — high correlation with SLOC in production code, so emitting both is redundant noise. Opt in when you specifically want screen-real-estate (counts blanks + comments) instead of pure code volume
+- **Halstead Volume** — strongly correlated with both cyclomatic complexity and SLOC (~0.9 in Alfadel et al. 2018), so emitting it alongside both is redundant signal; opt in if you want a token-weighted "size" reading
+- **Method Length** — by definition = SLOC + blank lines + comment-only lines, so SLOC alone carries the same signal plus a known offset; opt in when you specifically want screen-real-estate instead of pure code volume
 - **Abstractness** / **Distance from Main Sequence** — Martin's framing assumes "package = release unit"; Dart's 1-file-1-library granularity makes the per-file values brittle until aggregation lands
 - **Widget Tree Depth** — Flutter-specific; opt in for projects that want the deep-`Container(child: ...)` reading
 - **Null-Aware Chain Depth** / **Async Chain Depth** — Dart-3-idiom signals; opt in when project conventions on "too deep" `?.` chains or nested `await` calls are settled enough to threshold
@@ -60,9 +60,6 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 | `maximum-nesting-level` | "I can't tell which scope I'm in." | Max depth of `if`, `for`, `while`, `do`, `switch`, `try`, closure blocks. | 4 |
 | `number-of-parameters` | "Too many knobs at the call site to remember by position." | Number of *positional* parameters (required + optional positional). Named parameters are weight-zero — they carry their name at the call site, which dissolves the position-counting load Fowler (1999) flagged. Same rule as `boolean-trap`. | 4 |
 | `boolean-trap` | "What does `foo(true, false, true)` even mean at the call site?" | Number of *positional* `bool`-typed parameters. Named bool parameters are intentionally not counted because Dart's named call-site `foo(animated: true)` carries the intent on the spot. (McConnell *Code Complete* 2004; Bloch *Effective Java* item 36) | 2 |
-| `widget-tree-depth` (off) | "This Flutter `build()` is six `Container(child: ...)` chains deep." | Deepest chain of nested constructor calls in the body. Complement to `maximum-nesting-level`, which only counts control-flow constructs and gives 0 on a healthy declarative tree. | opt-in (7) |
-| `null-aware-chain-depth` (off) | "I can't track `a?.b?.c?.d?.e` in my head." | Longest chain of `?.` operators in any expression. Each `?.` is an implicit non-null guard the reader holds in working memory; deep chains read as conditional dataflow. | opt-in (4) |
-| `async-chain-depth` (off) | "What's resolving when in `await foo(await bar(await baz()))`?" | Deepest *nesting* of `await` expressions on any path. Sequential awaits don't count — only nested ones, where each inner await suspends on the result of an outer await. | opt-in (3) |
 | `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
 | `method-length` (off) | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | opt-in |
 | `halstead-volume` (off) | — | `N · log₂(η)`. Token-based program "size". (Halstead 1977) | opt-in |
@@ -71,12 +68,12 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 
 | Lens | "Hard to read" feeling | What it measures | Reference |
 | --- | --- | --- | --- |
-| `number-of-methods` | "Too many entry points to keep in my head." | Members with non-empty bodies. | — |
+| `number-of-methods` | "Too many entry points to keep in my head." | Members with non-empty bodies. Equivalent to WMC with uniform weight=1. | Lorenz & Kidd 1994; CK 1994 |
 | `weighted-methods-per-class` | "The whole class is heavy, not just one method." | Sum of cyclomatic complexity across methods. | CK 1994 |
 | `lcom4` | "This class is doing more than one thing." | Connected components in the field-share + method-call graph. Only declared methods are in the graph — mixin-applied methods don't count, so a class whose methods cohere via a mixin can show LCOM4 ≥ 2. (Hitz & Montazeri 1995) | Hitz & Montazeri 1995 |
 | `coupling-between-objects` | "This class needs to know about the world to do its job." | Distinct other types referenced anywhere in the class. | CK 1994 |
 | `response-for-class` | "Touching one method drags too many friends along." | `\|methods ∪ method-names invoked from those methods\|`. Invoked-method set is name-matched on `MethodInvocation` + constructor calls; extension tear-offs, callable-object `()` invocations, and `super.x` are intentionally not counted (the metric under-reports rather than over-reports). | CK 1994 |
-| `class-length` | "I can't see the class on one screen." | Total source lines spanned by the class. | — |
+| `class-length` | "I can't see the class on one screen." | Total source lines spanned by the class. "Large class" code smell (Beck / Fowler); threshold side via the "Rule of 30" (Lippert & Roock). | Beck 1996; Fowler 1999; Lippert & Roock 2006 |
 
 DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intentionally **not** provided. Dart's mixin + composition-over-inheritance culture keeps single-inheritance chains shallow, so they rarely produce signal.
 
@@ -173,7 +170,7 @@ The lens reads it but you genuinely don't know whether the structure is load-bea
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:
 
-- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`), the **constructor** skips `number-of-parameters` because `key:` plus a long callback list is the cultural norm. `Widget.build()` is **measured normally** — `maximum-nesting-level` only counts control-flow constructs (`if`/`for`/`while`/`switch`/`try`/closure), so a healthy declarative tree gives 0 without special-casing. Visual depth from chained Widget literals belongs to the opt-in `widget-tree-depth` lens. Non-Flutter packages are unaffected because no class matches.
+- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`), the **constructor** skips `number-of-parameters` because `key:` plus a long callback list is the cultural norm. `Widget.build()` is **measured normally** — `maximum-nesting-level` only counts control-flow constructs (`if`/`for`/`while`/`switch`/`try`/closure), so a healthy declarative tree gives 0 without special-casing. Non-Flutter packages are unaffected because no class matches.
 - **`test: true`** (default). On files under `test/` or `integration_test/` whose basename ends in `_test.dart`: function-level `method-length` / `source-lines-of-code` / `maximum-nesting-level` step aside (AAA blocks and nested `group`/`setUp`/`test` scaffolding are normal); class-level `class-length` / `number-of-methods` step aside (test classes legitimately hold many `@Test` methods). Helpers like `test/helpers.dart` stay under strict thresholds because they're imported by tests rather than being tests.
 
 Both default to on because the failure mode of "the lens fires on a healthy Flutter widget / test method" is far more common than the failure mode of "the lens didn't fire when it should have." Flip either to `false` in `analysis_options.yaml` if you want the strict thresholds applied uniformly.

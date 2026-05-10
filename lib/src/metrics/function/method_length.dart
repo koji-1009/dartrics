@@ -3,12 +3,12 @@ import '../metric.dart';
 /// Method Length (LOC) — total number of source lines spanned by the
 /// function body, *including* blank lines and comments.
 ///
-/// Off by default: in production code its correlation with
-/// `source-lines-of-code` is high enough (often > 0.95) that emitting
-/// both lenses produces redundant violations on the same scope. Opt in
-/// when you specifically want the "how big is this thing on screen"
-/// reading (which counts blanks + comment lines) on top of SLOC's
-/// "actual code volume" reading.
+/// Off by default: method length = SLOC + blank lines + comment-only
+/// lines by definition, so SLOC alone carries the same signal plus a
+/// known offset; emitting both lenses on the same scope produces
+/// redundant violations. Opt in when you specifically want the "how
+/// big is this thing on screen" reading (which counts blanks + comment
+/// lines) on top of SLOC's "actual code volume" reading.
 class MethodLength extends FunctionMetric {
   const MethodLength();
 
@@ -26,10 +26,12 @@ class MethodLength extends FunctionMetric {
       'screen" — a coarse readability signal that pairs with SLOC. '
       'Beck (*Smalltalk Best Practice Patterns*, 1996) advocates for '
       'methods short enough to fit on a screen, often interpreted as '
-      '50–80 lines. Off by default because the correlation with SLOC '
-      'in production code is high enough that emitting both lenses on '
-      'the same scope is redundant noise for AI loops; opt in when you '
-      'specifically want the screen-real-estate reading.';
+      '50–80 lines. Off by default because method length = SLOC + '
+      'blank lines + comment-only lines by definition, so SLOC alone '
+      'carries the same signal plus a known offset; emitting both '
+      'lenses produces redundant violations. Opt in when you '
+      'specifically want the screen-real-estate reading on top of '
+      'SLOC\'s code-only count.';
 
   @override
   List<String> get refactorHints => const [

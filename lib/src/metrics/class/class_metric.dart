@@ -26,7 +26,7 @@ abstract class ClassMetric {
   List<String> get refactorHints;
 
   /// Original sources for the metric. See [FunctionMetric.references].
-  List<String> get references => const [];
+  List<String> get references;
 
   /// Direction in which the value moves when the code gets healthier.
   /// See `FunctionMetric.polarity`.

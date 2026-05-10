@@ -100,9 +100,12 @@ class HalsteadVolume extends FunctionMetric {
       'Software Science*, 1977) describes the "amount of mental work" '
       'needed to read a function: it grows with both program length '
       '`N` (total operators + operands) and vocabulary `η` (distinct '
-      'operators + operands). Off by default — a half century of '
-      'empirical follow-up has not shown a predictive advantage over '
-      'cyclomatic complexity. Halstead Difficulty and Halstead Effort '
+      'operators + operands). Off by default — empirical studies '
+      '(Alfadel et al. 2018, defect-density evaluation on a Java '
+      'corpus) find Halstead Volume strongly correlated with '
+      'cyclomatic complexity and SLOC (~0.9 mean correlation), so '
+      'emitting Volume alongside CC and SLOC produces redundant '
+      'rather than orthogonal signal. Halstead Difficulty and Halstead Effort '
       'were dropped because both are derivations of the same '
       '`(n₁, n₂, N₁, N₂)` counts and add no orthogonal signal over '
       'Volume.';
@@ -117,6 +120,7 @@ class HalsteadVolume extends FunctionMetric {
   @override
   List<String> get references => const [
     'Halstead, M. H. (1977). Elements of Software Science. Elsevier.',
+    'Alfadel, M., Kobilica, A., & Hassine, J. (2018). Evaluation of Halstead and Cyclomatic Complexity Metrics in Measuring Defect Density. IEEE Conference on Computer and Information Technology.',
   ];
 
   @override

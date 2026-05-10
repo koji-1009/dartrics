@@ -19,7 +19,11 @@ class NumberOfMethods extends ClassMetric {
       'constructors with non-empty bodies. Abstract members and field '
       'declarations are excluded. NOM is one of the simplest size '
       'metrics for a class; large values often correlate with classes '
-      'that violate the single-responsibility principle. A typical '
+      'that violate the single-responsibility principle. Lorenz & Kidd '
+      '(1994) include the per-class method count in their OO-size suite '
+      '(catalogued as "Average number of methods per class"); '
+      'Chidamber & Kemerer (1994) note that Weighted Methods per Class '
+      'reduces to NOM when each method is weighted at 1. A typical '
       'warning threshold is 20.';
 
   @override
@@ -27,6 +31,12 @@ class NumberOfMethods extends ClassMetric {
     'Extract a coherent subset of methods into a collaborator class ("Extract Class", Fowler 1999).',
     'Move feature-specific methods onto the type that actually owns the data they touch.',
     'Replace many small accessors with a single immutable record or data class.',
+  ];
+
+  @override
+  List<String> get references => const [
+    'Lorenz, M. & Kidd, J. (1994). Object-Oriented Software Metrics: A Practical Guide. Prentice Hall. ISBN 0-13-179292-X.',
+    'Chidamber, S. R. & Kemerer, C. F. (1994). A Metrics Suite for Object-Oriented Design. IEEE Transactions on Software Engineering, 20(6), 476-493.',
   ];
 
   @override

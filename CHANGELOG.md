@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0
+
+### Breaking changes
+
+- **Three Dart-shape metrics removed: `widget-tree-depth`, `null-aware-chain-depth`, `async-chain-depth`.** All three were tool-originated lenses with no academic anchor and no Effective Dart consensus to point to — out of step with the catalogue's "every metric is anchored to its primary source" rule. `widget-tree-depth` was lint-shaped (deepest `InstanceCreationExpression` chain) and is better expressed as a `custom_lint` rule than as a metric. `null-aware-chain-depth` and `async-chain-depth` measure call-shape patterns the language already gives clean rewrites for (`?.` short-circuit + early-return for the former; `Future.wait` / hoisting for the latter), so the metric was re-deriving guidance the language semantics already imply. All three were off-by-default, so the impact is limited to projects that opted into them — drop the entries from `dartrics: { metrics: { ... } }`. The schema's `propertyNames.enum` no longer accepts the three ids.
+- **`FunctionMetric.references` and `ClassMetric.references` are now abstract.** With the three function-level lenses removed and citations added for `number-of-methods` and `class-length`, every remaining built-in metric overrides `references` in both abstract classes, so the empty-default getters became dead code. Embedders implementing custom `FunctionMetric`s or `ClassMetric`s now need to declare `List<String> get references => const [];` explicitly when there is no primary citation — same shape `LibraryMetric` has always required. The three abstract bases are now consistent.
+
+### Class-metric citations
+
+- `number-of-methods` now cites **Lorenz & Kidd (1994)** and **Chidamber & Kemerer (1994)**. Lorenz & Kidd's *Object-Oriented Software Metrics: A Practical Guide* (Prentice Hall, ISBN 0-13-179292-X) includes the per-class method count in their 11-metric OO-size suite, catalogued as "Average number of methods per class"; CK's WMC reduces to NOM when each method is weighted at 1.
+- `class-length` now cites **Beck (1996)**, **Fowler (1999)**, and **Lippert & Roock (2006)**. Beck's *Smalltalk Best Practice Patterns* and Fowler's *Refactoring* frame the underlying "large class" code smell; Lippert & Roock's *Refactoring in Large Software Projects* (Wiley, ISBN 0-470-85892-3) adds the threshold side via the "Rule of 30" — a class averaging more than 30 methods (~900 LOC) is highly likely to need decomposition.
+- README's class-level table and the manual's class-lens section (mirrored in `doc/manual.md` + `lib/src/cli/manual_text.dart`) replace the placeholder `—` with the new citations.
+
+### README "Designed for the AI loop"
+
+- The differentiation pitch is promoted to a dedicated `### Designed for the AI loop` subsection inside "What it does", expanded into a 5-item feature list (auto-explain by default, stable IDs with reverse lookup, coverage-aware reading, output stability, docs in the binary). The previous "Who it's for" bullet is dropped — every other paragraph already pitches AI agents and the humans driving them as the audience. The "signals, not gates" framing remains in the lead paragraph where it belongs as operating philosophy rather than as a feature.
+
+### "Provided metrics" preamble
+
+- The off-by-default justification now names both **Halstead Volume** (strongly correlated with both cyclomatic complexity and SLOC: ~0.9 mean correlation per Alfadel et al. 2018; redundant rather than orthogonal signal) and **Method Length** (= SLOC + blank lines + comment-only lines by definition, so SLOC alone carries the same signal plus a known offset) with their distinct rationales. Pre-0.4.0 the preamble named only Halstead Volume; the three Dart-shape lenses being off too made the parenthetical read as a partial example, but with those gone the off-by-default group is just the two metrics, both nameable. The earlier wording asserted Halstead's "predictive value over cyclomatic complexity has not held up empirically" and Method Length is "highly correlated with SLOC in production code"; the first claim was wrong-direction (Alfadel et al. find correlation, not inferiority), the second was an uncited observational estimate. Both are reframed as overlap with simpler signals: Halstead via correlation evidence, Method Length via the definitional identity.
+
 ## 0.3.0
 
 ### Breaking changes

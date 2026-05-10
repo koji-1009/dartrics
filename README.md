@@ -15,10 +15,13 @@ The wager: the academic catalogue is reusable now in a way it wasn't before — 
 
 Each metric is treated as a **lens**: one specific dimension of "hard to read", anchored to its original paper. Lenses are independent — a function can be clean by cyclomatic complexity and tangled by cognitive complexity. dartrics does not gate; it surfaces what each lens reads, and leaves the accept / refactor / dismiss decision in the loop.
 
-- **Who it's for.** AI agents and the humans driving them.
-- **What's different.** Metrics are signals, not gates: violations carry coverage data, a `complexityJustified` flag for well-tested complex code, and stable 16-hex-char ids you can dismiss with reasons.
-- **Output stability.** Every output format carries a contractual header (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header so consumers can match on it before parsing.
-- **Docs in the binary.** `dartrics manual` prints the operator's manual ([`doc/manual.md`](doc/manual.md)); `dartrics ai-loop` prints the four-station walkthrough ([`doc/ai-loop.md`](doc/ai-loop.md)). Both ship with the executable, so `dart pub global activate dartrics` is enough — no separate doc download needed.
+### Designed for the AI loop
+
+- **Auto-explain by default** — rationale, refactor hints, and the primary-source citation ride alongside every fired metric, so an agent reads the *why* without a second tool call.
+- **Coverage-aware reading** — `complexityJustified` exempts well-tested complex code (branch ≥ 0.8 / line ≥ 0.95) from the threshold list; violations sort by coverage so low-tested entries land first.
+- **Stable IDs with reverse lookup** — every violation carries a 16-hex-char id; `dartrics explain <id> --input report.json` reverse-looks up the full context for a saved report. The same id reappears across runs so AI loops can detect "my fix didn't take".
+- **Output stability** — every emission starts with a contractual header (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header so consumers can pin to it before parsing.
+- **Docs in the binary** — `dartrics manual` and `dartrics ai-loop` print the operator's manual ([`doc/manual.md`](doc/manual.md)) / four-station walkthrough ([`doc/ai-loop.md`](doc/ai-loop.md)); `dart pub global activate dartrics` is enough, no separate doc download.
 
 ## Install
 
@@ -87,7 +90,7 @@ Common options:
 
 ## Provided metrics
 
-dartrics ships a curated set. Metrics that don't fit Dart's idioms (DIT, NOC; Dart's mixin + composition culture keeps inheritance chains shallow) are omitted; metrics whose predictive value over cyclomatic complexity has not held up empirically (Halstead Volume) ship **off by default** and must be opted in via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal.
+dartrics ships a curated set. Metrics that don't fit Dart's idioms (DIT, NOC; Dart's mixin + composition culture keeps inheritance chains shallow) are omitted; metrics that overlap with simpler signals already provided — Halstead Volume (strongly correlated with both cyclomatic complexity and SLOC: ~0.9 mean correlation in Alfadel et al. 2018) and Method Length (= SLOC + blank lines + comment-only lines by definition, so SLOC alone carries the same signal plus a known offset) — ship **off by default** and must be opted in via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal.
 
 Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules`, `dartrics explain <id>`, and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
 
@@ -100,9 +103,6 @@ Each metric exposes `rationale`, `refactorHints`, `references` (the primary sour
 | Maximum Nesting Level                 | on      | NIST SP 500-235  | depth of `if/for/while/do/switch/try/closure` blocks                        |
 | Number Of Parameters                  | on      | Fowler 1999      | positional only — named parameters carry their name at the call site, dissolving the position-counting load Fowler's lens targets. Default warning 4 |
 | Boolean Trap                          | on      | McConnell 2004; Bloch 2008 | count of *positional* `bool`-typed parameters; default warning 2  |
-| Widget Tree Depth                     | **off** | —                | deepest chain of nested `InstanceCreationExpression`s in the body; default warning 7. Opt-in for Flutter projects |
-| Null-Aware Chain Depth                | **off** | —                | longest chain of `?.` operators; default warning 4 |
-| Async Chain Depth                     | **off** | —                | deepest *nesting* of `await` expressions; default warning 3. Sequential awaits don't count |
 | Source Lines Of Code                  | on      | Boehm 1981       | non-blank, non-comment-only lines                                           |
 | Method Length                         | **off** | Beck 1996        | total source lines spanned by the body. Off by default — high correlation with SLOC in production code |
 | Halstead Volume                       | **off** | Halstead 1977    | `N · log₂(η)` — token-based program "size" |
@@ -111,12 +111,12 @@ Each metric exposes `rationale`, `refactorHints`, `references` (the primary sour
 
 | Metric                     | Reference             | Notes                                                       |
 | -------------------------- | --------------------- | ----------------------------------------------------------- |
-| Number Of Methods          | —                     | members with non-empty bodies                               |
-| Weighted Methods Per Class | CK 1994               | sum of cyclomatic complexity across methods                 |
-| LCOM4                      | Hitz & Montazeri 1995 | connected components in the field-share + method-call graph |
-| Coupling Between Objects   | CK 1994               | distinct other types referenced anywhere in the class       |
-| Response For a Class       | CK 1994               | `\|methods ∪ method-names invoked from those methods\|`     |
-| Class Length               | —                     | total source lines spanned by the class declaration         |
+| Number Of Methods          | Lorenz & Kidd 1994; CK 1994   | members with non-empty bodies. Equivalent to WMC with uniform weight=1 |
+| Weighted Methods Per Class | CK 1994                       | sum of cyclomatic complexity across methods                            |
+| LCOM4                      | Hitz & Montazeri 1995         | connected components in the field-share + method-call graph            |
+| Coupling Between Objects   | CK 1994                       | distinct other types referenced anywhere in the class                  |
+| Response For a Class       | CK 1994                       | `\|methods ∪ method-names invoked from those methods\|`                |
+| Class Length               | Beck 1996; Fowler 1999; Lippert & Roock 2006 | total source lines spanned by the class declaration. "Large class" code smell (Beck / Fowler); threshold side via the "Rule of 30" (Lippert & Roock) |
 
 LCOM4 and RFC use **name-based AST matching** scoped to the class declaration itself. LCOM4 only puts methods declared on the class into the graph (mixin-applied / inherited / extension methods are invisible); RFC's invoked-methods set comes from `MethodInvocation` and `InstanceCreationExpression` nodes only (extension tear-offs, callable-object `obj()`, and `super.x` are not counted). Both metrics intentionally under-report rather than over-report; file an issue with the snippet if you hit a misleading number.
 
@@ -305,8 +305,6 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 
 Detection is AST-only — a class counts as a widget when it directly extends `StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, or `HookConsumerWidget`. Non-Flutter packages are unaffected. Set `flutter: false` to force `number-of-parameters` on widget constructors too.
 
-Visual depth from chained Widget literals (`Container(child: Container(...))`) is the responsibility of the separate `widget-tree-depth` lens, which is **off by default**. Opt in via `dartrics: { metrics: { widget-tree-depth: { enabled: true, warning: 7 } } }`.
-
 ## Test-aware mode
 
 `dartrics: { test: true }` is also the default. When the file under analysis sits under `test/` or `integration_test/` and its basename ends in `_test.dart`, the size-and-shape lenses step aside — arrange / act / assert blocks legitimately exceed `method-length` thresholds calibrated for production code, and nested `group(...)` / `setUp(...)` / `test(...)` scaffolding pushes `maximum-nesting-level` past 4 before any user logic begins.
@@ -377,7 +375,7 @@ All three schemas are draft-2020-12. Field additions are non-breaking; renames t
 - **json** — stable schema for `jq` pipelines and SARIF transformation.
 - **md** — Markdown for PR comments and issue bodies, finalised through `package:dapper`'s `formatMarkdown`.
 - **ai** — token-efficient YAML-ish report (see schema above).
-- **sarif** — SARIF 2.1.0 envelope ingestible by GitHub Code Scanning / GitLab. `tool.driver.rules` is populated for every metric that fired — `fullDescription` carries the rationale, `help.markdown` carries the refactor hints + references, `helpUri` deep-links back to the README anchor.
+- **sarif** — SARIF 2.1.0 envelope ingestible by GitHub Code Scanning / GitLab. `tool.driver.rules` is populated for every metric that fired — `fullDescription` carries the rationale, `help.markdown` repeats the rationale alongside the refactor hints + references, `helpUri` points at the package's `Provided metrics` section on pub.dev.
 
 ## Exit codes (sysexits)
 

@@ -7,7 +7,8 @@ import '../models/unused_declaration.dart';
 import 'reporter.dart';
 
 /// LLM-optimized reporter — emits only the violations and unused
-/// declarations along with a 3-line code snippet around each location.
+/// declarations along with a 7-line code snippet around each location
+/// (`line ± 3`).
 /// Output is YAML-ish (more token-efficient than JSON) and is finally
 /// pretty-printed through `dapper`'s YAML formatter so column alignment
 /// stays predictable for downstream agents.
