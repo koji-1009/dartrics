@@ -19,7 +19,7 @@ Each metric is treated as a **lens**: one specific dimension of "hard to read", 
 
 - **Auto-explain by default** — rationale, refactor hints, and the primary-source citation ride alongside every fired metric, so an agent reads the *why* without a second tool call.
 - **Coverage-aware reading** — `complexityJustified` exempts well-tested complex code (branch ≥ 0.8 / line ≥ 0.95) from the threshold list; violations sort by coverage so low-tested entries land first.
-- **Stable IDs with reverse lookup** — every violation carries a 16-hex-char id; `dartrics explain <id> --input report.json` reverse-looks up the full context for a saved report. The same id reappears across runs so AI loops can detect "my fix didn't take".
+- **Stable IDs across runs** — every violation carries a 16-hex-char id (`sha256("<file>|<scope>|<metric>")`). The same id reappears across runs so AI loops can detect "my fix didn't take", and SARIF emits it as `partialFingerprints.dartrics/v1` for cross-run matching in code-scanning tools.
 - **Output stability** — every emission starts with a contractual header (`# dartrics ai-report v1`, `version: "1.0"`); field renames or removals bump the header so consumers can pin to it before parsing.
 - **Docs in the binary** — `dartrics manual` and `dartrics ai-loop` print the operator's manual ([`doc/manual.md`](doc/manual.md)) / four-station walkthrough ([`doc/ai-loop.md`](doc/ai-loop.md)); `dart pub global activate dartrics` is enough, no separate doc download.
 
@@ -37,9 +37,6 @@ dartrics analyze lib/ --reporter ai | claude -p "Refactor the threshold violatio
 
 # Catalogue every metric (rationale + refactor hints + references).
 dartrics rules --reporter ai
-
-# Reverse-lookup a violation by its 16-hex stable id.
-dartrics explain a3f1c4e9b2d70218 --input report.json
 
 # After the agent applies a fix: confirm metrics actually improved.
 dartrics regression --before HEAD~1 --after HEAD --reporter ai
@@ -64,7 +61,6 @@ dartrics ai-loop         # the setup → propose → apply → verify walkthroug
 | `manual` | Print the AI-facing operator's manual (mirror of [`doc/manual.md`](doc/manual.md)). |
 | `ai-loop` | Print the AI-loop walkthrough (mirror of [`doc/ai-loop.md`](doc/ai-loop.md)). |
 | `doctor` | Validate the `dartrics:` block in `analysis_options.yaml` — flags unknown metric ids and threshold orderings inconsistent with the metric's polarity. |
-| `explain <id>` | Reverse-lookup a violation by its stable 16-hex-char id and print its rationale + refactor hints + references. Reads JSON from stdin or `--input <path>`. |
 
 ```
 Common options:
@@ -92,7 +88,7 @@ Common options:
 
 dartrics ships a curated set. Metrics that don't fit Dart's idioms (DIT, NOC; Dart's mixin + composition culture keeps inheritance chains shallow) are omitted; metrics that overlap with simpler signals already provided — Halstead Volume (strongly correlated with both cyclomatic complexity and SLOC: ~0.9 mean correlation in Alfadel et al. 2018) and Method Length (= SLOC + blank lines + comment-only lines by definition, so SLOC alone carries the same signal plus a known offset) — ship **off by default** and must be opted in via `dartrics: { metrics: { <id>: { enabled: true } } }`. Halstead Difficulty / Effort and the Maintainability Index are intentionally absent — both are pure derivations of `(n₁, n₂, N₁, N₂)` and `CC + V + LOC` respectively, so they add no orthogonal signal.
 
-Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules`, `dartrics explain <id>`, and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
+Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules` and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
 
 ### Function / method level
 
@@ -135,7 +131,7 @@ LCOM4 and RFC use **name-based AST matching** scoped to the class declaration it
 `--reporter ai` is the primary integration point. Output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. The reporter knobs compose into a tight refactor loop:
 
 - **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints + references for every metric that produced at least one violation. To pre-load the full catalogue (e.g. when an agent needs every metric's intent up front), pipe `dartrics rules --reporter ai` separately.
-- **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF. `dartrics explain <id>` reverse-looks up the full context from a saved JSON report.
+- **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF; `dartrics regression` carries the same id in its `MetricChange` payload so a regressed entry is one lookup away from the matching violation.
 - **`--limit <n>`** caps violations + unused entries shown by the AI / md reporters after the priority sort. Token-budget control for context-bounded agents; truncated entries are summarised in a `truncated:` block (AI) or `_+ N more_` line (md).
 - **`--coverage <path>`** (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key — low-coverage / high-severity entries land first, `complexityJustified` ones at the bottom.
 - **`complexityJustified: true`** flags CC / Cognitive violations whose scope has branch coverage `≥ 0.8` (or line `≥ 0.95` when `BRDA:` records are absent). Two sibling fields surface the engine's decision: `complexityJustifiedBy` (`branch` or `line`) and `complexityJustifiedThreshold` (the literal cutoff). Intent: *earned complexity* — exhaustively-tested complex code is probably complex on purpose.

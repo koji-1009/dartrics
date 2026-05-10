@@ -81,11 +81,6 @@ void addCommonOptions(ArgParser parser) {
       negatable: false,
     )
     ..addFlag(
-      'fatal-style',
-      help: 'Exit non-zero if any style violation is reported.',
-      negatable: false,
-    )
-    ..addFlag(
       'verbose',
       abbr: 'v',
       help: 'Enable verbose (FINE level) logging.',
@@ -108,7 +103,6 @@ class CommonOptions {
     required this.autoExplain,
     required this.limit,
     required this.fatalWarnings,
-    required this.fatalStyle,
     required this.rest,
   });
 
@@ -156,7 +150,6 @@ class CommonOptions {
       autoExplain: results['auto-explain'] as bool,
       limit: limit,
       fatalWarnings: results['fatal-warnings'] as bool,
-      fatalStyle: results['fatal-style'] as bool,
       rest: results.rest,
     );
   }
@@ -183,7 +176,6 @@ class CommonOptions {
   /// ai and md reporters.
   final int? limit;
   final bool fatalWarnings;
-  final bool fatalStyle;
   final List<String> rest;
 }
 

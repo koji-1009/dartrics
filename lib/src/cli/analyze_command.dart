@@ -247,9 +247,6 @@ class AnalyzeCommand extends Command<int> {
     if (options.fatalWarnings && report.hasSeverityAtLeast(Severity.warning)) {
       return 1;
     }
-    if (options.fatalStyle && report.hasSeverityAtLeast(Severity.info)) {
-      return 1;
-    }
     return ExitCode.success.code;
   }
 

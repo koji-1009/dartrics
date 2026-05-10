@@ -197,7 +197,7 @@ Both default to on because the failure mode of "the lens fires on a healthy Flut
 
 If `--coverage <path>` is engaged (auto-detected from `coverage/lcov.info`) the report annotates each violation with `coverage` (line) and `branchCoverage` when the lcov has `BRDA:` records. CC and Cognitive violations whose scope is well-tested (branch ≥ 0.8, or line ≥ 0.95 when no branch data) get `complexityJustified: true`.
 
-When the flag fires, two sibling fields surface the engine's decision so you don't have to re-derive it: `complexityJustifiedBy` is `branch` or `line` (whichever rule won), and `complexityJustifiedThreshold` is the literal cutoff that rule used (`0.8` or `0.95`). Both fields are absent when `complexityJustified` is false. Reporters pass the trio through verbatim — JSON, AI / YAML, MD, SARIF, `dartrics explain`.
+When the flag fires, two sibling fields surface the engine's decision so you don't have to re-derive it: `complexityJustifiedBy` is `branch` or `line` (whichever rule won), and `complexityJustifiedThreshold` is the literal cutoff that rule used (`0.8` or `0.95`). Both fields are absent when `complexityJustified` is false. Reporters pass the trio through verbatim — JSON, AI / YAML, MD, SARIF.
 
 **Read this as: "the human has already paid the price of branching with tests; refactor at your own risk."** AI loops should generally leave `complexityJustified` violations alone unless the metric is *catastrophically* over threshold (e.g. CC > 2× warning).
 
@@ -321,14 +321,12 @@ There is no third option of "ignore it again."
 | Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
 | Cap output for token budget | `--limit <n>` | Applied after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
-| Recover rationale post hoc | `dartrics explain <id> --input report.json` | Looks up a single violation from a saved JSON report |
 | Drop auto-explain | `--no-auto-explain` | Lean reports without rationale + refactor hints attached |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
 | Inject metric catalogue once | `dartrics rules --reporter ai` | Feed once into a system prompt |
 | Verify a refactor | `dartrics regression` | Runs `git worktree` for the historical side |
 | Audit your config | `dartrics doctor` | Flags unknown metric ids, unknown presets, threshold mis-ordering. Read-only |
-| Reverse-lookup a violation | `dartrics explain <id>` | Pipe a JSON report in or use `--input <path>`. Returns rationale + refactor hints for one violation |
 | Delete unused public-API declarations | `dartrics unused --apply` | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
 
 ## Exit codes

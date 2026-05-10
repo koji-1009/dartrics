@@ -60,9 +60,8 @@ List<RuleDescription> collectRuleDescriptions() {
 }
 
 /// Returns the [RuleDescription] for [metricId], or `null` if it is not
-/// among the built-in metrics. Used by the auto-explain flow,
-/// `dartrics explain`, and the SARIF reporter when populating
-/// `tool.driver.rules`.
+/// among the built-in metrics. Used by the auto-explain flow and the
+/// SARIF reporter when populating `tool.driver.rules`.
 RuleDescription? findRuleDescription(String metricId) {
   for (final r in collectRuleDescriptions()) {
     if (r.id == metricId) return r;

@@ -3,7 +3,6 @@ import 'package:args/command_runner.dart';
 import 'ai_loop_command.dart';
 import 'analyze_command.dart';
 import 'doctor_command.dart';
-import 'explain_command.dart';
 import 'manual_command.dart';
 import 'regression_command.dart';
 import 'report_command.dart';
@@ -28,7 +27,6 @@ CommandRunner<int> buildCommandRunner() {
         ..addCommand(RegressionCommand())
         ..addCommand(ManualCommand())
         ..addCommand(AiLoopCommand())
-        ..addCommand(DoctorCommand())
-        ..addCommand(ExplainCommand());
+        ..addCommand(DoctorCommand());
   return runner;
 }
