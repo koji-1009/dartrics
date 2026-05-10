@@ -31,12 +31,13 @@ class FunctionMetricInput {
   String get source => context.source;
   LineInfo get lineInfo => context.lineInfo;
 
-  late final FunctionBody body = _bodyOf(declaration);
-  late final FormalParameterList? parameters = _parametersOf(declaration);
+  late final CallableDecl _callable = CallableDecl.from(declaration);
+  late final FunctionBody body = _callable.body;
+  late final FormalParameterList? parameters = _callable.parameters;
 
   /// Human-readable scope name. For top-level functions, the function name.
   /// For methods/constructors, `Class.name` (named-constructor name preserved).
-  late final String scopeName = _scopeNameOf(declaration);
+  late final String scopeName = _callable.scopeName;
 }
 
 /// Direction in which a metric value moves when the underlying code
@@ -92,37 +93,67 @@ abstract class FunctionMetric {
   num compute(FunctionMetricInput input);
 }
 
-FunctionBody _bodyOf(Declaration d) => switch (d) {
-  FunctionDeclaration(:final functionExpression) => functionExpression.body,
-  MethodDeclaration(:final body) => body,
-  ConstructorDeclaration(:final body) => body,
-  _ => throw ArgumentError('Unsupported declaration kind: ${d.runtimeType}'),
-};
+/// Sealed wrapper over the three [Declaration] subtypes that the
+/// function-level metric layer cares about. The factory in [from] is
+/// the single place that talks to analyzer's open `Declaration`
+/// hierarchy, so per-kind dispatch elsewhere reduces to virtual
+/// method calls and the surrounding code stays exhaustiveness-checked
+/// without a wildcard arm.
+sealed class CallableDecl {
+  const CallableDecl();
 
-FormalParameterList? _parametersOf(Declaration d) => switch (d) {
-  FunctionDeclaration(:final functionExpression) =>
-    functionExpression.parameters,
-  MethodDeclaration(:final parameters) => parameters,
-  ConstructorDeclaration(:final parameters) => parameters,
-  _ => throw ArgumentError('Unsupported declaration kind: ${d.runtimeType}'),
-};
+  /// Wraps [d]. Engines that build [FunctionMetricInput] filter
+  /// declaration kinds at collection time, so the trailing cast is a
+  /// type assertion, not a dispatch fallback.
+  factory CallableDecl.from(Declaration d) {
+    if (d is FunctionDeclaration) return _FunctionCallable(d);
+    if (d is MethodDeclaration) return _MethodCallable(d);
+    return _CtorCallable(d as ConstructorDeclaration);
+  }
 
-String _scopeNameOf(Declaration d) => switch (d) {
-  FunctionDeclaration(:final name) => name.lexeme,
-  MethodDeclaration() => _methodScopeName(d),
-  ConstructorDeclaration() => _ctorScopeName(d),
-  _ => throw ArgumentError('Unsupported declaration kind: ${d.runtimeType}'),
-};
-
-String _methodScopeName(MethodDeclaration d) {
-  final cls = _enclosingClassName(d);
-  return cls == null ? d.name.lexeme : '$cls.${d.name.lexeme}';
+  FunctionBody get body;
+  FormalParameterList? get parameters;
+  String get scopeName;
 }
 
-String _ctorScopeName(ConstructorDeclaration d) {
-  final cls = _enclosingClassName(d) ?? '<anonymous>';
-  final name = d.name?.lexeme;
-  return name == null ? cls : '$cls.$name';
+class _FunctionCallable extends CallableDecl {
+  const _FunctionCallable(this.node);
+  final FunctionDeclaration node;
+  @override
+  FunctionBody get body => node.functionExpression.body;
+  @override
+  FormalParameterList? get parameters => node.functionExpression.parameters;
+  @override
+  String get scopeName => node.name.lexeme;
+}
+
+class _MethodCallable extends CallableDecl {
+  const _MethodCallable(this.node);
+  final MethodDeclaration node;
+  @override
+  FunctionBody get body => node.body;
+  @override
+  FormalParameterList? get parameters => node.parameters;
+  @override
+  String get scopeName {
+    final cls = _enclosingClassName(node);
+    return cls == null ? node.name.lexeme : '$cls.${node.name.lexeme}';
+  }
+}
+
+class _CtorCallable extends CallableDecl {
+  const _CtorCallable(this.node);
+  final ConstructorDeclaration node;
+  @override
+  FunctionBody get body => node.body;
+  @override
+  FormalParameterList? get parameters => node.parameters;
+  @override
+  String get scopeName {
+    final cls = _enclosingClassName(node) ?? '<anonymous>';
+    final name = node.name?.lexeme;
+    return name == null ? cls : '$cls.$name';
+  }
 }
 
 String? _enclosingClassName(AstNode node) {
