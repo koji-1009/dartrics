@@ -23,7 +23,7 @@ class EfferentCoupling extends LibraryMetric {
 
   @override
   List<String> get references => const [
-    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies. Self-published essay, August 14, 1994 (rev. June 20, 1995); cross-posted to comp.object and comp.lang.c++. Content later folded into Martin (2002), Agile Software Development: Principles, Patterns, and Practices, Ch. 28, Prentice Hall.',
   ];
 
   @override
@@ -51,7 +51,7 @@ class AfferentCoupling extends LibraryMetric {
 
   @override
   List<String> get references => const [
-    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies. Self-published essay, August 14, 1994 (rev. June 20, 1995); cross-posted to comp.object and comp.lang.c++. Content later folded into Martin (2002), Agile Software Development: Principles, Patterns, and Practices, Ch. 28, Prentice Hall.',
   ];
 
   @override
@@ -84,7 +84,7 @@ class Instability extends LibraryMetric {
 
   @override
   List<String> get references => const [
-    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies. Self-published essay, August 14, 1994 (rev. June 20, 1995); cross-posted to comp.object and comp.lang.c++. Content later folded into Martin (2002), Agile Software Development: Principles, Patterns, and Practices, Ch. 28, Prentice Hall.',
   ];
 
   @override
@@ -135,7 +135,7 @@ class Abstractness extends LibraryMetric {
 
   @override
   List<String> get references => const [
-    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies. Self-published essay, August 14, 1994 (rev. June 20, 1995); cross-posted to comp.object and comp.lang.c++. Content later folded into Martin (2002), Agile Software Development: Principles, Patterns, and Practices, Ch. 28, Prentice Hall.',
   ];
 
   @override
@@ -177,7 +177,7 @@ class DistanceFromMainSequence extends LibraryMetric {
 
   @override
   List<String> get references => const [
-    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies.',
+    'Martin, R. C. (1994). OO Design Quality Metrics: An Analysis of Dependencies. Self-published essay, August 14, 1994 (rev. June 20, 1995); cross-posted to comp.object and comp.lang.c++. Content later folded into Martin (2002), Agile Software Development: Principles, Patterns, and Practices, Ch. 28, Prentice Hall.',
   ];
 
   @override
