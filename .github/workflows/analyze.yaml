@@ -33,3 +33,15 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
+
+  self-application:
+    name: dartrics analyze --fatal-warnings (self-application gate)
+    runs-on: ubuntu-slim
+    needs: [analyze]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: dart-lang/setup-dart@65eb853c7ba17dde3be364c3d2858773e7144260 # v1.7.2
+      - run: dart pub get
+      # `--snapshot none` because CI runners are fresh checkouts —
+      # the per-file hash cache has no value across runs.
+      - run: dart run bin/dartrics.dart analyze --root . --snapshot none --fatal-warnings
