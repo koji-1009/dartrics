@@ -2,7 +2,7 @@
 
 ## 0.6.0
 
-A calibration release. Two metrics drop because their academic anchoring did not survive a re-audit against original sources; four citations are corrected; the Dart-specific deviations from cited definitions consolidate into a single `doc/calibration.md` audit page so the relationship between dartrics' implementation and its source papers is legible from one place.
+A calibration release. Two metrics drop because their academic anchoring did not survive a re-audit against original sources; four citations are corrected; the Dart-specific deviations from cited definitions consolidate into a single `doc/calibration.md` audit page; the README is restructured around the three things a "back of the box" surface should answer (philosophy / what it does / what metrics) with everything else moved to the dedicated docs.
 
 ### Breaking changes
 
@@ -18,7 +18,14 @@ A calibration release. Two metrics drop because their academic anchoring did not
 
 ### `doc/calibration.md` — new audit trail
 
-A single page documenting the relationship between dartrics' implementation and its cited sources: selection principles, counting-rule deviations from the literal source definitions (sealed-aware CC, positional-only NOP, declared-methods-only LCOM4), off-by-default rationales, and the lenses deliberately not implemented (DIT, NOC, Halstead Difficulty/Effort, Maintainability Index, plus the two dropped above). Threshold *numbers* (CC warn 10, CBO warn 14, …) follow the cited sources unchanged; the page enumerates only the cases where dartrics deviates from those sources, and why. README's "Provided metrics" preamble and `doc/manual.md`'s "The lens battery" preamble link out to it instead of duplicating the rationale inline.
+A single page documenting the relationship between dartrics' implementation and its cited sources: selection principles, counting-rule deviations from the literal source definitions (sealed-aware CC, positional-only NOP, declared-methods-only LCOM4), and off-by-default rationales. Threshold *numbers* (CC warn 10, CBO warn 14, …) follow the cited sources unchanged; the page enumerates only the cases where dartrics deviates from those sources, and why. README's "Provided metrics" preamble and `doc/manual.md`'s "The lens battery" preamble link out to it instead of duplicating the rationale inline. Lenses not in the current catalogue are not enumerated — that history lives in this CHANGELOG.
+
+### README restructured around "back of the box" content
+
+- The README is roughly 58 % shorter (437 → 184 lines). Three priorities stay on the page: the lens-battery + AI-loop philosophy, what dartrics does at a glance, and the metric inventory with thresholds. Everything else moves to the dedicated docs that ship inside the binary (`dartrics manual`, `dartrics ai-loop`) or to the JSON Schema files that already define the wire format.
+- Sections collapsed to a 1–2 line pointer: the long flag listing under "Subcommands" (replaced by a per-command `--help` reference + link to `doc/manual.md`), "AI integration" (token-budget knobs, `--coverage`, `complexityJustified`, `--snapshot`, `--since`, `--strict-dismiss`), "Generating the coverage data", "Deliberate dismissal" (comment + YAML examples), "Regression check", "Code-gen keep-alive annotations", "Public-API unused-code detection", "Flutter-aware mode", "Test-aware mode", "AI report schema (v1)", "JSON Schema files", and "Exit codes". All of that content already lives in `doc/manual.md`, `doc/ai-loop.md`, or the `schemas/` files; the README now links there instead of mirroring it.
+- A new "Documentation" section enumerates the four reading entry points (`dartrics manual`, `dartrics ai-loop`, `doc/calibration.md`, `schemas/`) so first-time readers immediately see where the operator-level detail lives.
+- The Configuration section keeps only the minimum config example (yaml-language-server directive + a couple of metric thresholds + exclude); per-key reference moves to the schema file and `dartrics manual`.
 
 ### Analyzer plugin
 
