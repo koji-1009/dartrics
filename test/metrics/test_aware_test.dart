@@ -39,7 +39,6 @@ void main() {
   test('skip sets are populated and disjoint from each other', () {
     expect(TestAware.functionSkips, contains('method-length'));
     expect(TestAware.functionSkips, contains('source-lines-of-code'));
-    expect(TestAware.functionSkips, contains('maximum-nesting-level'));
     expect(TestAware.classSkips, contains('class-length'));
     expect(TestAware.classSkips, contains('number-of-methods'));
     // The function and class skip sets target disjoint metric ids by

@@ -143,9 +143,7 @@ void main() {
       const citedIds = {
         'cyclomatic-complexity',
         'cognitive-complexity',
-        'maximum-nesting-level',
         'number-of-parameters',
-        'boolean-trap',
         'method-length',
         'halstead-volume',
         'source-lines-of-code',

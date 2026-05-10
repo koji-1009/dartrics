@@ -1,6 +1,5 @@
 import 'package:dartrics/src/metrics/function/cognitive_complexity.dart';
 import 'package:dartrics/src/metrics/function/cyclomatic_complexity.dart';
-import 'package:dartrics/src/metrics/function/max_nesting_level.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart';
@@ -193,84 +192,6 @@ int f(int x) {
         name: 'f',
       );
       expect(cog.compute(input), 1);
-    });
-  });
-
-  group('max nesting level visitor coverage', () {
-    const m = MaxNestingLevel();
-
-    test('try/catch contributes one level', () {
-      final input = inputFor('''
-int f() {
-  try {
-    return 1;
-  } catch (_) {
-    return -1;
-  }
-}
-''', name: 'f');
-      expect(m.compute(input), 1);
-    });
-
-    test('do-while contributes one level', () {
-      final input = inputFor('''
-int f() {
-  do {} while (false);
-  return 0;
-}
-''', name: 'f');
-      expect(m.compute(input), 1);
-    });
-
-    test('switch statement contributes one level', () {
-      final input = inputFor('''
-int f(int x) {
-  switch (x) {
-    case 0: return 0;
-  }
-  return 1;
-}
-''', name: 'f');
-      expect(m.compute(input), 1);
-    });
-
-    test('switch expression contributes one level', () {
-      final input = inputFor('''
-String f(int x) {
-  return switch (x) {
-    0 => 'a',
-    _ => 'b',
-  };
-}
-''', name: 'f');
-      expect(m.compute(input), 1);
-    });
-
-    test('closure inside body adds one level', () {
-      final input = inputFor('''
-int f(List<int> xs) {
-  xs.forEach((x) {
-    print(x);
-  });
-  return 0;
-}
-''', name: 'f');
-      expect(m.compute(input), 1);
-    });
-
-    test('local function declaration does not deepen the outer nesting', () {
-      final input = inputFor('''
-int f() {
-  void inner() {
-    if (true) return;
-  }
-  inner();
-  return 0;
-}
-''', name: 'f');
-      // The outer body has zero structural nesting; the inner fn is measured
-      // separately.
-      expect(m.compute(input), 0);
     });
   });
 }

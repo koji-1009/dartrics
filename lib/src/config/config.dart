@@ -20,21 +20,20 @@ class Config {
   /// Glob patterns excluded from analysis.
   final List<String> exclude;
 
-  /// When `true`, dartrics relaxes a small set of metrics that fire
-  /// noisily on idiomatic Flutter widgets (deeply-nested `build()` and
-  /// constructors with many key/callback parameters). Default `true` —
-  /// the relaxations only trigger when a class actually extends one of
-  /// the known widget superclasses, so non-Flutter packages are
-  /// unaffected. Set to `false` to force the lenses on widget code.
+  /// When `true`, dartrics relaxes `number-of-parameters` on widget
+  /// constructors (the `key:` + callback list cultural norm). Default
+  /// `true` — the relaxation only triggers when a class actually
+  /// extends one of the known widget superclasses, so non-Flutter
+  /// packages are unaffected. Set to `false` to force the lens on
+  /// widget code.
   final bool flutter;
 
   /// When `true`, dartrics relaxes the size-and-shape lenses on files
   /// living under `test/` or `integration_test/` (method/source length
-  /// and max nesting at function level; class length and number of
-  /// methods at class level). Cyclomatic / cognitive / boolean-trap
-  /// stay engaged because a branchy test is still hard to read. Default
-  /// `true`. Set to `false` to apply the production-grade thresholds to
-  /// test files too.
+  /// at function level; class length and number of methods at class
+  /// level). Cyclomatic / cognitive complexity stay engaged because a
+  /// branchy test is still hard to read. Default `true`. Set to `false`
+  /// to apply the production-grade thresholds to test files too.
   final bool test;
 
   /// Snapshot mode and path. Ships in `cache` mode by default — diffs

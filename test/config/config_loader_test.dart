@@ -38,7 +38,7 @@ void main() {
     await f.writeAsString('analyzer:\n  exclude: []\n');
     final config = await loadConfig(f.path);
     expect(config.metricThresholds['cyclomatic-complexity']?.warning, 10);
-    expect(config.metricThresholds['boolean-trap']?.warning, 2);
+    expect(config.metricThresholds['number-of-parameters']?.warning, 4);
   });
 
   test('user-provided warning overrides the built-in default for that metric, '
@@ -58,7 +58,6 @@ dartrics:
     expect(config.metricThresholds['cyclomatic-complexity']?.warning, 5);
     expect(config.metricThresholds['cognitive-complexity']?.warning, 15);
     expect(config.metricThresholds['number-of-parameters']?.warning, 4);
-    expect(config.metricThresholds['boolean-trap']?.warning, 2);
   });
 
   test(

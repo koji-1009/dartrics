@@ -45,7 +45,6 @@ dartrics:
     cyclomatic-complexity: { warning: 10, error: 20 }
     cognitive-complexity:  { warning: 15, error: 25 }
     method-length:         { warning: 30, error: 60 }
-    maximum-nesting-level: { warning: 4 }
     number-of-parameters:  { warning: 4, error: 8 }
 
   dismissals: {}                # opt into the dismiss channel
