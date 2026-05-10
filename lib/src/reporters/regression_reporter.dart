@@ -16,17 +16,12 @@ class RegressionReporter {
       case 'json':
         const encoder = JsonEncoder.withIndent('  ');
         sink.writeln(encoder.convert(report.toJson()));
-        return;
       case 'md':
         sink.write(formatMarkdown(_renderMarkdown(report)));
-        return;
       case 'console':
         sink.write(_renderConsole(report));
-        return;
-      case 'ai':
-      default:
+      case 'ai' || _:
         sink.write(formatYaml(_renderAi(report)));
-        return;
     }
   }
 

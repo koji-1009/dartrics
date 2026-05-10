@@ -15,20 +15,17 @@ const String _baselineDefaultPath = 'dartrics-snapshot.json';
 /// [config]. The CLI override always wins; an unrecognised string is
 /// treated as an explicit custom path, so users can pass a one-shot
 /// `--snapshot path/to/file.json`.
-SnapshotConfig resolveSnapshotConfig(SnapshotConfig config, String? cliValue) {
-  if (cliValue == null) return config;
-  switch (cliValue) {
-    case 'cache':
-      return SnapshotConfig(mode: SnapshotMode.cache, path: config.path);
-    case 'baseline':
-      return SnapshotConfig(mode: SnapshotMode.baseline, path: config.path);
-    case 'none':
-    case 'off':
-      return const SnapshotConfig(mode: SnapshotMode.none);
-    default:
-      return SnapshotConfig(mode: config.mode, path: cliValue);
-  }
-}
+SnapshotConfig resolveSnapshotConfig(SnapshotConfig config, String? cliValue) =>
+    switch (cliValue) {
+      null => config,
+      'cache' => SnapshotConfig(mode: SnapshotMode.cache, path: config.path),
+      'baseline' => SnapshotConfig(
+        mode: SnapshotMode.baseline,
+        path: config.path,
+      ),
+      'none' || 'off' => const SnapshotConfig(mode: SnapshotMode.none),
+      _ => SnapshotConfig(mode: config.mode, path: cliValue),
+    };
 
 /// Resolves the on-disk path implied by [config], rooted at [root].
 /// Returns `null` when snapshot mode is `none` (caller should skip both
