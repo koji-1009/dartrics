@@ -300,4 +300,39 @@ void main() {
     expect(json['summary'], isA<Map<String, Object?>>());
     expect(json['cosmetic'], isA<Map<String, Object?>>());
   });
+
+  test('MetricChange.id matches the violation id for the same triple', () {
+    // Same (file, scope, metric) on both sides — change is below the
+    // threshold so no violation fires, but the id is still the
+    // computeViolationId hash so AI loops can correlate the row with
+    // the analyze run.
+    final before = [
+      record(
+        file: 'lib/foo.dart',
+        kind: ScopeKind.function,
+        name: 'foo',
+        values: const {'cyclomatic-complexity': 5},
+      ),
+    ];
+    final after = [
+      record(
+        file: 'lib/foo.dart',
+        kind: ScopeKind.function,
+        name: 'foo',
+        values: const {'cyclomatic-complexity': 3},
+      ),
+    ];
+    final report = const RegressionDiff().compute(
+      beforeLabel: 'before',
+      afterLabel: 'after',
+      beforeRecords: before,
+      afterRecords: after,
+    );
+    final change = report.changes.single;
+    // sha256("lib/foo.dart|foo|cyclomatic-complexity")[..16].
+    expect(change.id, hasLength(16));
+    expect(RegExp(r'^[0-9a-f]{16}$').hasMatch(change.id), isTrue);
+    final json = change.toJson();
+    expect(json['id'], change.id);
+  });
 }

@@ -71,6 +71,7 @@ class RegressionReporter {
         ..writeln('  - file: ${c.file}')
         ..writeln('    scope: ${c.scope.name}')
         ..writeln('    metric: ${c.metricId}')
+        ..writeln('    id: ${c.id}')
         ..writeln('    before: ${c.before ?? "null"}')
         ..writeln('    after: ${c.after ?? "null"}')
         ..writeln('    direction: ${c.direction.name}');
