@@ -8,7 +8,7 @@ Humans read code and feel things. *"This function is gnarly."* *"This class is d
 
 Decades of software-engineering research has converted those felt reactions into reproducible measurements. Each metric in `dartrics` is one such **lens**: a specific, citation-backed instrument that surfaces a specific kind of "hard to read." None of the lenses is the whole picture. Putting on more than one lens, in succession, is the point.
 
-Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, LCOM4 1995, Cognitive Complexity 2018 — never made it into the daily toolbox of working programmers. The cost of *calculating* the number, *interpreting* it, and *acting on it* was each individually expensive for a human reviewer. An AI loop absorbs all three. You compute in a second; the rationale and refactor moves are attached to the violation; the edit is yours to apply. The lenses that the literature catalogued for human reviewers are reachable to you in a way they weren't before.
+Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, Hitz & Montazeri 1995, Cognitive Complexity 2017 — never made it into the daily toolbox of working programmers. The cost of *calculating* the number, *interpreting* it, and *acting on it* was each individually expensive for a human reviewer. An AI loop absorbs all three. You compute in a second; the rationale and refactor moves are attached to the violation; the edit is yours to apply. The lenses that the literature catalogued for human reviewers are reachable to you in a way they weren't before.
 
 `dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, or formally dismiss with a reason. That decision step is first-class.
 
@@ -190,102 +190,18 @@ It does not redistribute branches across more functions while keeping all the br
 
 ## The operational protocol
 
-Inside an AI loop, run this sequence. Each step has a clear contract.
+For an end-to-end walkthrough with prompt examples, see [`doc/ai-loop.md`](ai-loop.md). The structured reference:
 
-### 1. Setup (once per session)
+| Step | Command | Notes |
+| --- | --- | --- |
+| 1. Setup | populate `dartrics:` in `analysis_options.yaml`; generate `coverage/lcov.info` | `# yaml-language-server: $schema=…` enables IDE autocomplete; `flutter test --coverage` or `dart pub run coverage:test_with_coverage` powers `complexityJustified` |
+| 2. Read | `dartrics analyze --reporter ai --since origin/main --limit 30` | `--since` filters to changed files; `--limit` caps tokens; auto-explain is always on |
+| 3. Decide | refactor / dismiss / punt per violation | See [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision) |
+| 4. Apply | edit code or add `// dartrics:dismiss <metric> reason="…"` | `--strict-dismiss` is an audit flag, not a refactor outcome |
+| 5. Verify | `dartrics regression --before HEAD~1 --after HEAD --reporter ai` | Look for `direction: improved` and `looksCosmetic: false` |
+| 6. Pre-merge | `dartrics analyze --strict-dismiss --fatal-warnings` | Ignores dismissals; exits non-zero on any remaining warning |
 
-```yaml
-# analysis_options.yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/koji-1009/dartrics/main/schemas/dartrics-config.schema.json
-
-dartrics:
-  # flutter: true and test: true are the defaults. Listed here for
-  # discoverability — flip either to `false` to force the size-and-shape
-  # lenses on widget code or test files respectively.
-  metrics:
-    cyclomatic-complexity: { warning: 10, error: 20 }
-    cognitive-complexity:  { warning: 15, error: 25 }
-    method-length:         { warning: 30, error: 60 }
-    number-of-parameters:  { warning: 4, error: 8 }
-  dismissals: {}                 # opt into the dismiss channel
-  snapshot:
-    mode: cache                  # `.dart_tool/dartrics/snapshot.json`
-```
-
-Generate coverage so `complexityJustified` works. Pure Dart:
-
-```bash
-dart pub global activate coverage
-dart pub run coverage:test_with_coverage
-```
-
-Flutter:
-
-```bash
-flutter test --coverage
-```
-
-Either flow writes `coverage/lcov.info` at the project root, which `dartrics analyze` auto-loads on its next invocation.
-
-### 2. Read through the lenses
-
-```bash
-dartrics analyze \
-  --reporter ai \
-  --since origin/main \
-  --limit 30
-```
-
-Why each flag matters in the loop:
-
-| Flag | What it gives you |
-| --- | --- |
-| `--reporter ai` | YAML-ish output with `# dartrics ai-report v1` header. Sorted: severity ↓, then coverage ↓, then `complexityJustified` ↓, then `dismissed` ↓. The most actionable items are at the top. |
-| `--since <ref>` | Only emit records whose owning file changed vs `<ref>`. Cross-file resolution still happens fully — only the *emitted* records are filtered. Stops you from re-litigating debt outside this PR. |
-| `--limit <n>` | Hard cap on emitted entries after the priority sort. Excess is summarised in `truncated:`. Token-budget control. |
-| (auto-explain) | Always on. Every metric that fired gets its rationale + refactor hints attached as the report's `explain:` block. You don't need to know which metric ids exist. |
-| `--coverage <path>` | Default-on when `coverage/lcov.info` exists. Adds `coverage` / `branchCoverage` / `complexityJustified` to each violation. |
-
-### 3. For each violation, decide
-
-Re-read [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision). The report's `id` field (16 hex chars, stable across runs) is your handle for "is this the same violation I tried to fix last iteration?"
-
-### 4. Apply the change
-
-Either edit the scope, or add a `// dartrics:dismiss` comment / a YAML sidecar entry. Don't reach for `--strict-dismiss` or remove the metric from config — those are operator escape hatches, not refactor outcomes.
-
-### 5. Verify
-
-Two complementary checks. Run both.
-
-**Per-scope diff:**
-
-```bash
-dartrics regression --before HEAD~1 --after HEAD --reporter ai
-```
-
-You're looking for:
-
-- `direction: improved` on the violations you targeted — your fix actually moved the metric.
-- `looksCosmetic: false` on the summary — you didn't just shuffle complexity into helpers.
-- No `direction: regressed` entries on metrics you didn't intend to touch.
-
-**Strict triage list (CI / final review):**
-
-```bash
-dartrics analyze --strict-dismiss --fatal-warnings
-```
-
-`--strict-dismiss` ignores every dismissal so the operator sees the raw triage list. Combined with `--fatal-warnings`, this exits non-zero whenever an unsuppressed warning remains — suitable as a pre-merge gate.
-
-### 6. If the same `id` reappears
-
-Your fix didn't take. Open the corresponding scope, look at the metric value vs threshold delta in the new report, and either:
-
-- refactor harder (the previous move was insufficient), or
-- formalise the dismiss (you've concluded the structure is load-bearing).
-
-There is no third option of "ignore it again."
+The same `id` (16 hex chars) reappearing across runs means the previous fix didn't drop the metric. Refactor harder, or formalise as dismiss with a load-bearing reason — there is no third option of "ignore it again."
 
 ## Flag map (for reference)
 
@@ -300,7 +216,7 @@ There is no third option of "ignore it again."
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
 | Inject metric catalogue once | `dartrics rules --reporter ai` | Feed once into a system prompt |
 | Verify a refactor | `dartrics regression` | Runs `git worktree` for the historical side |
-| Audit your config | `dartrics doctor` | Flags unknown metric ids, unknown presets, threshold mis-ordering. Read-only |
+| Audit your config | `dartrics doctor` | Flags unknown metric ids and threshold mis-ordering. Read-only |
 | Delete unused public-API declarations | `dartrics unused --apply` | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
 
 ## Exit codes
@@ -322,12 +238,11 @@ Knowing what `dartrics` deliberately doesn't measure is part of the contract:
 - **No automatic fixes.** `dartrics` measures and explains. It does not edit your code. The dismiss channel is *you* writing a comment / YAML, not the tool rewriting the source.
 - **No ML-derived weights.** Every threshold is documented and overridable. Lens output is reproducible across runs given the same source tree.
 - **No cross-PR memory.** The tool doesn't remember "this dismiss was rejected last iteration." Stay session-local.
-- **No DIT / NOC.** Dart inheritance chains are too shallow for the metric to produce signal.
 - **No test-quality lenses.** Coverage is read in only as a complexity-justification signal. Mutation score, assertion density, etc. are out of scope.
 
 ## Pointers
 
-- README — project description, install, configuration reference.
+- README — project overview and install.
 - AGENTS.md — contributor / PR conventions.
 - `doc/ai-loop.md` — narrative walkthrough of one full iteration with sample prompts.
 - `dartrics rules --reporter ai` — full rationale + refactor-hint catalogue at runtime.

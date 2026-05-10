@@ -14,9 +14,9 @@ import 'io_sinks.dart';
 /// - **error** (exit 78): `ConfigException` from the loader — malformed
 ///   YAML or schema-level violation. The user can't continue.
 /// - **warning** (exit 1): the file parses, but contains references the
-///   tool cannot honour (unknown metric id, unknown preset, threshold
-///   ordering inconsistent with the metric's polarity). The run would
-///   silently misbehave; doctor surfaces it.
+///   tool cannot honour (unknown metric id, threshold ordering
+///   inconsistent with the metric's polarity). The run would silently
+///   misbehave; doctor surfaces it.
 ///
 /// Doctor is read-only: it never edits the config. The fix is the
 /// user's, and the goal is to make typos visible before they cause
