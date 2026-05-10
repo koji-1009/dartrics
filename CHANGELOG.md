@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.1
+
+A maintenance release. No metric, threshold, exit-code, or wire-format change — `# dartrics ai-report v1`, every JSON / SARIF schema, and the public Dart API (`FunctionMetric`, `FunctionMetricInput`, `MetricPolarity`, `dartricsVersion`) stay byte-compatible with 0.5.0. The release modernises internals against the Dart 3.10 idiom now that the SDK floor (`environment: sdk: ^3.10.0`) has settled, plus two CI / docs hygiene items.
+
+### Internal: Dart 3 switch and pattern adoption
+
+- The function-level metric helpers in `lib/src/metrics/metric.dart` (`_bodyOf` / `_parametersOf` / `_scopeNameOf` / `_enclosingClassName`) move from `if (x is FunctionDeclaration) ... else if (x is MethodDeclaration) ...` chains to `switch` expressions with type patterns and destructuring. `regression_diff.dart::_directionOrder` becomes a 1-statement `switch` expression over `ChangeDirection`. `metric_engine.dart::_buildViolation` consumes the sealed `DismissalCheck` via an exhaustive `switch`; the previous `final rejected = check as DismissalRejected` cast is gone, and adding a third sealed subclass is now a compile-time error rather than a runtime cast failure.
+- The string-format dispatchers (`pickReporter`, `resolveSnapshotConfig`, `_modeFromString`, the void-returning `RegressionReporter.report` / `RulesReporter.report`) collapse into single `switch` expressions or no-fallthrough `switch` statements. The `'none' | 'off'` synonym uses a single OR pattern.
+- `library_metric._countClasses`, `lcom4.ingest`, `wmc.compute`, `rfc.compute` walk the analyzer's sealed `ClassMember` hierarchy with destructured patterns. The sealed walk in `lcom4.ingest` declares its no-op fallback case explicitly instead of relying on `if-else` skip-through.
+
+### Internal: `CallableDecl` sealed wrapper
+
+- A new private `sealed class CallableDecl` in `lib/src/metrics/metric.dart` concentrates the analyzer-`Declaration`-to-callable type fan-out into a single `CallableDecl.from(Declaration)` factory — a 3-line `if`-chain plus a trailing `as ConstructorDeclaration` cast — and lets the rest of the metric layer dispatch through three subclasses that override `body` / `parameters` / `scopeName` directly. The previous `switch`-expression helpers shipped a `_ => throw ArgumentError(...)` wildcard arm in each, since analyzer's `Declaration` is open and the type system can't prove exhaustiveness over the three subtypes the engine actually passes in. With the wrapper, exhaustiveness arms are no longer needed, and analyzer version updates that introduce a fourth `Declaration` subtype only need a single factory amendment instead of four wildcard arms. `FunctionMetricInput.body` / `parameters` / `scopeName` keep their same shape — `late final` fields delegating through the wrapper — so embedders see no API change.
+
+### Internal: dot-shorthand syntax
+
+- Dart 3.10's dot-shorthand is now used throughout `lib/src/` wherever the target type is inferable from context — return types on the same line (`MetricPolarity get polarity => .down;`), `switch` subjects (`switch (config.mode) { .none => ... }`), enum-to-enum equality (`kind != .function`), and named-arg positions where the parameter type names the enum (`SnapshotConfig(mode: .cache)`, `ScopeRef(kind: .library)`, `MetricChange(polarity: polarity[id] ?? .neutral)`). No semantic change; the same tokens reach the metric layer. A handful of sites stay in long form: ternaries whose target type is inferred from a sibling branch, `Severity.values.byName(...)` / `ScopeKind.values.byName(...)` static-collection access, and one default-value site where the type comes from a YAML coercion that names both branches.
+
+### Tooling: dartrics self-application CI gate
+
+- A new GitHub Actions job runs `dart run bin/dartrics.dart analyze --root . --snapshot none --reporter ai` on every push and PR and fails the build if dartrics' own source produces any warning-level violation. Codifies the dogfood loop principle — the lens battery only stays honest if the canonical idiomatic-Dart codebase the project itself ships clears it. Runs after the `analyze` (static) job so `dart analyze` lints catch first, then dartrics gates on its own metric battery. Uses `dart run` against the in-tree source rather than installing the package so the gate works against unreleased states.
+
+### Docs: coverage data prerequisite
+
+- The README's `--coverage` documentation, the in-binary `dartrics manual`, and the `dartrics ai-loop` walkthrough now spell out how to generate `coverage/lcov.info` (the file the auto-detection looks for) — `dart pub global activate coverage` plus the matching `dart run` / `flutter test --coverage` command. Previously the docs assumed users already had the lcov file in place and only described the auto-detection step.
+
 ## 0.5.0
 
 A pruning release. Five pieces of dead-or-deferred CLI / model surface come off — flags that advertised behavior they did not honor, a subcommand that overlapped with auto-explain, an enum value no lens emits — plus one payload addition (`MetricChange.id`) on the regression side.
