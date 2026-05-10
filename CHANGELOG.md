@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.2
+
+A documentation-only patch on top of 0.6.1. No metric, threshold, exit-code, or wire-format change.
+
+### Per-file Martin lens polarity framing
+
+- `efferent-coupling` / `afferent-coupling` / `instability` were grouped under the `down` polarity bullet in `doc/manual.md`'s "## Polarity" section, but `LibraryMetric.polarity` defaults to `.neutral` and the three subclasses don't override — the `down` claim contradicted the regression-diff classifier. The bullet now lists them under `neutral`, with a pointer to a new "Per-file Martin granularity" section in `doc/calibration.md` that explains why these three ship as change-impact rankings rather than Martin-frame Pain/Uselessness verdicts (a Dart library is one file; the release unit is the pub package, so the per-package granularity Pain/Uselessness assumes is absent). The "Library / file lenses (Martin 1994)" table in `doc/manual.md` (byte-mirrored in `lib/src/cli/manual_text.dart`) gains the same disclaimer directly above the rows so the framing is visible at table level. `doc/calibration.md`'s "Selection principles" gains a bullet on informational polarity for the per-file Martin lenses.
+
+### `README.md` — `Default warning` column and per-file Martin caveat
+
+- The function- and class-level metric tables drop the `Notes` column in favour of a `Default warning` column, matching the tighter "back of the box" format (descriptive notes already live in `doc/manual.md`'s lens battery). Readers see at a glance that only `cyclomatic-complexity` = 10, `cognitive-complexity` = 15, and `number-of-parameters` = 4 ship with a default warning; everything else is `—` (opt-in via `dartrics: { metrics: { <id>: { warning: <n> } } }`) or `opt-in` (off-by-default). The library-level table keeps its `Notes` column (the section header carries the source attribution) and gains the same `Default warning` column with `—` for all three Martin lenses; `instability` is explicitly tagged as informational. A "Per-file Martin granularity" bullet in the Limitations section surfaces the caveat at install-decision level rather than only deep in `doc/calibration.md`.
+
 ## 0.6.1
 
 A small documentation-correctness patch on top of 0.6.0. No metric, threshold, exit-code, or wire-format change.
