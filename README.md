@@ -62,37 +62,39 @@ dartrics ships a curated set anchored to published sources. For the audit trail 
 
 Each metric exposes `rationale`, `refactorHints`, `references` (the primary source — McCabe 1976, Hitz & Montazeri 1995, Martin 1994, …), and `polarity` (`down` / `neutral`). All four surface through `dartrics rules` and the AI / md / SARIF reporters so an agent can verify a metric against its original paper rather than paraphrasing from training data.
 
-Lenses marked **off** ship disabled by default; opt in via `dartrics: { metrics: { <id>: { enabled: true } } }`.
+Lenses marked **off** ship disabled by default; opt in via `dartrics: { metrics: { <id>: { enabled: true } } }`. A `—` in **Default warning** means the lens emits a measurement but fires no warning until you set a threshold via `dartrics: { metrics: { <id>: { warning: <n> } } }`.
 
 ### Function / method level
 
-| Metric                          | Reference               | Notes                                                                       |
-| ------------------------------- | ----------------------- | --------------------------------------------------------------------------- |
-| Cyclomatic Complexity           | McCabe 1976             | `1 + d` decision points; `if/for/while/do/switch case/&&/\|\|/?:/catch`     |
-| Cognitive Complexity            | SonarSource 2017 (rev.) | B1 control-flow + B2 nesting penalty + B3 logical-op sequences              |
-| Number Of Parameters            | Fowler 1999             | positional only; default warning 4                                          |
-| Source Lines Of Code            | Boehm 1981              | non-blank, non-comment-only lines                                           |
-| Method Length **off**           | Beck 1996               | total source lines spanned by the body                                      |
-| Halstead Volume **off**         | Halstead 1977           | `N · log₂(η)` — token-based program "size"                                  |
+| Metric                          | Reference               | Default warning |
+| ------------------------------- | ----------------------- | --------------- |
+| Cyclomatic Complexity           | McCabe 1976             | 10              |
+| Cognitive Complexity            | SonarSource 2017 (rev.) | 15              |
+| Number Of Parameters            | Fowler 1999             | 4               |
+| Source Lines Of Code            | Boehm 1981              | —               |
+| Method Length **off**           | Beck 1996               | opt-in          |
+| Halstead Volume **off**         | Halstead 1977           | opt-in          |
 
 ### Class level
 
-| Metric                     | Reference                                    | Notes                                                       |
-| -------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
-| Number Of Methods          | Lorenz & Kidd 1994; CK 1994                  | members with non-empty bodies. Equivalent to WMC with uniform weight=1 |
-| Weighted Methods Per Class | CK 1994                                      | sum of cyclomatic complexity across methods                            |
-| LCOM4                      | Hitz & Montazeri 1995                        | connected components in the field-share + method-call graph            |
-| Coupling Between Objects   | CK 1994                                      | distinct other types referenced anywhere in the class                  |
-| Response For a Class       | CK 1994                                      | `\|methods ∪ method-names invoked from those methods\|`                |
-| Class Length               | Beck 1996; Fowler 1999; Lippert & Roock 2006 | total source lines spanned by the class declaration                    |
+| Metric                     | Reference                                    | Default warning |
+| -------------------------- | -------------------------------------------- | --------------- |
+| Number Of Methods          | Lorenz & Kidd 1994; CK 1994                  | —               |
+| Weighted Methods Per Class | CK 1994                                      | —               |
+| LCOM4                      | Hitz & Montazeri 1995                        | —               |
+| Coupling Between Objects   | CK 1994                                      | —               |
+| Response For a Class       | CK 1994                                      | —               |
+| Class Length               | Beck 1996; Fowler 1999; Lippert & Roock 2006 | —               |
 
 ### Library / file level (Martin 1994)
 
-| Metric                                  | Notes                                                                   |
-| --------------------------------------- | ----------------------------------------------------------------------- |
-| Efferent Coupling (Ce)                  | distinct project-internal + `package:` dependencies (excludes `dart:*`) |
-| Afferent Coupling (Ca)                  | incoming internal-import edges                                          |
-| Instability (I)                         | `Ce / (Ca + Ce)`                                                        |
+Polarity `neutral`; values rank change-impact rather than fire as Pain/Uselessness verdicts (see [`doc/calibration.md`](doc/calibration.md)).
+
+| Metric                                  | Notes                                                                   | Default warning |
+| --------------------------------------- | ----------------------------------------------------------------------- | --------------- |
+| Efferent Coupling (Ce)                  | distinct project-internal + `package:` dependencies (excludes `dart:*`) | —               |
+| Afferent Coupling (Ca)                  | incoming internal-import edges                                          | —               |
+| Instability (I)                         | `Ce / (Ca + Ce)`; informational, surfaces drift in change-impact ranking | —              |
 
 ## Configuration
 
@@ -161,6 +163,7 @@ Anything not in this table is CLI-only and unsupported as a Dart import; reach f
 
 - **The analyzer plugin covers only the three function-level rules** (CC, Cognitive, Number of parameters). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
 - **Built-in metric set is curated.** See [`doc/calibration.md`](doc/calibration.md) for the selection principles.
+- **Per-file Martin granularity.** `efferent-coupling` / `afferent-coupling` / `instability` ship as change-impact rankings rather than Pain/Uselessness verdicts (polarity `neutral`, no default warning). See [`doc/calibration.md`](doc/calibration.md).
 - **Not a fit if** you need per-line metric thresholds in the IDE for the full metric suite, you don't engage with the dismiss channel at all (a pure-fail-fast linter is a better fit), or you're on Dart < 3.10 / analyzer < 13.
 
 ## Development

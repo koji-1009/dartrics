@@ -79,8 +79,8 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 
 Each lens declares a `polarity`:
 
-- `down` — lower is better. The default. (CC, Cognitive, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC, Ce, Ca, instability.)
-- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume.)
+- `down` — lower is better. The default. (CC, Cognitive, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC.)
+- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume; Ce, Ca, instability — the per-file Martin lenses are change-impact rankings, not Pain/Uselessness verdicts. See "Per-file Martin granularity" in [`doc/calibration.md`](calibration.md).)
 
 You read this off the regression diff so you don't accidentally celebrate a metric that drifted the wrong way.
 
