@@ -18,12 +18,9 @@ const String _baselineDefaultPath = 'dartrics-snapshot.json';
 SnapshotConfig resolveSnapshotConfig(SnapshotConfig config, String? cliValue) =>
     switch (cliValue) {
       null => config,
-      'cache' => SnapshotConfig(mode: SnapshotMode.cache, path: config.path),
-      'baseline' => SnapshotConfig(
-        mode: SnapshotMode.baseline,
-        path: config.path,
-      ),
-      'none' || 'off' => const SnapshotConfig(mode: SnapshotMode.none),
+      'cache' => SnapshotConfig(mode: .cache, path: config.path),
+      'baseline' => SnapshotConfig(mode: .baseline, path: config.path),
+      'none' || 'off' => const SnapshotConfig(mode: .none),
       _ => SnapshotConfig(mode: config.mode, path: cliValue),
     };
 
@@ -32,9 +29,9 @@ SnapshotConfig resolveSnapshotConfig(SnapshotConfig config, String? cliValue) =>
 /// reads and writes).
 String? snapshotPathFor(SnapshotConfig config, String root) {
   final relative = switch (config.mode) {
-    SnapshotMode.none => null,
-    SnapshotMode.cache => config.path ?? _cacheDefaultPath,
-    SnapshotMode.baseline => config.path ?? _baselineDefaultPath,
+    .none => null,
+    .cache => config.path ?? _cacheDefaultPath,
+    .baseline => config.path ?? _baselineDefaultPath,
   };
   if (relative == null) return null;
   return p.normalize(p.join(root, relative));

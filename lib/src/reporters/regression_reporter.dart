@@ -151,7 +151,7 @@ class RegressionReporter {
       );
     }
     for (final c in report.changes) {
-      if (c.direction == ChangeDirection.unchanged) continue;
+      if (c.direction == .unchanged) continue;
       buf.writeln(
         '${c.file}::${c.scope.name} ${c.metricId} '
         '${c.before ?? "-"} -> ${c.after ?? "-"} [${c.direction.name}]',

@@ -130,7 +130,7 @@ enum SnapshotMode {
 }
 
 class SnapshotConfig {
-  const SnapshotConfig({this.mode = SnapshotMode.cache, this.path});
+  const SnapshotConfig({this.mode = .cache, this.path});
 
   final SnapshotMode mode;
 

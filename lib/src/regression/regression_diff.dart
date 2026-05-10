@@ -100,7 +100,7 @@ class RegressionDiff {
         direction: _classify(
           before: beforeValue,
           after: afterValue,
-          polarity: polarity[id] ?? MetricPolarity.neutral,
+          polarity: polarity[id] ?? .neutral,
           scopeAdded: before == null,
           scopeRemoved: after == null,
         ),
@@ -167,7 +167,7 @@ class RegressionDiff {
   bool _isNewTinyFunction(MetricRecord? before, MetricRecord after) {
     if (before != null) return false;
     final kind = after.scope.kind;
-    if (kind != ScopeKind.function && kind != ScopeKind.method) return false;
+    if (kind != .function && kind != .method) return false;
     return _slocOf(after) <= config.smallBodyThreshold;
   }
 
@@ -203,12 +203,12 @@ class RegressionDiff {
 
   // Regressions first (loudest), then improvements, then bookkeeping.
   int _directionOrder(ChangeDirection d) => switch (d) {
-    ChangeDirection.regressed => 0,
-    ChangeDirection.added => 1,
-    ChangeDirection.removed => 2,
-    ChangeDirection.improved => 3,
-    ChangeDirection.neutralDelta => 4,
-    ChangeDirection.unchanged => 5,
+    .regressed => 0,
+    .added => 1,
+    .removed => 2,
+    .improved => 3,
+    .neutralDelta => 4,
+    .unchanged => 5,
   };
 }
 
@@ -239,10 +239,10 @@ ChangeDirection classifyChange({
   required bool scopeAdded,
   required bool scopeRemoved,
 }) {
-  if (scopeAdded) return ChangeDirection.added;
-  if (scopeRemoved) return ChangeDirection.removed;
+  if (scopeAdded) return .added;
+  if (scopeRemoved) return .removed;
   if (before == null || after == null || before == after) {
-    return ChangeDirection.unchanged;
+    return .unchanged;
   }
   return _directionByPolarity(before: before, after: after, polarity: polarity);
 }
@@ -256,11 +256,9 @@ ChangeDirection _directionByPolarity({
   required MetricPolarity polarity,
 }) {
   switch (polarity) {
-    case MetricPolarity.down:
-      return after < before
-          ? ChangeDirection.improved
-          : ChangeDirection.regressed;
-    case MetricPolarity.neutral:
-      return ChangeDirection.neutralDelta;
+    case .down:
+      return after < before ? .improved : .regressed;
+    case .neutral:
+      return .neutralDelta;
   }
 }

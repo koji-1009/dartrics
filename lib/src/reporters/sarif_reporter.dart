@@ -85,8 +85,8 @@ class SarifReporter implements Reporter {
   }
 
   String _level(Severity s) => switch (s) {
-    Severity.error => 'error',
-    Severity.warning => 'warning',
+    .error => 'error',
+    .warning => 'warning',
   };
 
   /// Builds `tool.driver.rules` so GitHub Code Scanning / GitLab show
