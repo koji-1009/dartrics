@@ -57,7 +57,7 @@ void main() {
       expect((cc['fullDescription'] as Map)['text'], contains('McCabe'));
       expect(
         cc['helpUri'],
-        'https://pub.dev/packages/dartrics#cyclomatic-complexity',
+        'https://pub.dev/packages/dartrics#provided-metrics',
       );
       final help = cc['help'] as Map<String, Object?>;
       expect(help['text'], contains('Refactor hints:'));
