@@ -59,8 +59,8 @@ Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, LCOM4 1995, Cogn
 
 These lenses ship default-off (everything else in the catalogue below is on by default):
 
-- **Halstead Volume** — strongly correlated with both cyclomatic complexity and SLOC (~0.9 in Alfadel et al. 2018) with roughly equivalent predictive power for defect density, so emitting it alongside both is redundant signal; opt in if you want a token-weighted "size" reading
-- **Method Length** — by definition includes blank lines + comment-only lines on top of SLOC, so the two metrics move together strongly in production code; opt in when you specifically want screen-real-estate instead of pure code volume
+- **Halstead Volume** — strongly correlated with both cyclomatic complexity and SLOC (~0.9 in Alfadel et al. 2018), so emitting it alongside both is redundant signal; opt in if you want a token-weighted "size" reading
+- **Method Length** — by definition = SLOC + blank lines + comment-only lines, so SLOC alone carries the same signal plus a known offset; opt in when you specifically want screen-real-estate instead of pure code volume
 - **Abstractness** / **Distance from Main Sequence** — Martin's framing assumes "package = release unit"; Dart's 1-file-1-library granularity makes the per-file values brittle until aggregation lands
 - **Widget Tree Depth** — Flutter-specific; opt in for projects that want the deep-`Container(child: ...)` reading
 - **Null-Aware Chain Depth** / **Async Chain Depth** — Dart-3-idiom signals; opt in when project conventions on "too deep" `?.` chains or nested `await` calls are settled enough to threshold

@@ -4,8 +4,8 @@ import '../metric.dart';
 /// function body, *including* blank lines and comments.
 ///
 /// Off by default: method length = SLOC + blank lines + comment-only
-/// lines by definition, so the two metrics move together strongly in
-/// production code; emitting both lenses on the same scope produces
+/// lines by definition, so SLOC alone carries the same signal plus a
+/// known offset; emitting both lenses on the same scope produces
 /// redundant violations. Opt in when you specifically want the "how
 /// big is this thing on screen" reading (which counts blanks + comment
 /// lines) on top of SLOC's "actual code volume" reading.
@@ -27,9 +27,9 @@ class MethodLength extends FunctionMetric {
       'Beck (*Smalltalk Best Practice Patterns*, 1996) advocates for '
       'methods short enough to fit on a screen, often interpreted as '
       '50–80 lines. Off by default because method length = SLOC + '
-      'blank lines + comment-only lines by definition, so the two '
-      'metrics move together strongly in production code; emitting '
-      'both lenses produces redundant violations. Opt in when you '
+      'blank lines + comment-only lines by definition, so SLOC alone '
+      'carries the same signal plus a known offset; emitting both '
+      'lenses produces redundant violations. Opt in when you '
       'specifically want the screen-real-estate reading on top of '
       'SLOC\'s code-only count.';
 
