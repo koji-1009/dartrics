@@ -32,9 +32,9 @@ SnapshotConfig resolveSnapshotConfig(SnapshotConfig config, String? cliValue) =>
 /// reads and writes).
 String? snapshotPathFor(SnapshotConfig config, String root) {
   final relative = switch (config.mode) {
-    SnapshotMode.none => null,
-    SnapshotMode.cache => config.path ?? _cacheDefaultPath,
-    SnapshotMode.baseline => config.path ?? _baselineDefaultPath,
+    .none => null,
+    .cache => config.path ?? _cacheDefaultPath,
+    .baseline => config.path ?? _baselineDefaultPath,
   };
   if (relative == null) return null;
   return p.normalize(p.join(root, relative));

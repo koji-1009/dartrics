@@ -87,7 +87,7 @@ abstract class FunctionMetric {
   /// Direction in which the value moves when the code gets healthier.
   /// Override to `neutral` for metrics where neither direction is
   /// universally good (e.g. Halstead Volume, Abstractness in isolation).
-  MetricPolarity get polarity => MetricPolarity.down;
+  MetricPolarity get polarity => .down;
 
   /// Computes the metric. Implementations must be deterministic.
   num compute(FunctionMetricInput input);

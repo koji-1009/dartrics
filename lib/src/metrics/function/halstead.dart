@@ -93,7 +93,7 @@ class HalsteadVolume extends FunctionMetric {
   @override
   bool get defaultEnabled => false;
   @override
-  MetricPolarity get polarity => MetricPolarity.neutral;
+  MetricPolarity get polarity => .neutral;
   @override
   String get rationale =>
       'Halstead Volume `V = N · log₂(η)` (Halstead, *Elements of '

@@ -144,7 +144,7 @@ abstract class LibraryMetric {
 
   /// Direction in which the value moves when the code gets healthier.
   /// See `FunctionMetric.polarity`.
-  MetricPolarity get polarity => MetricPolarity.neutral;
+  MetricPolarity get polarity => .neutral;
 
   num compute(LibraryMetricInput input);
 }

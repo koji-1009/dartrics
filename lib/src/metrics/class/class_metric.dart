@@ -30,7 +30,7 @@ abstract class ClassMetric {
 
   /// Direction in which the value moves when the code gets healthier.
   /// See `FunctionMetric.polarity`.
-  MetricPolarity get polarity => MetricPolarity.down;
+  MetricPolarity get polarity => .down;
 
   num compute(ClassMetricInput input);
 }

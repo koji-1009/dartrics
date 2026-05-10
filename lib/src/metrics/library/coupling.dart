@@ -157,7 +157,7 @@ class DistanceFromMainSequence extends LibraryMetric {
   @override
   bool get defaultEnabled => false;
   @override
-  MetricPolarity get polarity => MetricPolarity.down;
+  MetricPolarity get polarity => .down;
   @override
   String get rationale =>
       'Distance from the Main Sequence `D = |A + I − 1|` (Martin 1994) '

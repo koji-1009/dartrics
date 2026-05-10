@@ -89,17 +89,17 @@ class RegressionSummary {
     var removed = 0;
     for (final c in changes) {
       switch (c.direction) {
-        case ChangeDirection.improved:
+        case .improved:
           improved++;
-        case ChangeDirection.regressed:
+        case .regressed:
           regressed++;
-        case ChangeDirection.unchanged:
+        case .unchanged:
           unchanged++;
-        case ChangeDirection.neutralDelta:
+        case .neutralDelta:
           neutralDelta++;
-        case ChangeDirection.added:
+        case .added:
           added++;
-        case ChangeDirection.removed:
+        case .removed:
           removed++;
       }
     }

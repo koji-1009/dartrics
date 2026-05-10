@@ -147,9 +147,9 @@ SnapshotConfig _parseSnapshot(Object? node) {
 }
 
 SnapshotMode _modeFromString(String raw) => switch (raw) {
-  'cache' => SnapshotMode.cache,
-  'baseline' => SnapshotMode.baseline,
-  'none' || 'off' => SnapshotMode.none,
+  'cache' => .cache,
+  'baseline' => .baseline,
+  'none' || 'off' => .none,
   _ => throw ConfigException(
     'unknown snapshot mode "$raw" (expected cache | baseline | none)',
   ),
