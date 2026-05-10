@@ -32,9 +32,7 @@
               "class-length",
               "efferent-coupling",
               "afferent-coupling",
-              "instability",
-              "abstractness",
-              "distance-from-main-sequence"
+              "instability"
             ]
           },
           "additionalProperties": { "$ref": "#/$defs/MetricThresholds" }

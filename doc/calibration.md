@@ -9,7 +9,7 @@ Threshold *numbers* (e.g. CC warn 10, CBO warn 14) follow the cited sources unch
 - **Each lens cites a published source.** Lenses without one are excluded.
 - **One lens, one signal.** Lenses that derive purely from already-shipped lenses add no orthogonal signal and are excluded.
 - **Idiom-misaligned lenses are excluded.** Metrics whose source assumptions don't hold for Dart (e.g. inheritance-depth metrics on a mixin + composition language) are excluded.
-- **Off-by-default when overlap or assumption-misfit is structural.** Halstead Volume and Method Length overlap with simpler shipped lenses; Martin's Abstractness and Distance assume "package = release unit", which Dart's 1-file-1-library granularity breaks.
+- **Off-by-default when overlap is structural.** Halstead Volume and Method Length overlap with simpler shipped lenses (CC / SLOC), so they ship disabled.
 
 ## Selected lenses
 
@@ -28,7 +28,6 @@ Threshold *numbers* (e.g. CC warn 10, CBO warn 14) follow the cited sources unch
 | `rfc` | Chidamber & Kemerer 1994 |
 | `class-length` | Beck 1996; Fowler 1999; Lippert & Roock 2006 |
 | `efferent-coupling` / `afferent-coupling` / `instability` | Martin 1994 |
-| `abstractness` *(off)* / `distance-from-main-sequence` *(off)* | Martin 1994 |
 
 Default thresholds and per-lens descriptions live in `README.md` ("Provided metrics") and `doc/manual.md` ("The lens battery"). Full bibliographic citations are exposed by each lens's `references` getter and surface through `dartrics rules`.
 
@@ -54,4 +53,3 @@ Hitz & Montazeri 1995 take connected components over methods that share a field 
 | --- | --- |
 | `halstead-volume` | Strong correlation with CC and SLOC (Alfadel et al. 2017); emitting all three duplicates signal. |
 | `method-length` | By definition `SLOC + blanks + comment-only lines`. SLOC alone carries the same signal plus a known offset. |
-| `abstractness` / `distance-from-main-sequence` | Martin's framing assumes "package = release unit"; Dart's 1-file-1-library granularity makes per-file values brittle. Off until directory-level aggregation lands. |

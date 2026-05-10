@@ -5,6 +5,4 @@ const List<LibraryMetric> defaultLibraryMetrics = [
   EfferentCoupling(),
   AfferentCoupling(),
   Instability(),
-  Abstractness(),
-  DistanceFromMainSequence(),
 ];

@@ -74,15 +74,13 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 | `efferent-coupling` (Ce) | "This file pulls on a lot of strings." | Distinct project-internal + `package:` dependencies (excludes `dart:*`). |
 | `afferent-coupling` (Ca) | "Touching this file ripples everywhere." | Incoming internal-import edges. |
 | `instability` (I) | "This is a fragile hub." | `Ce / (Ca + Ce)`. 0 = maximally stable, 1 = maximally unstable. |
-| `abstractness` (A, off) | — | Abstract / mixin types ÷ total class-like declarations. Opt-in. |
-| `distance-from-main-sequence` (D, off) | "It's a concrete file that everyone depends on, or an abstract leaf." | `\|A + I − 1\|`. Both extremes are smells. Opt-in (depends on `abstractness`). |
 
 ## Polarity — which way is healthier
 
 Each lens declares a `polarity`:
 
-- `down` — lower is better. The default. (CC, Cognitive, nesting, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC, Ce, Ca, instability, distance.)
-- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume, abstractness in isolation.)
+- `down` — lower is better. The default. (CC, Cognitive, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC, Ce, Ca, instability.)
+- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume.)
 
 You read this off the regression diff so you don't accidentally celebrate a metric that drifted the wrong way.
 
@@ -103,7 +101,7 @@ The metric points at a real readability problem and the structure is **decomposa
 | `lcom4` | Split the class along the connected components. The components are usually two responsibilities pretending to be one. |
 | `coupling-between-objects` | Hide concrete types behind an interface · Move the orchestration to a coordinator class |
 | `response-for-class` | Move methods that only call out to other types onto those types · Apply Tell-Don't-Ask |
-| `instability` / `distance-from-main-sequence` | Move stable types upward, depend on abstractions · Move volatile types into leaves |
+| `instability` | Move stable types upward, depend on abstractions · Move volatile types into leaves |
 
 `dartrics rules --reporter ai` dumps the full per-metric `refactorHints` — keep that catalogue at hand or rely on auto-explain to inline it per run.
 
