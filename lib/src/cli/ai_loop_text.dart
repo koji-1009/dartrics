@@ -54,14 +54,20 @@ dartrics:
     mode: cache                 # gitignored at .dart_tool/dartrics/snapshot.json
 ```
 
-Generate coverage if you want `complexityJustified` annotations:
+Generate coverage if you want `complexityJustified` annotations. Pure Dart:
 
 ```bash
 dart pub global activate coverage
 dart pub run coverage:test_with_coverage
 ```
 
-That writes `coverage/lcov.info`, which dartrics auto-discovers.
+Flutter:
+
+```bash
+flutter test --coverage
+```
+
+Either writes `coverage/lcov.info`, which dartrics auto-discovers on the next analyze.
 
 ## 2. Propose (the agent reads dartrics)
 
