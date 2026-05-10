@@ -6,21 +6,10 @@ import '../metric.dart';
 
 /// Per-file precomputed information for the library-level metrics.
 class LibraryStats {
-  LibraryStats({
-    required this.internalImports,
-    required this.totalClasses,
-    required this.abstractClasses,
-  });
+  LibraryStats({required this.internalImports});
 
   /// Absolute paths of project-internal files imported by this file.
   final Set<String> internalImports;
-
-  /// Number of class-like declarations in this file (`class` and `mixin`).
-  final int totalClasses;
-
-  /// Subset of `totalClasses` that are abstract (`abstract class`,
-  /// `mixin`, or class with no concrete members).
-  final int abstractClasses;
 }
 
 class LibraryIndex {
@@ -64,13 +53,7 @@ class LibraryIndex {
     CompilationUnit unit,
     _ImportResolutionContext ctx,
   ) {
-    final imports = _resolveImports(path, unit, ctx);
-    final classCounts = _countClasses(unit);
-    return LibraryStats(
-      internalImports: imports,
-      totalClasses: classCounts.total,
-      abstractClasses: classCounts.abstractCount,
-    );
+    return LibraryStats(internalImports: _resolveImports(path, unit, ctx));
   }
 
   static Set<String> _resolveImports(
@@ -97,22 +80,6 @@ class LibraryIndex {
       }
     }
     return imports;
-  }
-
-  static ({int total, int abstractCount}) _countClasses(CompilationUnit unit) {
-    var total = 0;
-    var abstractCount = 0;
-    for (final decl in unit.declarations) {
-      switch (decl) {
-        case ClassDeclaration(:final abstractKeyword):
-          total++;
-          if (abstractKeyword != null) abstractCount++;
-        case MixinDeclaration():
-          total++;
-          abstractCount++;
-      }
-    }
-    return (total: total, abstractCount: abstractCount);
   }
 }
 

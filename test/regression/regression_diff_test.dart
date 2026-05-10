@@ -78,9 +78,8 @@ void main() {
   });
 
   test('classifyChange treats neutral-polarity changes as neutralDelta', () {
-    // For neutral metrics (e.g. Halstead Volume, Abstractness in
-    // isolation), a numeric change exists but no universally
-    // healthier direction is defined.
+    // For neutral metrics (e.g. Halstead Volume), a numeric change
+    // exists but no universally healthier direction is defined.
     expect(
       classifyChange(
         before: 120,

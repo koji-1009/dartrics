@@ -154,8 +154,6 @@ void main() {
         'efferent-coupling',
         'afferent-coupling',
         'instability',
-        'abstractness',
-        'distance-from-main-sequence',
       };
       final byId = {for (final r in collectRuleDescriptions()) r.id: r};
       for (final id in citedIds) {

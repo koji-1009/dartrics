@@ -93,8 +93,6 @@ Lenses marked **off** ship disabled by default; opt in via `dartrics: { metrics:
 | Efferent Coupling (Ce)                  | distinct project-internal + `package:` dependencies (excludes `dart:*`) |
 | Afferent Coupling (Ca)                  | incoming internal-import edges                                          |
 | Instability (I)                         | `Ce / (Ca + Ce)`                                                        |
-| Abstractness (A) **off**                | abstract-class + mixin / total class-like declarations                  |
-| Distance from Main Sequence (D) **off** | `\|A + I − 1\|`                                                         |
 
 ## Configuration
 

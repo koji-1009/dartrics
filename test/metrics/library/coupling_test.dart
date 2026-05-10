@@ -6,19 +6,9 @@ LibraryIndex _index() {
   return LibraryIndex.fromStats({
     '/p/lib/a.dart': LibraryStats(
       internalImports: {'/p/lib/b.dart', '/p/lib/c.dart'},
-      totalClasses: 2,
-      abstractClasses: 1,
     ),
-    '/p/lib/b.dart': LibraryStats(
-      internalImports: {'/p/lib/c.dart'},
-      totalClasses: 1,
-      abstractClasses: 0,
-    ),
-    '/p/lib/c.dart': LibraryStats(
-      internalImports: <String>{},
-      totalClasses: 1,
-      abstractClasses: 0,
-    ),
+    '/p/lib/b.dart': LibraryStats(internalImports: {'/p/lib/c.dart'}),
+    '/p/lib/c.dart': LibraryStats(internalImports: <String>{}),
   });
 }
 
@@ -59,23 +49,6 @@ void main() {
     );
     // Ce(b) = 1 (imports c), Ca(b) = 1 (a imports b) → 0.5
     expect(i, 0.5);
-  });
-
-  test('Abstractness = abstract / total', () {
-    expect(
-      const Abstractness().compute(
-        LibraryMetricInput(path: '/p/lib/a.dart', index: _index()),
-      ),
-      0.5,
-    );
-  });
-
-  test('D = |A + I - 1|', () {
-    final input = LibraryMetricInput(path: '/p/lib/a.dart', index: _index());
-    // Ce(a)=2, Ca(a)=0 → I = 1.0
-    // A(a) = 0.5
-    // D = |0.5 + 1.0 - 1| = 0.5
-    expect(const DistanceFromMainSequence().compute(input), 0.5);
   });
 
   test('library with no inbound or outbound deps has I = 0', () {
