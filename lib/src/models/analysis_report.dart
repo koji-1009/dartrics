@@ -4,11 +4,10 @@ import 'unused_declaration.dart';
 
 /// Severity level attached to a metric violation.
 ///
-/// Ordered so `value` comparisons answer "is at least this severe?".
+/// Ordered so `rank` comparisons answer "is at least this severe?".
 enum Severity {
-  info(0),
-  warning(1),
-  error(2);
+  warning(0),
+  error(1);
 
   const Severity(this.rank);
   final int rank;

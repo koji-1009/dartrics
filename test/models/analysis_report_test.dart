@@ -84,7 +84,6 @@ void main() {
     );
     expect(report.hasSeverityAtLeast(Severity.error), isTrue);
     expect(report.hasSeverityAtLeast(Severity.warning), isTrue);
-    expect(report.hasSeverityAtLeast(Severity.info), isTrue);
   });
 
   test('hasSeverityAtLeast returns false when no violations exist', () {
@@ -93,7 +92,7 @@ void main() {
       metrics: const [],
       unused: const [],
     );
-    expect(report.hasSeverityAtLeast(Severity.info), isFalse);
+    expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
   });
 
   test('SourceLocation.toJson preserves all fields', () {
