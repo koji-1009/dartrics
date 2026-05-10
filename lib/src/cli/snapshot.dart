@@ -18,12 +18,9 @@ const String _baselineDefaultPath = 'dartrics-snapshot.json';
 SnapshotConfig resolveSnapshotConfig(SnapshotConfig config, String? cliValue) =>
     switch (cliValue) {
       null => config,
-      'cache' => SnapshotConfig(mode: SnapshotMode.cache, path: config.path),
-      'baseline' => SnapshotConfig(
-        mode: SnapshotMode.baseline,
-        path: config.path,
-      ),
-      'none' || 'off' => const SnapshotConfig(mode: SnapshotMode.none),
+      'cache' => SnapshotConfig(mode: .cache, path: config.path),
+      'baseline' => SnapshotConfig(mode: .baseline, path: config.path),
+      'none' || 'off' => const SnapshotConfig(mode: .none),
       _ => SnapshotConfig(mode: config.mode, path: cliValue),
     };
 

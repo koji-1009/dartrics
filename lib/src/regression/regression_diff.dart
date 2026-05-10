@@ -100,7 +100,7 @@ class RegressionDiff {
         direction: _classify(
           before: beforeValue,
           after: afterValue,
-          polarity: polarity[id] ?? MetricPolarity.neutral,
+          polarity: polarity[id] ?? .neutral,
           scopeAdded: before == null,
           scopeRemoved: after == null,
         ),

@@ -192,7 +192,7 @@ class MetricEngine {
     return MetricRecord(
       file: file.path,
       scope: ScopeRef(
-        kind: ScopeKind.library,
+        kind: .library,
         name: file.path,
         location: SourceLocation(path: file.path, line: 1, column: 1),
       ),
@@ -266,7 +266,7 @@ class MetricEngine {
       yield MetricRecord(
         file: file.path,
         scope: ScopeRef(
-          kind: ScopeKind.klass,
+          kind: .klass,
           name: input.className,
           location: SourceLocation(
             path: file.path,
@@ -295,9 +295,9 @@ class MetricEngine {
     );
     final ScopeKind kind;
     if (decl is FunctionDeclaration) {
-      kind = ScopeKind.function;
+      kind = .function;
     } else {
-      kind = ScopeKind.method;
+      kind = .method;
     }
     return ScopeRef(kind: kind, name: input.scopeName, location: source);
   }
@@ -347,10 +347,10 @@ class MetricEngine {
     MetricThresholds t,
   ) {
     if (t.error != null && value >= t.error!) {
-      return (severity: Severity.error, threshold: t.error!);
+      return (severity: .error, threshold: t.error!);
     }
     if (t.warning != null && value >= t.warning!) {
-      return (severity: Severity.warning, threshold: t.warning!);
+      return (severity: .warning, threshold: t.warning!);
     }
     return null;
   }

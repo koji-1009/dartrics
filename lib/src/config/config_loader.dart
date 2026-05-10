@@ -141,7 +141,7 @@ SnapshotConfig _parseSnapshot(Object? node) {
     return SnapshotConfig(mode: mode, path: path is String ? path : null);
   }
   if (node is bool) {
-    return SnapshotConfig(mode: node ? SnapshotMode.cache : SnapshotMode.none);
+    return SnapshotConfig(mode: node ? .cache : .none);
   }
   return const SnapshotConfig();
 }
