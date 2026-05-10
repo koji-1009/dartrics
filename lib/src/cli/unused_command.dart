@@ -20,7 +20,8 @@ import 'snapshot.dart';
 /// `dartrics unused` — runs only the public-API reachability analysis.
 class UnusedCommand extends Command<int> {
   UnusedCommand() {
-    addCommonOptions(argParser);
+    addIoOptions(argParser);
+    addAnalysisOptions(argParser);
     argParser
       ..addFlag(
         'apply',
@@ -71,11 +72,10 @@ class UnusedCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final options = CommonOptions.from(this);
-    final config = await loadConfig(options.configPath);
-    final paths = options.rest.isNotEmpty
-        ? options.rest
-        : <String>[options.root];
+    final io = IoOptions.from(this);
+    final analysis = AnalysisOptions.from(this);
+    final config = await loadConfig(analysis.configPath);
+    final paths = io.rest.isNotEmpty ? io.rest : <String>[analysis.root];
     final unusedConfig = mergeUnusedFilterFromCli(
       base: config.unused,
       cliFilter: argResults!['filter'] as List<String>,
@@ -88,9 +88,9 @@ class UnusedCommand extends Command<int> {
     }
     final Set<String>? changed;
     try {
-      changed = options.since == null
+      changed = analysis.since == null
           ? null
-          : (await changedDartFilesSince(options.since!)).toSet();
+          : (await changedDartFilesSince(analysis.since!)).toSet();
     } on GitDiffException catch (e) {
       DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
@@ -98,7 +98,7 @@ class UnusedCommand extends Command<int> {
     final runner = AnalyzerRunner(
       roots: paths,
       exclude: config.exclude,
-      concurrency: options.concurrency,
+      concurrency: analysis.concurrency,
     );
     final units = await runner.resolveAll();
     final unused = await const UnusedDetector().detectResolved([
@@ -110,12 +110,12 @@ class UnusedCommand extends Command<int> {
     ]);
     final snapshotConfig = resolveSnapshotConfig(
       config.snapshot,
-      options.snapshot,
+      analysis.snapshot,
     );
     final snapshotChanged = _maybeApplySnapshot(
       snapshotConfig: snapshotConfig,
-      root: options.root,
-      sinceActive: options.since != null,
+      root: analysis.root,
+      sinceActive: analysis.since != null,
       hashes: hashes,
     );
     final activeFilter = changed ?? snapshotChanged;
@@ -130,12 +130,12 @@ class UnusedCommand extends Command<int> {
       changedFileCount: activeFilter?.length,
     )..attachAnalyzedFileCount(units.length);
 
-    await _emit(report, options);
+    await _emit(report, io);
 
-    final applyExit = await _maybeApply(options, filtered);
+    final applyExit = await _maybeApply(analysis, filtered);
     if (applyExit != null) return applyExit;
 
-    if (options.fatalWarnings && unused.isNotEmpty) return 1;
+    if (analysis.fatalWarnings && unused.isNotEmpty) return 1;
     return ExitCode.success.code;
   }
 
@@ -169,15 +169,15 @@ class UnusedCommand extends Command<int> {
     return unused.where((u) => allowed.contains(u.location.path)).toList();
   }
 
-  Future<void> _emit(AnalysisReport report, CommonOptions options) async {
-    final reporter = pickReporter(options.reporter, limit: options.limit);
+  Future<void> _emit(AnalysisReport report, IoOptions io) async {
+    final reporter = pickReporter(io.reporter, limit: io.limit);
     final IOSink sink;
     final bool ownsSink;
-    if (options.output == '-') {
+    if (io.output == '-') {
       sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
-      sink = File(options.output).openWrite();
+      sink = File(io.output).openWrite();
       ownsSink = true;
     }
     try {
@@ -193,14 +193,14 @@ class UnusedCommand extends Command<int> {
   /// non-null exit code when the run should abort (dirty git tree
   /// without `--force`); `null` otherwise.
   Future<int?> _maybeApply(
-    CommonOptions options,
+    AnalysisOptions analysis,
     List<UnusedDeclaration> filtered,
   ) async {
     final applyMode = argResults!['apply'] as bool;
     if (!applyMode) return null;
     final force = argResults!['force'] as bool;
     final includeTests = argResults!['include-tests'] as bool;
-    if (!force && !isGitTreeClean(options.root)) {
+    if (!force && !isGitTreeClean(analysis.root)) {
       DartricsIO.stderrSink.writeln(
         'dartrics unused: refusing to apply on a dirty git tree. '
         'Commit or stash first, or pass --force.',

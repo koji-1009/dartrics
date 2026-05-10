@@ -53,8 +53,6 @@ void main() {
       'md',
       '--output',
       out.path,
-      '--config',
-      '${dir.path}/no.yaml',
     ]);
     expect(code, 0);
     final body = await out.readAsString();
@@ -63,21 +61,12 @@ void main() {
   });
 
   test('exits 64 when no input file argument is given', () async {
-    final code = await runQuietly([
-      'report',
-      '--config',
-      '${dir.path}/no.yaml',
-    ]);
+    final code = await runQuietly(['report']);
     expect(code, 64);
   });
 
   test('exits 65 when input file does not exist', () async {
-    final code = await runQuietly([
-      'report',
-      '${dir.path}/no-such-file.json',
-      '--config',
-      '${dir.path}/no.yaml',
-    ]);
+    final code = await runQuietly(['report', '${dir.path}/no-such-file.json']);
     expect(code, 65);
   });
 
@@ -111,8 +100,6 @@ void main() {
         'json',
         '--output',
         '${dir.path}/out.json',
-        '--config',
-        '${dir.path}/no.yaml',
       ]),
       throwsA(
         isA<FormatException>().having(
@@ -174,8 +161,6 @@ void main() {
         'json',
         '--output',
         out.path,
-        '--config',
-        '${dir.path}/no.yaml',
       ]);
       expect(code, 0);
       final decoded =

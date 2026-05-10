@@ -460,8 +460,6 @@ int f() { return 1; }
       'json',
       '--output',
       '-',
-      '--config',
-      '${dir.path}/no.yaml',
     ]);
     expect(r.exitCode, 0);
     expect(r.stdout, contains('"version"'));

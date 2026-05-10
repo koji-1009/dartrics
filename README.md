@@ -62,26 +62,30 @@ dartrics ai-loop         # the setup → propose → apply → verify walkthroug
 | `ai-loop` | Print the AI-loop walkthrough (mirror of [`doc/ai-loop.md`](doc/ai-loop.md)). |
 | `doctor` | Validate the `dartrics:` block in `analysis_options.yaml` — flags unknown metric ids and threshold orderings inconsistent with the metric's polarity. |
 
+Each subcommand only exposes the flags it actually consumes — `dartrics report --help` does not advertise analysis-time knobs (`--root`, `--since`, `--coverage`, …) because the report command just re-emits a saved JSON.
+
 ```
-Common options:
-  --config <path>          configuration file (default: analysis_options.yaml)
+IO (analyze / unused / report):
   --reporter <name>        console | json | md | ai | sarif (default: console)
   --output <path>          output destination; "-" means stdout (default: -)
+  --limit <n>              cap violations + unused entries shown by the ai
+                           and md reporters (after the priority sort)
+  -v, --verbose            FINE-level logging
+
+Analysis (analyze / unused):
+  --config <path>          configuration file (default: analysis_options.yaml)
   --root <path>            analysis root directory (default: cwd)
   --since <ref>            restrict output to .dart files changed vs the
                            given git ref (e.g. main, HEAD~1, origin/main)
-  --[no-]auto-explain      auto-attach rationale + refactor hints for every
-                           metric that fired (default: enabled)
   --snapshot <mode>        cache | baseline | none, or a custom path
+  --concurrency <n>        max files resolved in parallel (default: host
+                           CPU count, clamped to 16)
+  --fatal-warnings         exit non-zero if any warning is reported
+
+Metrics-reading overlays (analyze only):
   --coverage <path>        attach lcov.info coverage to every violation;
                            defaults to coverage/lcov.info when present
   --strict-dismiss         ignore every dismiss directive (comment + YAML)
-  --concurrency <n>        max files resolved in parallel (default: host
-                           CPU count, clamped to 16)
-  --limit <n>              cap violations + unused entries shown by the ai
-                           and md reporters (after the priority sort)
-  --fatal-warnings         exit non-zero if any warning is reported
-  -v, --verbose            FINE-level logging
 ```
 
 ## Provided metrics
@@ -130,7 +134,7 @@ LCOM4 and RFC use **name-based AST matching** scoped to the class declaration it
 
 `--reporter ai` is the primary integration point. Output is a token-efficient YAML-ish bundle starting with `# dartrics ai-report v1`. The reporter knobs compose into a tight refactor loop:
 
-- **Auto-explain** (default on; `--no-auto-explain` to opt out) auto-attaches the rationale + refactorHints + references for every metric that produced at least one violation. To pre-load the full catalogue (e.g. when an agent needs every metric's intent up front), pipe `dartrics rules --reporter ai` separately.
+- **Auto-explain** auto-attaches the rationale + refactorHints + references for every metric that produced at least one violation — always on, no flag to opt out, because the AI loop's whole reason for using dartrics is reading those alongside the violation. To pre-load the full catalogue (e.g. when an agent needs every metric's intent up front), pipe `dartrics rules --reporter ai` separately.
 - **Stable violation `id`** — every violation carries a 16-hex-char `id = sha256("<file>|<scope>|<metric>")` so AI loops can correlate runs ("`a3f1c4e9…` showed up again ⇒ my fix didn't take"). Surfaces in the JSON / AI / md reporters and as `partialFingerprints.dartrics/v1` in SARIF; `dartrics regression` carries the same id in its `MetricChange` payload so a regressed entry is one lookup away from the matching violation.
 - **`--limit <n>`** caps violations + unused entries shown by the AI / md reporters after the priority sort. Token-budget control for context-bounded agents; truncated entries are summarised in a `truncated:` block (AI) or `_+ N more_` line (md).
 - **`--coverage <path>`** (auto-detects `coverage/lcov.info`) attaches per-scope line and branch coverage to every emitted violation. The reporter sorts by a priority key — low-coverage / high-severity entries land first, `complexityJustified` ones at the bottom.

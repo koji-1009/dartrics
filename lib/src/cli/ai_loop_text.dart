@@ -81,7 +81,7 @@ What each flag does for the AI:
 | `--reporter ai` | Token-efficient YAML; sorted by severity → coverage → dismissed. The agent reads top-down and gets the most actionable items first. |
 | `--since origin/main` | Only emit records for files changed in the current branch. Avoids re-litigating debt the agent isn't there to fix. |
 | `--limit 30` | Hard cap so a 1000-violation legacy codebase doesn't blow the context window. The truncated count is stamped into the report. |
-| (auto-explain, default on) | Every metric that fired gets its rationale + refactorHints attached. The agent doesn't have to know which metrics exist. |
+| (auto-explain, always on) | Every metric that fired gets its rationale + refactorHints attached. The agent doesn't have to know which metrics exist. |
 
 A typical AI-loop prompt:
 
@@ -198,7 +198,7 @@ dartrics analyze --strict-dismiss --fatal-warnings
 | `dismissalRejected: missing required by:` | `requireAuthor: true` in config | Add `by: <agent-id>` to the YAML entry; comment dismissals can't carry author |
 | `exit 78` | `analysis_options.yaml` `dartrics:` block invalid | stderr message names the offending key; the JSON Schema (`dartrics-config.schema.json`) catches most of these in-editor |
 | AI report empty after change | `--snapshot cache` filtered to changed files only | First run wrote the snapshot; subsequent runs need a code change or `--snapshot none` to see everything |
-| AI report missing `explain:` | `--no-auto-explain` is set, or no metric fired | Drop the flag; the rationale is auto-attached for every metric that fires |
+| AI report missing `explain:` | No metric fired | The `explain:` block only renders when at least one metric crossed a threshold; a clean run is a healthy run |
 
 ## Reference flag map
 
@@ -209,7 +209,6 @@ dartrics analyze --strict-dismiss --fatal-warnings
 | Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
 | Cap output for token budget | `--limit <n>` | Applied after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
-| Drop auto-explain | `--no-auto-explain` | Lean reports without rationale + refactor hints attached |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
 

@@ -268,7 +268,7 @@ Why each flag matters in the loop:
 | `--reporter ai` | YAML-ish output with `# dartrics ai-report v1` header. Sorted: severity ↓, then coverage ↓, then `complexityJustified` ↓, then `dismissed` ↓. The most actionable items are at the top. |
 | `--since <ref>` | Only emit records whose owning file changed vs `<ref>`. Cross-file resolution still happens fully — only the *emitted* records are filtered. Stops you from re-litigating debt outside this PR. |
 | `--limit <n>` | Hard cap on emitted entries after the priority sort. Excess is summarised in `truncated:`. Token-budget control. |
-| (auto-explain) | Default-on. Every metric that fired gets its rationale + refactor hints attached as the report's `explain:` block. You don't need to know which metric ids exist. |
+| (auto-explain) | Always on. Every metric that fired gets its rationale + refactor hints attached as the report's `explain:` block. You don't need to know which metric ids exist. |
 | `--coverage <path>` | Default-on when `coverage/lcov.info` exists. Adds `coverage` / `branchCoverage` / `complexityJustified` to each violation. |
 
 ### 3. For each violation, decide
@@ -321,7 +321,6 @@ There is no third option of "ignore it again."
 | Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
 | Cap output for token budget | `--limit <n>` | Applied after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
-| Drop auto-explain | `--no-auto-explain` | Lean reports without rationale + refactor hints attached |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
 | Inject metric catalogue once | `dartrics rules --reporter ai` | Feed once into a system prompt |

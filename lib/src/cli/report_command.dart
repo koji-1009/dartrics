@@ -18,7 +18,7 @@ import 'io_sinks.dart';
 /// re-running analysis.
 class ReportCommand extends Command<int> {
   ReportCommand() {
-    addCommonOptions(argParser);
+    addIoOptions(argParser);
   }
 
   @override
@@ -30,25 +30,25 @@ class ReportCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final options = CommonOptions.from(this);
-    if (options.rest.isEmpty) {
+    final io = IoOptions.from(this);
+    if (io.rest.isEmpty) {
       DartricsIO.stderrSink.writeln('Usage: dartrics report <input.json>');
       return ExitCode.usage.code;
     }
-    final input = File(options.rest.first);
+    final input = File(io.rest.first);
     if (!input.existsSync()) {
       DartricsIO.stderrSink.writeln('${input.path}: file not found');
       return ExitCode.data.code;
     }
     final report = _decode(input.readAsStringSync());
-    final reporter = pickReporter(options.reporter, limit: options.limit);
+    final reporter = pickReporter(io.reporter, limit: io.limit);
     final IOSink sink;
     final bool ownsSink;
-    if (options.output == '-') {
+    if (io.output == '-') {
       sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
-      sink = File(options.output).openWrite();
+      sink = File(io.output).openWrite();
       ownsSink = true;
     }
     try {
