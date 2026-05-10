@@ -238,9 +238,9 @@ String buildApplySummary(List<ApplyResult> outcomes) {
     );
   if (unsupported > 0) {
     buf.writeln(
-      '  unsupported kinds (method / field / enumValue) require range '
-      'computation relative to a containing declaration and are not '
-      'yet auto-deletable.',
+      '  "unsupported" entries cannot be auto-deleted because removal '
+      'would leave invalid Dart (currently: removing the last constant '
+      'of an enum). Reported but left untouched on disk.',
     );
   }
   if (notFound > 0) {

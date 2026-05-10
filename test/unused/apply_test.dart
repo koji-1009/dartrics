@@ -471,7 +471,8 @@ void main() {}
       ]);
       expect(body, contains('deleted 0'));
       expect(body, contains('unsupported 1'));
-      expect(body, contains('unsupported kinds (method / field / enumValue)'));
+      expect(body, contains('would leave invalid Dart'));
+      expect(body, contains('last constant of an enum'));
     });
 
     test('summary names notFound addendum when relevant', () {

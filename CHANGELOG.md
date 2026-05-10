@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1
+
+A small documentation-correctness patch on top of 0.6.0. No metric, threshold, exit-code, or wire-format change.
+
+### `dartrics unused --apply` summary message
+
+- The `--apply` summary previously printed `"unsupported kinds (method / field / enumValue) require range computation relative to a containing declaration and are not yet auto-deletable"` when an `ApplyOutcome.unsupportedKind` entry was present. That claim was stale: instance methods, fields, and enum constants have all been auto-deletable since the per-kind locator landed (covered by the existing `applyDeletions` test suite — see `test/unused/apply_test.dart`). The only remaining `unsupportedKind` outcome is "removing the last constant of an enum", which would leave invalid Dart. The message is rewritten to describe that single edge case accurately. Behaviour is unchanged.
+
 ## 0.6.0
 
 A calibration release. Four metrics drop — two because their academic anchoring did not survive a re-audit against original sources, and two because Martin's "package = release unit" framing has no equivalent in Dart's language model. Four citations are corrected. The Dart-specific deviations from cited definitions consolidate into a single `doc/calibration.md` audit page. The README is restructured around the three things a "back of the box" surface should answer (philosophy / what it does / what metrics) with everything else moved to the dedicated docs.
