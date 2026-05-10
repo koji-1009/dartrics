@@ -87,6 +87,8 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 
 ### Library / file lenses (Martin 1994)
 
+All three are polarity `neutral` (no default warning) and rank change-impact rather than fire as Pain/Uselessness verdicts; see [`doc/calibration.md`](calibration.md)'s "Per-file Martin granularity" for why.
+
 | Lens | "Hard to read" feeling | What it measures |
 | --- | --- | --- |
 | `efferent-coupling` (Ce) | "This file pulls on a lot of strings." | Distinct project-internal + `package:` dependencies (excludes `dart:*`). |
