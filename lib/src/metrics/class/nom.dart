@@ -20,7 +20,8 @@ class NumberOfMethods extends ClassMetric {
       'declarations are excluded. NOM is one of the simplest size '
       'metrics for a class; large values often correlate with classes '
       'that violate the single-responsibility principle. Lorenz & Kidd '
-      '(1994) catalogue NOM as part of their OO-size suite; '
+      '(1994) include the per-class method count in their OO-size suite '
+      '(catalogued as "Average number of methods per class"); '
       'Chidamber & Kemerer (1994) note that Weighted Methods per Class '
       'reduces to NOM when each method is weighted at 1. A typical '
       'warning threshold is 20.';

@@ -9,7 +9,7 @@
 
 ### Class-metric citations
 
-- `number-of-methods` now cites **Lorenz & Kidd (1994)** and **Chidamber & Kemerer (1994)**. Lorenz & Kidd's *Object-Oriented Software Metrics: A Practical Guide* (Prentice Hall, ISBN 0-13-179292-X) catalogues NOM directly as part of an 11-metric OO-size suite; CK's WMC reduces to NOM when each method is weighted at 1.
+- `number-of-methods` now cites **Lorenz & Kidd (1994)** and **Chidamber & Kemerer (1994)**. Lorenz & Kidd's *Object-Oriented Software Metrics: A Practical Guide* (Prentice Hall, ISBN 0-13-179292-X) includes the per-class method count in their 11-metric OO-size suite, catalogued as "Average number of methods per class"; CK's WMC reduces to NOM when each method is weighted at 1.
 - `class-length` now cites **Beck (1996)**, **Fowler (1999)**, and **Lippert & Roock (2006)**. Beck's *Smalltalk Best Practice Patterns* and Fowler's *Refactoring* frame the underlying "large class" code smell; Lippert & Roock's *Refactoring in Large Software Projects* (Wiley, ISBN 0-470-85892-3) adds the threshold side via the "Rule of 30" — a class averaging more than 30 methods (~900 LOC) is highly likely to need decomposition.
 - README's class-level table and the manual's class-lens section (mirrored in `doc/manual.md` + `lib/src/cli/manual_text.dart`) replace the placeholder `—` with the new citations.
 
