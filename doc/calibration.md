@@ -10,6 +10,7 @@ Threshold *numbers* (e.g. CC warn 10, CBO warn 14) follow the cited sources unch
 - **One lens, one signal.** Lenses that derive purely from already-shipped lenses add no orthogonal signal and are excluded.
 - **Idiom-misaligned lenses are excluded.** Metrics whose source assumptions don't hold for Dart (e.g. inheritance-depth metrics on a mixin + composition language) are excluded.
 - **Off-by-default when overlap is structural.** Halstead Volume and Method Length overlap with simpler shipped lenses (CC / SLOC), so they ship disabled.
+- **Informational polarity for per-file Martin lenses.** `efferent-coupling`, `afferent-coupling`, and `instability` ship with `polarity: neutral` because per-file granularity (a Dart library is one file; the release unit is the pub package) breaks Martin's package-as-release-unit framing. The values still rank change-impact; see "Per-file Martin granularity" below.
 
 ## Selected lenses
 
@@ -53,3 +54,12 @@ Hitz & Montazeri 1995 take connected components over methods that share a field 
 | --- | --- |
 | `halstead-volume` | Strong correlation with CC and SLOC (Alfadel et al. 2017); emitting all three duplicates signal. |
 | `method-length` | By definition `SLOC + blanks + comment-only lines`. SLOC alone carries the same signal plus a known offset. |
+
+## Per-file Martin granularity
+
+Martin's 1994 framework was developed for OO languages where "package = release unit" and a file typically holds one main type (Java's `public class Foo` ↔ `Foo.java` is compiler-enforced). Dart does **not** have that constraint:
+
+- A `.dart` file is a library; one library can hold any number of `class` / `mixin` / `extension` / top-level function declarations.
+- The release unit in Dart is the *pub package*, not the file. There is no first-class concept of a named multi-file module between the file and the package.
+
+`efferent-coupling` (per-file Ce), `afferent-coupling` (cross-file Ca), and `instability` (`I = Ce / (Ca + Ce)`) ship because the count itself is a useful change-impact ranking even when divorced from Martin's `A`-paired Pain/Uselessness verdicts. They are *not* Martin-frame "is this design good" gates; they are "if you change this file, who breaks?" rankings. Polarity is `neutral` for all three — no default warning fires, and the regression diff surfaces drift without classifying it as improved/regressed. Set a threshold via `dartrics: { metrics: { efferent-coupling: { warning: <n> } } }` to opt into a project-specific gate.
