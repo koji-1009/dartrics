@@ -1,14 +1,14 @@
 # Calibration
 
-dartrics' lens battery is anchored to published sources. This page is the audit trail for that anchoring: what's selected and why, where the implementation departs from the source's literal definition, and what was deliberately dropped.
+dartrics' lens battery is anchored to published sources. This page is the audit trail for that anchoring: what's selected and why, and where the implementation departs from the source's literal definition.
 
 Threshold *numbers* (e.g. CC warn 10, CBO warn 14) follow the cited sources unchanged. What can differ is *what is counted* — those deviations are listed below with their justification.
 
 ## Selection principles
 
-- **Each lens cites a published source.** Lenses without one are excluded; see "Intentionally absent" for the drop list.
-- **One lens, one signal.** Lenses that derive purely from already-shipped lenses (Halstead Difficulty/Effort; Maintainability Index = `CC + V + LOC`) add no orthogonal signal and are absent.
-- **Idiom-misaligned lenses are excluded, not opt-in.** DIT and NOC describe inheritance depth/breadth; Dart's mixin + composition culture keeps both shallow.
+- **Each lens cites a published source.** Lenses without one are excluded.
+- **One lens, one signal.** Lenses that derive purely from already-shipped lenses add no orthogonal signal and are excluded.
+- **Idiom-misaligned lenses are excluded.** Metrics whose source assumptions don't hold for Dart (e.g. inheritance-depth metrics on a mixin + composition language) are excluded.
 - **Off-by-default when overlap or assumption-misfit is structural.** Halstead Volume and Method Length overlap with simpler shipped lenses; Martin's Abstractness and Distance assume "package = release unit", which Dart's 1-file-1-library granularity breaks.
 
 ## Selected lenses
@@ -55,14 +55,3 @@ Hitz & Montazeri 1995 take connected components over methods that share a field 
 | `halstead-volume` | Strong correlation with CC and SLOC (Alfadel et al. 2017); emitting all three duplicates signal. |
 | `method-length` | By definition `SLOC + blanks + comment-only lines`. SLOC alone carries the same signal plus a known offset. |
 | `abstractness` / `distance-from-main-sequence` | Martin's framing assumes "package = release unit"; Dart's 1-file-1-library granularity makes per-file values brittle. Off until directory-level aggregation lands. |
-
-## Intentionally absent
-
-| Lens / signal | Reason |
-| --- | --- |
-| Depth of Inheritance Tree (DIT) — CK 1994 | Dart's mixin + composition-over-inheritance keeps inheritance chains shallow; doesn't discriminate. |
-| Number of Children (NOC) — CK 1994 | Same reason as DIT. |
-| Halstead Difficulty / Effort — Halstead 1977 | Pure derivations of `(η₁, η₂, N₁, N₂)` — no orthogonal signal. |
-| Maintainability Index — Oman & Hagemeister 1992 | Linear combination of `CC + V + LOC` — no orthogonal signal. |
-| `boolean-trap` (positional bool count) | The `dart-lang/linter` rule `avoid_positional_boolean_parameters` already catches this with a stricter, binary threshold. No peer-reviewed source supports a count-based framing. **Recommendation: enable `avoid_positional_boolean_parameters` in `analysis_options.yaml`.** |
-| `maximum-nesting-level` | No peer-reviewed source establishes a defect-correlated threshold for raw nesting depth. The widely cited "NIST SP 500-235 §4" attribution is incorrect (§4 of that document is "Simplified Complexity Calculation", not nesting research). Dropped rather than shipped on tooling-convention backing. |
