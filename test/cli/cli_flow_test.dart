@@ -460,33 +460,10 @@ int f() { return 1; }
       'json',
       '--output',
       '-',
-      '--config',
-      '${dir.path}/no.yaml',
     ]);
     expect(r.exitCode, 0);
     expect(r.stdout, contains('"version"'));
   });
-
-  test(
-    'analyze --fatal-style exits 1 when an info-level violation is present',
-    () async {
-      // Currently dartrics never emits Severity.info, so --fatal-style is a
-      // no-op; exit stays 0 even on a clean file. Document the current
-      // behavior: it does not flip to 1.
-      final code = await runQuietly([
-        'analyze',
-        '${dir.path}/lib',
-        '--reporter',
-        'json',
-        '--output',
-        '${dir.path}/a2.json',
-        '--fatal-style',
-        '--config',
-        '${dir.path}/no.yaml',
-      ]);
-      expect(code, 0);
-    },
-  );
 }
 
 Future<void> _runGit(String cwd, List<String> args) async {

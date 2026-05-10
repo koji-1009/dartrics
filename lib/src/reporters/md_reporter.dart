@@ -75,7 +75,7 @@ class MdReporter implements Reporter {
       ..writeln()
       ..writeln('| Severity | Count |')
       ..writeln('|----------|-------|');
-    for (final s in ['error', 'warning', 'info']) {
+    for (final s in ['error', 'warning']) {
       buf.writeln('| $s | ${counts[s] ?? 0} |');
     }
     buf

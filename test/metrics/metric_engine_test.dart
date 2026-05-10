@@ -7,6 +7,7 @@ import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:dartrics/src/dismiss/dismissal_index.dart';
 import 'package:dartrics/src/metrics/metric_engine.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
+import 'package:dartrics/src/models/source_location.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -698,6 +699,94 @@ int branchy(int x) {
         expect(v.id, hasLength(16));
         expect(RegExp(r'^[0-9a-f]{16}$').hasMatch(v.id), isTrue);
       }
+    });
+  });
+
+  group('firedExplanations', () {
+    // Lightweight fixture builder: a single MetricRecord at [scope.kind]
+    // carrying one violation with [metricId]. The other fields are not
+    // exercised by `firedExplanations`, so the boilerplate stays minimal.
+    MetricRecord recordFiring(ScopeKind kind, String metricId) => MetricRecord(
+      file: 'lib/foo.dart',
+      scope: ScopeRef(
+        kind: kind,
+        name: 'x',
+        location: const SourceLocation(
+          path: 'lib/foo.dart',
+          line: 1,
+          column: 1,
+        ),
+      ),
+      values: const {},
+      violations: [
+        MetricViolation(
+          metricId: metricId,
+          severity: Severity.warning,
+          threshold: 0,
+        ),
+      ],
+    );
+
+    test('walks function, class, and library calculator lists', () {
+      // One violation in each of the three scope kinds, with metric ids
+      // that exist in the default lists. firedExplanations should emit
+      // exactly those three entries, in calculator-declaration order.
+      final engine = MetricEngine();
+      final entries = engine.firedExplanations([
+        recordFiring(ScopeKind.function, 'cyclomatic-complexity'),
+        recordFiring(ScopeKind.klass, 'lcom4'),
+        recordFiring(ScopeKind.library, 'instability'),
+      ]);
+      expect(entries.map((e) => e.metricId).toList(), [
+        'cyclomatic-complexity',
+        'lcom4',
+        'instability',
+      ]);
+      // Spot-check that rationale + references survive — they come
+      // straight from the metric calculator without a Map lookup.
+      expect(
+        entries.first.rationale,
+        contains(''), // any non-empty rationale string is fine
+      );
+      expect(entries.first.rationale.isNotEmpty, isTrue);
+    });
+
+    test('returns const [] when no violation fired', () {
+      // The early-return on empty firedIds keeps the post-condition
+      // (every entry corresponds to a fired metric) trivially true and
+      // dodges the per-list scans.
+      expect(MetricEngine().firedExplanations(const []), isEmpty);
+      expect(
+        MetricEngine().firedExplanations(const [
+          MetricRecord(
+            file: 'lib/foo.dart',
+            scope: ScopeRef(
+              kind: ScopeKind.function,
+              name: 'x',
+              location: SourceLocation(
+                path: 'lib/foo.dart',
+                line: 1,
+                column: 1,
+              ),
+            ),
+            values: {},
+            violations: [], // no violation ⇒ nothing to explain
+          ),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('dedupes when the same metric fires across multiple scopes', () {
+      // Two records, both with cyclomatic-complexity violations.
+      // firedExplanations should emit one entry, not two.
+      final engine = MetricEngine();
+      final entries = engine.firedExplanations([
+        recordFiring(ScopeKind.function, 'cyclomatic-complexity'),
+        recordFiring(ScopeKind.function, 'cyclomatic-complexity'),
+      ]);
+      expect(entries, hasLength(1));
+      expect(entries.single.metricId, 'cyclomatic-complexity');
     });
   });
 }

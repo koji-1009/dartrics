@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -110,28 +109,6 @@ void main() {
       refactorHints: ['hint'],
     ).toJson();
     expect(json.containsKey('defaultThreshold'), isFalse);
-  });
-
-  test('buildExplanations dedupes ids, blanks, and unknowns', () async {
-    // The "unknown-metric" branch writes to stderr (the function itself
-    // does not throw); redirect into a discard sink so the message
-    // does not leak into the test reporter's stream.
-    final ctl = StreamController<List<int>>();
-    unawaited(ctl.stream.drain<void>());
-    final sink = IOSink(ctl.sink);
-    final explanations = await withDartricsIO(
-      () => buildExplanations([
-        'cyclomatic-complexity',
-        'cyclomatic-complexity', // duplicate
-        ' ', // blank
-        'unknown-metric', // unknown — written to stderr, dropped
-      ]),
-      stderrSink: sink,
-    );
-    await sink.close();
-    await ctl.close();
-    expect(explanations, hasLength(1));
-    expect(explanations.single.metricId, 'cyclomatic-complexity');
   });
 
   test('AnalysisReport carries explanations + analyzedFiles in JSON', () {

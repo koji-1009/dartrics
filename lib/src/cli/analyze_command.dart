@@ -22,14 +22,15 @@ import '../unused/unused_detector.dart';
 import 'common_options.dart';
 import 'git_diff.dart';
 import 'io_sinks.dart';
-import 'rules_command.dart';
 import 'snapshot.dart';
 
 /// `dartrics analyze` — runs every metric calculator and the unused
 /// detector over the analysis root and emits a combined report.
 class AnalyzeCommand extends Command<int> {
   AnalyzeCommand() {
-    addCommonOptions(argParser);
+    addIoOptions(argParser);
+    addAnalysisOptions(argParser);
+    addMetricsReadingOptions(argParser);
     argParser.addMultiOption(
       'filter',
       help:
@@ -51,11 +52,11 @@ class AnalyzeCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final options = CommonOptions.from(this);
-    final config = await loadConfig(options.configPath);
-    final paths = options.rest.isNotEmpty
-        ? options.rest
-        : <String>[options.root];
+    final io = IoOptions.from(this);
+    final analysis = AnalysisOptions.from(this);
+    final reading = MetricsReadingOptions.from(this);
+    final config = await loadConfig(analysis.configPath);
+    final paths = io.rest.isNotEmpty ? io.rest : <String>[analysis.root];
     final unusedConfig = mergeUnusedFilterFromCli(
       base: config.unused,
       cliFilter: argResults!['filter'] as List<String>,
@@ -68,20 +69,20 @@ class AnalyzeCommand extends Command<int> {
     }
     final Set<String>? changed;
     try {
-      changed = await _resolveChangedFiles(options.since);
+      changed = await _resolveChangedFiles(analysis.since);
     } on GitDiffException catch (e) {
       DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
     }
     final snapshotConfig = resolveSnapshotConfig(
       config.snapshot,
-      options.snapshot,
+      analysis.snapshot,
     );
     final CoverageIndex? coverage;
     try {
       coverage = await loadCoverage(
-        cliValue: options.coverage,
-        root: options.root,
+        cliValue: reading.coverage,
+        root: analysis.root,
       );
     } on CoverageLoadException catch (e) {
       DartricsIO.stderrSink.writeln(e);
@@ -94,12 +95,13 @@ class AnalyzeCommand extends Command<int> {
       paths: paths,
       config: config,
       unusedConfig: unusedConfig,
-      options: options,
+      analysis: analysis,
+      reading: reading,
       changed: changed,
       snapshotConfig: snapshotConfig,
       coverage: coverage,
     ));
-    return _emit(report, options);
+    return _emit(report, io, analysis);
   }
 
   Future<Set<String>?> _resolveChangedFiles(String? since) async {
@@ -111,13 +113,13 @@ class AnalyzeCommand extends Command<int> {
     final runner = AnalyzerRunner(
       roots: req.paths,
       exclude: req.config.exclude,
-      concurrency: req.options.concurrency,
+      concurrency: req.analysis.concurrency,
     );
     final units = await runner.resolveAll();
     final dismissals = _buildDismissalIndex(
-      strictDismiss: req.options.strictDismiss,
+      strictDismiss: req.reading.strictDismiss,
       config: req.config.dismissals,
-      root: req.options.root,
+      root: req.analysis.root,
       units: units,
     );
     final engine = MetricEngine(
@@ -137,9 +139,9 @@ class AnalyzeCommand extends Command<int> {
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),
     ]);
-    final snapshotPath = snapshotPathFor(req.snapshotConfig, req.options.root);
+    final snapshotPath = snapshotPathFor(req.snapshotConfig, req.analysis.root);
     Set<String>? snapshotChanged;
-    if (snapshotPath != null && req.options.since == null) {
+    if (snapshotPath != null && req.analysis.since == null) {
       snapshotChanged = Snapshot.read(snapshotPath).changedPaths(hashes);
     }
     if (snapshotPath != null) {
@@ -156,9 +158,7 @@ class AnalyzeCommand extends Command<int> {
     final filteredUnused = allowed == null
         ? unused
         : unused.where((u) => allowed.contains(u.location.path)).toList();
-    final resolvedExplainIds = req.options.autoExplain
-        ? _autoExplainIds(filteredRecords)
-        : const <String>[];
+    final explanations = engine.firedExplanations(filteredRecords);
     final staleDismissals = _collectStaleDismissals(
       dismissals: dismissals,
       config: req.config.dismissals,
@@ -169,7 +169,7 @@ class AnalyzeCommand extends Command<int> {
       metrics: filteredRecords,
       unused: filteredUnused,
       analyzedFiles: hashes,
-      explanations: buildExplanations(resolvedExplainIds),
+      explanations: explanations,
       staleDismissals: staleDismissals,
       snapshotMode: req.snapshotConfig.mode.name,
       changedFileCount: allowed?.length,
@@ -211,29 +211,19 @@ class AnalyzeCommand extends Command<int> {
     return stale;
   }
 
-  /// Returns the metric ids that fired at least one violation in
-  /// [records], in first-seen order. Drives the auto-explain block on
-  /// the AI / md / SARIF reporters.
-  List<String> _autoExplainIds(List<MetricRecord> records) {
-    final seen = <String>{};
-    final out = <String>[];
-    for (final r in records) {
-      for (final v in r.violations) {
-        if (seen.add(v.metricId)) out.add(v.metricId);
-      }
-    }
-    return out;
-  }
-
-  Future<int> _emit(AnalysisReport report, CommonOptions options) async {
-    final reporter = pickReporter(options.reporter, limit: options.limit);
+  Future<int> _emit(
+    AnalysisReport report,
+    IoOptions io,
+    AnalysisOptions analysis,
+  ) async {
+    final reporter = pickReporter(io.reporter, limit: io.limit);
     final IOSink sink;
     final bool ownsSink;
-    if (options.output == '-') {
+    if (io.output == '-') {
       sink = DartricsIO.stdoutSink;
       ownsSink = false;
     } else {
-      sink = File(options.output).openWrite();
+      sink = File(io.output).openWrite();
       ownsSink = true;
     }
     try {
@@ -244,10 +234,7 @@ class AnalyzeCommand extends Command<int> {
       }
     }
 
-    if (options.fatalWarnings && report.hasSeverityAtLeast(Severity.warning)) {
-      return 1;
-    }
-    if (options.fatalStyle && report.hasSeverityAtLeast(Severity.info)) {
+    if (analysis.fatalWarnings && report.hasSeverityAtLeast(Severity.warning)) {
       return 1;
     }
     return ExitCode.success.code;
@@ -299,12 +286,13 @@ class AnalyzeCommand extends Command<int> {
 /// Bundle of inputs `_analyze` needs. Collected into a single record so
 /// the orchestrator's signature stays at one parameter even as the set
 /// of inputs grows (coverage, snapshot, dismissal config, `--since`,
-/// `--strict-dismiss`, `--auto-explain`, …). All fields are read-only.
+/// `--strict-dismiss`, …). All fields are read-only.
 typedef _AnalyzeRequest = ({
   List<String> paths,
   Config config,
   UnusedConfig unusedConfig,
-  CommonOptions options,
+  AnalysisOptions analysis,
+  MetricsReadingOptions reading,
   Set<String>? changed,
   SnapshotConfig snapshotConfig,
   CoverageIndex? coverage,

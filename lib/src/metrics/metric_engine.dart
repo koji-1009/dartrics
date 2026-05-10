@@ -127,6 +127,60 @@ class MetricEngine {
     return records;
   }
 
+  /// One [ExplainEntry] per metric that fired at least one violation
+  /// in [records]. Iterates the calculator set this engine was
+  /// constructed with and filters by fired metric ids — the lookup is
+  /// total over that set, so no nullable indirection (and no bang)
+  /// appears at the call site. Output is in calculator declaration
+  /// order: function metrics, then class metrics, then library
+  /// metrics. AI consumers index the block by `metricId`, not by
+  /// position, so the order is informational rather than load-bearing.
+  List<ExplainEntry> firedExplanations(List<MetricRecord> records) {
+    final firedIds = <String>{
+      for (final r in records)
+        for (final v in r.violations) v.metricId,
+    };
+    if (firedIds.isEmpty) return const [];
+    final out = <ExplainEntry>[];
+    for (final m in functionMetrics) {
+      if (firedIds.contains(m.id)) {
+        out.add(
+          ExplainEntry(
+            metricId: m.id,
+            rationale: m.rationale,
+            refactorHints: m.refactorHints,
+            references: m.references,
+          ),
+        );
+      }
+    }
+    for (final m in classMetrics) {
+      if (firedIds.contains(m.id)) {
+        out.add(
+          ExplainEntry(
+            metricId: m.id,
+            rationale: m.rationale,
+            refactorHints: m.refactorHints,
+            references: m.references,
+          ),
+        );
+      }
+    }
+    for (final m in libraryMetrics) {
+      if (firedIds.contains(m.id)) {
+        out.add(
+          ExplainEntry(
+            metricId: m.id,
+            rationale: m.rationale,
+            refactorHints: m.refactorHints,
+            references: m.references,
+          ),
+        );
+      }
+    }
+    return out;
+  }
+
   MetricRecord _libraryRecordFor(_ResolvedFile file, LibraryIndex index) {
     final input = LibraryMetricInput(path: file.path, index: index);
     final values = <String, num>{};

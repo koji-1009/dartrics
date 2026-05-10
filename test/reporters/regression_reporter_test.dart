@@ -55,6 +55,9 @@ void main() {
     expect(body, contains('warning:'));
     expect(body, contains('refactor looks cosmetic'));
     expect(body, contains('changes:'));
+    // Stable id for the (file, scope, metric) triple is emitted so AI
+    // loops can correlate this row with the matching analyze violation.
+    expect(body, contains('    id: ${report.changes.single.id}'));
   });
 
   test('md reporter renders the cosmetic-split section', () async {

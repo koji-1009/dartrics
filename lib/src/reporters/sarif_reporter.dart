@@ -84,16 +84,10 @@ class SarifReporter implements Reporter {
     sink.writeln(const JsonEncoder.withIndent('  ').convert(document));
   }
 
-  String _level(Severity s) {
-    switch (s) {
-      case Severity.error:
-        return 'error';
-      case Severity.warning:
-        return 'warning';
-      case Severity.info:
-        return 'note';
-    }
-  }
+  String _level(Severity s) => switch (s) {
+    Severity.error => 'error',
+    Severity.warning => 'warning',
+  };
 
   /// Builds `tool.driver.rules` so GitHub Code Scanning / GitLab show
   /// the metric's rationale + refactor hints inline next to the result,

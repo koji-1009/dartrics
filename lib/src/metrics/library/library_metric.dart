@@ -130,7 +130,7 @@ abstract class LibraryMetric {
   bool get defaultEnabled => true;
 
   /// One-paragraph explanation of what the metric measures, surfaced by
-  /// `dartrics rules`, `dartrics explain`, and the auto-explain block.
+  /// `dartrics rules` and the auto-explain block.
   String get rationale;
 
   /// Concrete refactor moves to take when the metric trips.

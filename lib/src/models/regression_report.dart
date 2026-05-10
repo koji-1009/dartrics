@@ -1,4 +1,5 @@
 import '../metrics/metric.dart';
+import '../metrics/metric_engine.dart';
 import 'analysis_report.dart';
 
 /// Direction of a per-scope, per-metric value change between two
@@ -47,10 +48,21 @@ class MetricChange {
 
   final ChangeDirection direction;
 
+  /// Stable cross-reference id for the `(file, scope, metric)` triple —
+  /// matches `MetricViolation.id` when the same metric crossed a
+  /// threshold for the same scope in `dartrics analyze`. Lets AI loops
+  /// correlate a regression row with the underlying analyze violation
+  /// (or its SARIF `partialFingerprints.dartrics/v1`) without rebuilding
+  /// the triple by hand. Always emitted because it is a pure function
+  /// of fields the row already carries.
+  String get id =>
+      computeViolationId(file: file, scope: scope.name, metricId: metricId);
+
   Map<String, Object?> toJson() => {
     'file': file,
     'scope': scope.toJson(),
     'metric': metricId,
+    'id': id,
     'before': before,
     'after': after,
     'direction': direction.name,

@@ -59,24 +59,4 @@ dartrics:
     expect(body, contains('metric: cyclomatic-complexity'));
     expect(body, contains('rationale:'));
   });
-
-  test('--no-auto-explain suppresses the explain block', () async {
-    final out = File('${dir.path}/r.yaml');
-    final code = await runQuietly([
-      'analyze',
-      dir.path,
-      '--reporter',
-      'ai',
-      '--output',
-      out.path,
-      '--config',
-      '${dir.path}/strict.yaml',
-      '--snapshot',
-      'none',
-      '--no-auto-explain',
-    ]);
-    expect(code, 0);
-    final body = await out.readAsString();
-    expect(body, isNot(contains('explain:')));
-  });
 }
