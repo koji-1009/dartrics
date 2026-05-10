@@ -13,17 +13,10 @@ import 'sarif_reporter.dart';
 /// markdown reporters. `null` (the default) keeps every entry.
 /// JSON / SARIF / console always emit the full set — downstream
 /// pipelines do their own filtering.
-Reporter pickReporter(String name, {int? limit}) {
-  switch (name) {
-    case 'json':
-      return JsonReporter();
-    case 'md':
-      return MdReporter(limit: limit);
-    case 'ai':
-      return AiReporter(limit: limit);
-    case 'sarif':
-      return SarifReporter();
-    default:
-      return ConsoleReporter();
-  }
-}
+Reporter pickReporter(String name, {int? limit}) => switch (name) {
+  'json' => JsonReporter(),
+  'md' => MdReporter(limit: limit),
+  'ai' => AiReporter(limit: limit),
+  'sarif' => SarifReporter(),
+  _ => ConsoleReporter(),
+};

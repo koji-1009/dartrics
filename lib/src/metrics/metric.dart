@@ -31,12 +31,13 @@ class FunctionMetricInput {
   String get source => context.source;
   LineInfo get lineInfo => context.lineInfo;
 
-  late final FunctionBody body = _bodyOf(declaration);
-  late final FormalParameterList? parameters = _parametersOf(declaration);
+  late final CallableDecl _callable = CallableDecl.from(declaration);
+  late final FunctionBody body = _callable.body;
+  late final FormalParameterList? parameters = _callable.parameters;
 
   /// Human-readable scope name. For top-level functions, the function name.
   /// For methods/constructors, `Class.name` (named-constructor name preserved).
-  late final String scopeName = _scopeNameOf(declaration);
+  late final String scopeName = _callable.scopeName;
 }
 
 /// Direction in which a metric value moves when the underlying code
@@ -92,41 +93,79 @@ abstract class FunctionMetric {
   num compute(FunctionMetricInput input);
 }
 
-FunctionBody _bodyOf(Declaration d) {
-  if (d is FunctionDeclaration) return d.functionExpression.body;
-  if (d is MethodDeclaration) return d.body;
-  return (d as ConstructorDeclaration).body;
-}
+/// Sealed wrapper over the three [Declaration] subtypes that the
+/// function-level metric layer cares about. The factory in [from] is
+/// the single place that talks to analyzer's open `Declaration`
+/// hierarchy, so per-kind dispatch elsewhere reduces to virtual
+/// method calls and the surrounding code stays exhaustiveness-checked
+/// without a wildcard arm.
+sealed class CallableDecl {
+  const CallableDecl();
 
-FormalParameterList? _parametersOf(Declaration d) {
-  if (d is FunctionDeclaration) return d.functionExpression.parameters;
-  if (d is MethodDeclaration) return d.parameters;
-  return (d as ConstructorDeclaration).parameters;
-}
-
-String _scopeNameOf(Declaration d) {
-  if (d is FunctionDeclaration) return d.name.lexeme;
-  if (d is MethodDeclaration) {
-    final cls = _enclosingClassName(d);
-    final method = d.name.lexeme;
-    return cls == null ? method : '$cls.$method';
+  /// Wraps [d]. Engines that build [FunctionMetricInput] filter
+  /// declaration kinds at collection time, so the trailing cast is a
+  /// type assertion, not a dispatch fallback.
+  factory CallableDecl.from(Declaration d) {
+    if (d is FunctionDeclaration) return _FunctionCallable(d);
+    if (d is MethodDeclaration) return _MethodCallable(d);
+    return _CtorCallable(d as ConstructorDeclaration);
   }
-  final ctor = (d as ConstructorDeclaration);
-  final cls = _enclosingClassName(ctor) ?? '<anonymous>';
-  final name = ctor.name?.lexeme;
-  return name == null ? cls : '$cls.$name';
+
+  FunctionBody get body;
+  FormalParameterList? get parameters;
+  String get scopeName;
+}
+
+class _FunctionCallable extends CallableDecl {
+  const _FunctionCallable(this.node);
+  final FunctionDeclaration node;
+  @override
+  FunctionBody get body => node.functionExpression.body;
+  @override
+  FormalParameterList? get parameters => node.functionExpression.parameters;
+  @override
+  String get scopeName => node.name.lexeme;
+}
+
+class _MethodCallable extends CallableDecl {
+  const _MethodCallable(this.node);
+  final MethodDeclaration node;
+  @override
+  FunctionBody get body => node.body;
+  @override
+  FormalParameterList? get parameters => node.parameters;
+  @override
+  String get scopeName {
+    final cls = _enclosingClassName(node);
+    return cls == null ? node.name.lexeme : '$cls.${node.name.lexeme}';
+  }
+}
+
+class _CtorCallable extends CallableDecl {
+  const _CtorCallable(this.node);
+  final ConstructorDeclaration node;
+  @override
+  FunctionBody get body => node.body;
+  @override
+  FormalParameterList? get parameters => node.parameters;
+  @override
+  String get scopeName {
+    final cls = _enclosingClassName(node) ?? '<anonymous>';
+    final name = node.name?.lexeme;
+    return name == null ? cls : '$cls.$name';
+  }
 }
 
 String? _enclosingClassName(AstNode node) {
-  AstNode? parent = node.parent;
-  while (parent != null) {
-    if (parent is ClassDeclaration) return parent.namePart.typeName.lexeme;
-    if (parent is MixinDeclaration) return parent.name.lexeme;
-    if (parent is ExtensionDeclaration) {
-      return parent.name?.lexeme ?? '<extension>';
-    }
-    if (parent is EnumDeclaration) return parent.namePart.typeName.lexeme;
-    parent = parent.parent;
+  for (var parent = node.parent; parent != null; parent = parent.parent) {
+    final name = switch (parent) {
+      ClassDeclaration(:final namePart) => namePart.typeName.lexeme,
+      MixinDeclaration(:final name) => name.lexeme,
+      ExtensionDeclaration(:final name) => name?.lexeme ?? '<extension>',
+      EnumDeclaration(:final namePart) => namePart.typeName.lexeme,
+      _ => null,
+    };
+    if (name != null) return name;
   }
   return null;
 }

@@ -54,13 +54,18 @@ class ResponseForClass extends ClassMetric {
     final invoked = <String>{};
 
     for (final member in cls.body.members) {
-      if (member is MethodDeclaration && member.body is! EmptyFunctionBody) {
-        declared.add(member.name.lexeme);
-        member.body.accept(_InvocationCollector(invoked));
-      } else if (member is ConstructorDeclaration &&
-          member.body is! EmptyFunctionBody) {
-        declared.add(member.name?.lexeme ?? input.className);
-        member.body.accept(_InvocationCollector(invoked));
+      if (member case MethodDeclaration(
+        :final body,
+        :final name,
+      ) when body is! EmptyFunctionBody) {
+        declared.add(name.lexeme);
+        body.accept(_InvocationCollector(invoked));
+      } else if (member case ConstructorDeclaration(
+        :final body,
+        :final name,
+      ) when body is! EmptyFunctionBody) {
+        declared.add(name?.lexeme ?? input.className);
+        body.accept(_InvocationCollector(invoked));
       }
     }
     final union = <String>{}

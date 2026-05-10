@@ -42,10 +42,10 @@ class WeightedMethodsPerClass extends ClassMetric {
     if (unit == null) return 0;
     var total = 0;
     for (final member in cls.body.members) {
-      if (member is MethodDeclaration && member.body is! EmptyFunctionBody) {
-        total += cc.compute(_inputFor(unit, member)).toInt();
-      } else if (member is ConstructorDeclaration &&
-          member.body is! EmptyFunctionBody) {
+      if (member
+          case MethodDeclaration(:final body) ||
+              ConstructorDeclaration(:final body)
+          when body is! EmptyFunctionBody) {
         total += cc.compute(_inputFor(unit, member)).toInt();
       }
     }

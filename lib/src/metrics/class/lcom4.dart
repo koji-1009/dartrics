@@ -94,11 +94,11 @@ class Lcom4 extends ClassMetric {
     return _Accesses(byField: byField, calls: calledMethods);
   }
 
-  FunctionBody? _bodyOf(Declaration decl) {
-    if (decl is MethodDeclaration) return decl.body;
-    if (decl is ConstructorDeclaration) return decl.body;
-    return null;
-  }
+  FunctionBody? _bodyOf(Declaration decl) => switch (decl) {
+    MethodDeclaration(:final body) => body,
+    ConstructorDeclaration(:final body) => body,
+    _ => null,
+  };
 }
 
 class _ClassView {
@@ -130,21 +130,23 @@ class _ClassViewBuilder {
   final Map<String, int> methodIndex = {};
 
   void ingest(ClassMember member) {
-    if (member is FieldDeclaration) {
-      for (final v in member.fields.variables) {
-        fieldNames.add(v.name.lexeme);
-      }
-      return;
-    }
-    if (member is MethodDeclaration && member.body is! EmptyFunctionBody) {
-      methodIndex[member.name.lexeme] = methods.length;
-      methods.add(member);
-      return;
-    }
-    if (member is ConstructorDeclaration && member.body is! EmptyFunctionBody) {
-      final n = member.name?.lexeme ?? owner.namePart.typeName.lexeme;
-      methodIndex[n] = methods.length;
-      methods.add(member);
+    switch (member) {
+      case FieldDeclaration(:final fields):
+        for (final v in fields.variables) {
+          fieldNames.add(v.name.lexeme);
+        }
+      case MethodDeclaration(:final body, :final name)
+          when body is! EmptyFunctionBody:
+        methodIndex[name.lexeme] = methods.length;
+        methods.add(member);
+      case ConstructorDeclaration(:final body, :final name)
+          when body is! EmptyFunctionBody:
+        methodIndex[name?.lexeme ?? owner.namePart.typeName.lexeme] =
+            methods.length;
+        methods.add(member);
+      // Empty-bodied methods/constructors and other ClassMember variants
+      // (e.g. external/abstract decls) don't contribute to LCOM4 cohesion.
+      case _:
     }
   }
 

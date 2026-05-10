@@ -103,12 +103,13 @@ class LibraryIndex {
     var total = 0;
     var abstractCount = 0;
     for (final decl in unit.declarations) {
-      if (decl is ClassDeclaration) {
-        total++;
-        if (decl.abstractKeyword != null) abstractCount++;
-      } else if (decl is MixinDeclaration) {
-        total++;
-        abstractCount++;
+      switch (decl) {
+        case ClassDeclaration(:final abstractKeyword):
+          total++;
+          if (abstractKeyword != null) abstractCount++;
+        case MixinDeclaration():
+          total++;
+          abstractCount++;
       }
     }
     return (total: total, abstractCount: abstractCount);

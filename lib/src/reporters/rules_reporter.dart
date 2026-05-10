@@ -73,17 +73,12 @@ class RulesReporter {
         sink.writeln(
           encoder.convert({'rules': rules.map((r) => r.toJson()).toList()}),
         );
-        return;
       case 'md':
         sink.write(formatMarkdown(_renderMarkdown(rules)));
-        return;
       case 'console':
         sink.write(_renderConsole(rules));
-        return;
-      case 'ai':
-      default:
+      case 'ai' || _:
         sink.write(formatYaml(_renderAi(rules)));
-        return;
     }
   }
 

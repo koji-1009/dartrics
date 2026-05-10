@@ -146,21 +146,14 @@ SnapshotConfig _parseSnapshot(Object? node) {
   return const SnapshotConfig();
 }
 
-SnapshotMode _modeFromString(String raw) {
-  switch (raw) {
-    case 'cache':
-      return SnapshotMode.cache;
-    case 'baseline':
-      return SnapshotMode.baseline;
-    case 'none':
-    case 'off':
-      return SnapshotMode.none;
-    default:
-      throw ConfigException(
-        'unknown snapshot mode "$raw" (expected cache | baseline | none)',
-      );
-  }
-}
+SnapshotMode _modeFromString(String raw) => switch (raw) {
+  'cache' => SnapshotMode.cache,
+  'baseline' => SnapshotMode.baseline,
+  'none' || 'off' => SnapshotMode.none,
+  _ => throw ConfigException(
+    'unknown snapshot mode "$raw" (expected cache | baseline | none)',
+  ),
+};
 
 Map<String, MetricThresholds> _parseMetrics(Object? node) {
   // Start from the built-in default thresholds so the CLI fires
