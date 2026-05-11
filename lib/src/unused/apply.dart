@@ -25,13 +25,50 @@ enum ApplyOutcome {
   /// declaration). User gets a stderr warning and the entry is
   /// untouched.
   notFound,
+
+  /// Field is named in a `this.<field>` initializing formal of some
+  /// constructor on the enclosing class. Deleting the field alone
+  /// would leave a dangling formal and break compilation, and
+  /// rewriting the formal + every named-argument call site is out of
+  /// scope for `--apply` (auto-rewriting callers is the kind of change
+  /// the user wants to author explicitly). The entry is left
+  /// untouched and reported.
+  coupledConstructorFormal,
 }
 
 /// Per-entry record produced by [applyDeletions].
 class ApplyResult {
-  ApplyResult({required this.outcome});
+  ApplyResult({required this.outcome, this.detail});
 
   final ApplyOutcome outcome;
+
+  /// Optional structured per-entry context for the CLI summary layer.
+  /// Currently populated for [ApplyOutcome.coupledConstructorFormal]
+  /// so the summary can name the affected `(file, class, field)` and
+  /// the constructor(s) that reference it.
+  final ApplyResultDetail? detail;
+}
+
+/// Per-entry context attached to an [ApplyResult]. Lives in the apply
+/// module so the CLI summary can render an outcome without re-walking
+/// the source.
+class ApplyResultDetail {
+  ApplyResultDetail({
+    required this.file,
+    required this.line,
+    required this.name,
+    this.coupledConstructors = const [],
+  });
+
+  final String file;
+  final int line;
+  final String name;
+
+  /// Qualified constructor names (`Class` for the unnamed default,
+  /// `Class.named` otherwise) that reference the field as a
+  /// `this.<name>` initializing formal. Empty for outcomes other than
+  /// [ApplyOutcome.coupledConstructorFormal].
+  final List<String> coupledConstructors;
 }
 
 /// Deletes every declaration in [targets] from disk. Returns one
@@ -130,6 +167,18 @@ void _processFile(
         results.add(ApplyResult(outcome: ApplyOutcome.unsupportedKind));
       case _NotFound():
         results.add(ApplyResult(outcome: ApplyOutcome.notFound));
+      case _Coupled(:final constructorNames):
+        results.add(
+          ApplyResult(
+            outcome: ApplyOutcome.coupledConstructorFormal,
+            detail: ApplyResultDetail(
+              file: t.location.path,
+              line: t.location.line,
+              name: t.name,
+              coupledConstructors: constructorNames,
+            ),
+          ),
+        );
     }
   }
   if (ranges.isEmpty) return;
@@ -205,6 +254,15 @@ class _NotFound extends _LocatorResult {
 
 class _Unsupported extends _LocatorResult {
   const _Unsupported();
+}
+
+class _Coupled extends _LocatorResult {
+  const _Coupled({required this.constructorNames});
+
+  /// Qualified constructor names that reference the would-be-deleted
+  /// field as `this.<name>` initializing formal. Used by the CLI
+  /// summary so the user can find and edit them by hand.
+  final List<String> constructorNames;
 }
 
 /// Per-kind dispatch that returns a deletion range, an unsupported
@@ -293,8 +351,28 @@ _LocatorResult _resolveField({
   required int line,
   required String source,
 }) {
+  final topLevel = _resolveTopLevelField(
+    unit: unit,
+    name: name,
+    line: line,
+    source: source,
+  );
+  if (topLevel is! _NotFound) return topLevel;
+  return _resolveInstanceField(
+    unit: unit,
+    name: name,
+    line: line,
+    source: source,
+  );
+}
+
+_LocatorResult _resolveTopLevelField({
+  required CompilationUnit unit,
+  required String name,
+  required int line,
+  required String source,
+}) {
   final lineInfo = unit.lineInfo;
-  // Top-level vars first.
   for (final d in unit.declarations) {
     if (d is! TopLevelVariableDeclaration) continue;
     final hit = _resolveVariableInList(
@@ -313,8 +391,44 @@ _LocatorResult _resolveField({
       ),
     );
   }
-  // Instance fields on class-like containers.
-  for (final member in _classLikeMembers(unit)) {
+  return const _NotFound();
+}
+
+/// Walks each class-like container once so the same container's
+/// constructors can be inspected for a `this.<name>` initializing
+/// formal before the field's deletion range is committed.
+_LocatorResult _resolveInstanceField({
+  required CompilationUnit unit,
+  required String name,
+  required int line,
+  required String source,
+}) {
+  final lineInfo = unit.lineInfo;
+  for (final d in unit.declarations) {
+    final body = _classLikeBody(d);
+    if (body == null) continue;
+    final result = _resolveInstanceFieldInBody(
+      container: d,
+      body: body,
+      name: name,
+      line: line,
+      lineInfo: lineInfo,
+      source: source,
+    );
+    if (result is! _NotFound) return result;
+  }
+  return const _NotFound();
+}
+
+_LocatorResult _resolveInstanceFieldInBody({
+  required CompilationUnitMember container,
+  required NodeList<ClassMember> body,
+  required String name,
+  required int line,
+  required LineInfo lineInfo,
+  required String source,
+}) {
+  for (final member in body) {
     if (member is! FieldDeclaration) continue;
     final hit = _resolveVariableInList(
       list: member.fields,
@@ -323,6 +437,14 @@ _LocatorResult _resolveField({
       lineInfo: lineInfo,
     );
     if (hit == null) continue;
+    final coupledCtors = _constructorsReferencingFormal(
+      container: container,
+      body: body,
+      fieldName: name,
+    );
+    if (coupledCtors.isNotEmpty) {
+      return _Coupled(constructorNames: coupledCtors);
+    }
     return _Resolved(
       _rangeForVariable(
         parentDeclaration: member,
@@ -333,6 +455,43 @@ _LocatorResult _resolveField({
     );
   }
   return const _NotFound();
+}
+
+/// Returns the qualified names of every constructor in [body] that
+/// references [fieldName] as a `this.<name>` initializing formal.
+/// Empty list means the field is safe to delete on its own. Pure
+/// syntactic — `this.<name>` is unambiguous Dart for "initialize the
+/// enclosing class's field named `<name>`".
+List<String> _constructorsReferencingFormal({
+  required CompilationUnitMember container,
+  required NodeList<ClassMember> body,
+  required String fieldName,
+}) {
+  // Containers reachable here always have a name (class / enum /
+  // extension type / mixin / extension). Mixins and extensions can't
+  // declare constructors, so the loop below filters them out before
+  // this label is materialised; if a future grammar lets one slip
+  // through unnamed, the `?` fallback keeps the report rendering.
+  final containerName = _topLevelDeclarationName(container) ?? '?';
+  final out = <String>[];
+  for (final m in body) {
+    if (m is! ConstructorDeclaration) continue;
+    final hasFormal = m.parameters.parameters.any(
+      (p) => _fieldFormalNameMatches(p, fieldName),
+    );
+    if (!hasFormal) continue;
+    final ctorName = m.name?.lexeme;
+    out.add(ctorName == null ? containerName : '$containerName.$ctorName');
+  }
+  return out;
+}
+
+/// True when [p] is a `this.<fieldName>` initializing formal. Modern
+/// analyzer keeps `FieldFormalParameter` first-class (any default
+/// value lives on a sibling `defaultClause`), so there is no wrapper
+/// node to unbox.
+bool _fieldFormalNameMatches(FormalParameter p, String fieldName) {
+  return p is FieldFormalParameter && p.name.lexeme == fieldName;
 }
 
 VariableDeclaration? _resolveVariableInList({
@@ -396,11 +555,21 @@ NodeList<ClassMember>? _classLikeBody(CompilationUnitMember d) {
 }
 
 /// Computes the [start, end) byte range covering a declaration plus
-/// its leading doc comment, leading metadata annotations, and a
-/// trailing newline so the file doesn't keep an empty line where the
+/// its leading doc comment, leading metadata annotations, the same-line
+/// indent in front of the declaration, and a trailing newline so the
+/// file doesn't keep an empty line nor a doubled indent where the
 /// declaration used to be.
 ({int start, int end}) _rangeFor(AstNode node, String source) {
-  return (start: _leadingStart(node), end: _trailingEnd(node.end, source));
+  var start = _leadingStart(node);
+  // Back up through same-line leading whitespace so the deleted
+  // physical line doesn't leak its indent onto the next line. Stops
+  // at a `\n` (without crossing it) or at position 0; non-whitespace
+  // earlier on the same line (a `}` etc.) halts the walk so we don't
+  // chew into siblings.
+  while (start > 0 && (source[start - 1] == ' ' || source[start - 1] == '\t')) {
+    start--;
+  }
+  return (start: start, end: _trailingEnd(node.end, source));
 }
 
 /// Range for one variable inside a [VariableDeclarationList].

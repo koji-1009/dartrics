@@ -227,12 +227,14 @@ String buildApplySummary(List<ApplyResult> outcomes) {
   final unsupported = byOutcome[ApplyOutcome.unsupportedKind] ?? 0;
   final skippedTest = byOutcome[ApplyOutcome.skippedTest] ?? 0;
   final notFound = byOutcome[ApplyOutcome.notFound] ?? 0;
+  final coupled = byOutcome[ApplyOutcome.coupledConstructorFormal] ?? 0;
   final buf = StringBuffer()
     ..writeln(
       'dartrics unused --apply: '
       'deleted $deleted, '
       'unsupported $unsupported, '
       'skipped (tests) $skippedTest, '
+      'skipped (constructor formal coupling) $coupled, '
       'not found $notFound. '
       'Run `dart fix --apply` to clean up newly-unused imports.',
     );
@@ -242,6 +244,24 @@ String buildApplySummary(List<ApplyResult> outcomes) {
       'would leave invalid Dart (currently: removing the last constant '
       'of an enum). Reported but left untouched on disk.',
     );
+  }
+  if (coupled > 0) {
+    buf.writeln(
+      '  "constructor formal coupling" entries name a field still '
+      'referenced as `this.<name>` in a constructor of the enclosing '
+      'class. Auto-deletion would leave a dangling initializing formal '
+      '(and likely break every call site passing `<name>:`). Left '
+      'untouched. Affected:',
+    );
+    for (final r in outcomes) {
+      if (r.outcome != ApplyOutcome.coupledConstructorFormal) continue;
+      final d = r.detail;
+      if (d == null) continue;
+      final ctors = d.coupledConstructors.isEmpty
+          ? '(constructor name unavailable)'
+          : d.coupledConstructors.join(', ');
+      buf.writeln('    ${d.file}:${d.line}  ${d.name}  →  $ctors');
+    }
   }
   if (notFound > 0) {
     buf.writeln(
