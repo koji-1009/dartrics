@@ -490,6 +490,32 @@ void main() {}
       expect(body, isNot(contains('unsupported kinds')));
       expect(body, isNot(contains('"not found"')));
     });
+
+    test('summary names coupled constructor formals with affected '
+        'file:line, field name, and qualified constructor list', () {
+      final body = buildApplySummary([
+        ApplyResult(
+          outcome: ApplyOutcome.coupledConstructorFormal,
+          detail: ApplyResultDetail(
+            file: 'lib/foo.dart',
+            line: 42,
+            name: 'bar',
+            coupledConstructors: ['Foo', 'Foo.named'],
+          ),
+        ),
+      ]);
+      expect(body, contains('skipped (constructor formal coupling) 1'));
+      expect(body, contains('"constructor formal coupling" entries'));
+      expect(body, contains('lib/foo.dart:42  bar  →  Foo, Foo.named'));
+    });
+
+    test('summary omits coupled addendum when count is zero', () {
+      final body = buildApplySummary([
+        ApplyResult(outcome: ApplyOutcome.deleted),
+      ]);
+      expect(body, contains('skipped (constructor formal coupling) 0'));
+      expect(body, isNot(contains('"constructor formal coupling" entries')));
+    });
   });
 
   test('consumes trailing horizontal whitespace before the newline', () {
@@ -556,6 +582,194 @@ void main() {}
     expect(results.single.outcome, ApplyOutcome.deleted);
     final after = f.readAsStringSync();
     expect(after.contains('LegacyCb'), isFalse);
+  });
+
+  test('refuses to delete a field referenced as `this.<name>` initializing '
+      'formal — outcome is coupledConstructorFormal and file is unchanged', () {
+    final f = File('${dir.path}/lib.dart');
+    const before =
+        'class C {\n'
+        '  final int unused;\n'
+        '  C({required this.unused});\n'
+        '}\n';
+    f.writeAsStringSync(before);
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 2, column: 13),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.coupledConstructorFormal);
+    // File untouched — refuse-and-report path, not silent skip.
+    expect(f.readAsStringSync(), before);
+    final detail = results.single.detail;
+    expect(detail, isNotNull);
+    expect(detail!.name, 'unused');
+    expect(detail.line, 2);
+    expect(detail.coupledConstructors, ['C']);
+  });
+
+  test('coupling check qualifies named constructors as `Class.named`', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'class C {\n'
+      '  final int unused;\n'
+      '  C.primary({this.unused = 0});\n'
+      '}\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 2, column: 13),
+      ),
+    ], includeTests: false);
+    expect(results.single.detail!.coupledConstructors, ['C.primary']);
+  });
+
+  test('coupling fires when any one constructor on the class references '
+      'the field, even if siblings do not', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'class C {\n'
+      '  final int unused;\n'
+      '  C();\n'
+      '  C.alt({this.unused = 0});\n'
+      '  C.other();\n'
+      '}\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 2, column: 13),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.coupledConstructorFormal);
+    // Only the matching constructor is listed; unrelated siblings
+    // don't pollute the summary.
+    expect(results.single.detail!.coupledConstructors, ['C.alt']);
+  });
+
+  test('field with no constructors and no `this.<name>` reference '
+      'is still deleted', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'class C {\n'
+      '  static const keep = 1;\n'
+      '  static const unused = 2;\n'
+      '}\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 3, column: 16),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    expect(f.readAsStringSync().contains('unused'), isFalse);
+  });
+
+  test('top-level variable that happens to share a name with a class '
+      'field formal is unaffected by the coupling check', () {
+    // Coupling is scoped to the field's own enclosing class. A
+    // top-level `unused` keeps its plain-delete path even if some
+    // unrelated class declares `this.unused`.
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'class Other {\n'
+      '  final int unused;\n'
+      '  Other({this.unused = 0});\n'
+      '}\n'
+      '\n'
+      'const unused = 1;\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 6, column: 7),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    expect(f.readAsStringSync().contains('const unused'), isFalse);
+    // Class field of the same name is untouched.
+    expect(f.readAsStringSync().contains('final int unused'), isTrue);
+  });
+
+  test('coupling check fires for an enum field whose `this.<name>` formal '
+      'sits in the enum constructor', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'enum E {\n'
+      '  a(1);\n'
+      '\n'
+      '  const E(this.unused);\n'
+      '  final int unused;\n'
+      '}\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 5, column: 13),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.coupledConstructorFormal);
+    expect(results.single.detail!.coupledConstructors, ['E']);
+  });
+
+  test('coupling check fires for an extension-type field referenced by '
+      'an additional constructor', () {
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'extension type ET(int _value) {\n'
+      '  ET.named({this.unused = 0});\n'
+      '  final int unused;\n'
+      '}\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'unused',
+        location: SourceLocation(path: f.path, line: 3, column: 13),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.coupledConstructorFormal);
+    expect(results.single.detail!.coupledConstructors, ['ET.named']);
+  });
+
+  test('deleting one of two adjacent indented fields preserves the '
+      'second line indent (regression: doubled indent bug)', () {
+    // Before the fix, the leading spaces of the deleted line stuck
+    // to the next field, turning two-space indent into four. The
+    // surviving `final double viewBoxHeight;` must keep its
+    // original two-space indent.
+    final f = File('${dir.path}/lib.dart');
+    f.writeAsStringSync(
+      'class Card {\n'
+      '  final double viewBoxWidth;\n'
+      '  final double viewBoxHeight;\n'
+      '  Card();\n'
+      '}\n',
+    );
+    final results = applyDeletions([
+      UnusedDeclaration(
+        kind: UnusedKind.field,
+        name: 'viewBoxWidth',
+        location: SourceLocation(path: f.path, line: 2, column: 16),
+      ),
+    ], includeTests: false);
+    expect(results.single.outcome, ApplyOutcome.deleted);
+    expect(
+      f.readAsStringSync(),
+      'class Card {\n'
+      '  final double viewBoxHeight;\n'
+      '  Card();\n'
+      '}\n',
+    );
   });
 
   test('deletes a top-level extension (named form)', () {
