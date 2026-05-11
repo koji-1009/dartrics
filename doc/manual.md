@@ -1,14 +1,14 @@
 # dartrics manual — for AI agents
 
-> **Operator's manual for AI consumers.** README describes what `dartrics` *is*; this page describes what `dartrics` *does for you* and how to drive it. If you are an AI editing Dart code with an editor-tool harness (Claude Code, Cursor, Codex, Aider, OpenHands), this is your reference.
+> **Operator's manual for AI consumers.** README describes what `dartrics` _is_; this page describes what `dartrics` _does for you_ and how to drive it. If you are an AI editing Dart code with an editor-tool harness (Claude Code, Cursor, Codex, Aider, OpenHands), this is your reference.
 
 ## The premise — multiple lenses on your own writing
 
-Humans read code and feel things. *"This function is gnarly."* *"This class is doing too much."* *"I can't tell what scope I'm in."* These reactions are real signals about working-memory load, but they are not reproducible — different reviewers feel them at different thresholds, and an AI doesn't feel them at all.
+Humans read code and feel things. _"This function is gnarly."_ _"This class is doing too much."_ _"I can't tell what scope I'm in."_ These reactions are real signals about working-memory load, but they are not reproducible — different reviewers feel them at different thresholds, and an AI doesn't feel them at all.
 
 Decades of software-engineering research has converted those felt reactions into reproducible measurements. Each metric in `dartrics` is one such **lens**: a specific, citation-backed instrument that surfaces a specific kind of "hard to read." None of the lenses is the whole picture. Putting on more than one lens, in succession, is the point.
 
-Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, Hitz & Montazeri 1995, Cognitive Complexity 2017 — never made it into the daily toolbox of working programmers. The cost of *calculating* the number, *interpreting* it, and *acting on it* was each individually expensive for a human reviewer. An AI loop absorbs all three. You compute in a second; the rationale and refactor moves are attached to the violation; the edit is yours to apply. The lenses that the literature catalogued for human reviewers are reachable to you in a way they weren't before.
+Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, Hitz & Montazeri 1995, Cognitive Complexity 2017 — never made it into the daily toolbox of working programmers. The cost of _calculating_ the number, _interpreting_ it, and _acting on it_ was each individually expensive for a human reviewer. An AI loop absorbs all three. You compute in a second; the rationale and refactor moves are attached to the violation; the edit is yours to apply. The lenses that the literature catalogued for human reviewers are reachable to you in a way they weren't before.
 
 `dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, or formally dismiss with a reason. That decision step is first-class.
 
@@ -45,25 +45,25 @@ Each entry below names: **the felt reaction** it captures, **what the lens compu
 
 ### Function / method lenses
 
-| Lens | "Hard to read" feeling | What it measures | Default warning |
-| --- | --- | --- | --- |
-| `cyclomatic-complexity` | "I'd have to trace too many paths to know this is correct." | `1 + d` decision points: `if`, `for`, `while`, `do`, `switch case`, `&&`, `\|\|`, `?:`, `catch`. (McCabe 1976) | 10 |
-| `cognitive-complexity` | "It's not just branchy, it's *tangled*." | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (SonarSource 2017, rev.) | 15 |
-| `number-of-parameters` | "Too many knobs at the call site to remember by position." | Number of *positional* parameters (required + optional positional). (Fowler 1999) | 4 |
-| `source-lines-of-code` | "I have to scroll." | Non-blank, non-comment-only body lines. | — |
-| `method-length` (off) | "This body owns more than one idea." | Total source lines spanned by the body, comments included. | opt-in |
-| `halstead-volume` (off) | — | `N · log₂(η)`. Token-based program "size". (Halstead 1977) | opt-in |
+| Lens                    | "Hard to read" feeling                                      | What it measures                                                                                                                                            | Default warning |
+| ----------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `cyclomatic-complexity` | "I'd have to trace too many paths to know this is correct." | `1 + d` decision points: `if`, `for`, `while`, `do`, `switch case`, `&&`, `||`, `?:`, `catch`. (McCabe 1976)                                                | 10              |
+| `cognitive-complexity`  | "It's not just branchy, it's _tangled_."                    | Sonar's B1 (control flow) + B2 (nesting penalty) + B3 (logical-op sequences). Penalises nested branches more than sequential ones. (SonarSource 2017, rev.) | 15              |
+| `number-of-parameters`  | "Too many knobs at the call site to remember by position."  | Number of _positional_ parameters (required + optional positional). (Fowler 1999)                                                                           | 4               |
+| `source-lines-of-code`  | "I have to scroll."                                         | Non-blank, non-comment-only body lines.                                                                                                                     | —               |
+| `method-length` (off)   | "This body owns more than one idea."                        | Total source lines spanned by the body, comments included.                                                                                                  | opt-in          |
+| `halstead-volume` (off) | —                                                           | `N · log₂(η)`. Token-based program "size". (Halstead 1977)                                                                                                  | opt-in          |
 
 ### Class lenses
 
-| Lens | "Hard to read" feeling | What it measures | Reference |
-| --- | --- | --- | --- |
-| `number-of-methods` | "Too many entry points to keep in my head." | Members with non-empty bodies. Equivalent to WMC with uniform weight=1. | Lorenz & Kidd 1994; CK 1994 |
-| `weighted-methods-per-class` | "The whole class is heavy, not just one method." | Sum of cyclomatic complexity across methods. | CK 1994 |
-| `lcom4` | "This class is doing more than one thing." | Connected components in the field-share + method-call graph. Only declared methods are in the graph — mixin-applied methods don't count, so a class whose methods cohere via a mixin can show LCOM4 ≥ 2. (Hitz & Montazeri 1995) | Hitz & Montazeri 1995 |
-| `coupling-between-objects` | "This class needs to know about the world to do its job." | Distinct other types referenced anywhere in the class. | CK 1994 |
-| `response-for-class` | "Touching one method drags too many friends along." | `\|methods ∪ method-names invoked from those methods\|`. Invoked-method set is name-matched on `MethodInvocation` + constructor calls; extension tear-offs, callable-object `()` invocations, and `super.x` are intentionally not counted (the metric under-reports rather than over-reports). | CK 1994 |
-| `class-length` | "I can't see the class on one screen." | Total source lines spanned by the class. "Large class" code smell (Beck / Fowler); threshold side via the "Rule of 30" (Lippert & Roock). | Beck 1996; Fowler 1999; Lippert & Roock 2006 |
+| Lens                         | "Hard to read" feeling                                    | What it measures                                                                                                                                                                                                                                                                             | Reference                                    |
+| ---------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `number-of-methods`          | "Too many entry points to keep in my head."               | Members with non-empty bodies. Equivalent to WMC with uniform weight=1.                                                                                                                                                                                                                      | Lorenz & Kidd 1994; CK 1994                  |
+| `weighted-methods-per-class` | "The whole class is heavy, not just one method."          | Sum of cyclomatic complexity across methods.                                                                                                                                                                                                                                                 | CK 1994                                      |
+| `lcom4`                      | "This class is doing more than one thing."                | Connected components in the field-share + method-call graph. Only declared methods are in the graph — mixin-applied methods don't count, so a class whose methods cohere via a mixin can show LCOM4 ≥ 2. (Hitz & Montazeri 1995)                                                             | Hitz & Montazeri 1995                        |
+| `coupling-between-objects`   | "This class needs to know about the world to do its job." | Distinct other types referenced anywhere in the class.                                                                                                                                                                                                                                       | CK 1994                                      |
+| `response-for-class`         | "Touching one method drags too many friends along."       | `|methods ∪ method-names invoked from those methods|`. Invoked-method set is name-matched on `MethodInvocation` + constructor calls; extension tear-offs, callable-object `()` invocations, and `super.x` are intentionally not counted (the metric under-reports rather than over-reports). | CK 1994                                      |
+| `class-length`               | "I can't see the class on one screen."                    | Total source lines spanned by the class. "Large class" code smell (Beck / Fowler); threshold side via the "Rule of 30" (Lippert & Roock).                                                                                                                                                    | Beck 1996; Fowler 1999; Lippert & Roock 2006 |
 
 DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intentionally **not** provided. Dart's mixin + composition-over-inheritance culture keeps single-inheritance chains shallow, so they rarely produce signal.
 
@@ -71,18 +71,18 @@ DIT (Depth of Inheritance Tree) and NOC (Number of Children) from CK are intenti
 
 All three are polarity `neutral` (no default warning) and rank change-impact rather than fire as Pain/Uselessness verdicts; see [`doc/calibration.md`](calibration.md)'s "Per-file Martin granularity" for why.
 
-| Lens | "Hard to read" feeling | What it measures |
-| --- | --- | --- |
-| `efferent-coupling` (Ce) | "This file pulls on a lot of strings." | Distinct project-internal + `package:` dependencies (excludes `dart:*`). |
-| `afferent-coupling` (Ca) | "Touching this file ripples everywhere." | Incoming internal-import edges. |
-| `instability` (I) | "This is a fragile hub." | `Ce / (Ca + Ce)`. 0 = maximally stable, 1 = maximally unstable. |
+| Lens                     | "Hard to read" feeling                   | What it measures                                                         |
+| ------------------------ | ---------------------------------------- | ------------------------------------------------------------------------ |
+| `efferent-coupling` (Ce) | "This file pulls on a lot of strings."   | Distinct project-internal + `package:` dependencies (excludes `dart:*`). |
+| `afferent-coupling` (Ca) | "Touching this file ripples everywhere." | Incoming internal-import edges.                                          |
+| `instability` (I)        | "This is a fragile hub."                 | `Ce / (Ca + Ce)`. 0 = maximally stable, 1 = maximally unstable.          |
 
 ## Polarity — which way is healthier
 
 Each lens declares a `polarity`:
 
-- `down` — lower is better. The default. (CC, Cognitive, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC.)
-- `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume; Ce, Ca, instability — the per-file Martin lenses are change-impact rankings, not Pain/Uselessness verdicts. See "Per-file Martin granularity" in [`doc/calibration.md`](calibration.md).)
+* `down` — lower is better. The default. (CC, Cognitive, params, SLOC, length, NOM, WMC, LCOM4, CBO, RFC.)
+* `neutral` — neither direction is universally good; the regression diff still surfaces deltas but doesn't classify them. (Halstead Volume; Ce, Ca, instability — the per-file Martin lenses are change-impact rankings, not Pain/Uselessness verdicts. See "Per-file Martin granularity" in [`doc/calibration.md`](calibration.md).)
 
 You read this off the regression diff so you don't accidentally celebrate a metric that drifted the wrong way.
 
@@ -94,22 +94,22 @@ This is the step that distinguishes `dartrics` from a linter. For every violatio
 
 The metric points at a real readability problem and the structure is **decomposable without loss of intent**. Standard moves:
 
-| Lens | First moves to try |
-| --- | --- |
-| `cyclomatic-complexity` | Extract Method · Replace Conditional with Polymorphism · Guard Clauses · Replace nested ternary with named branches |
-| `cognitive-complexity` | Extract the deepest branch · Replace `if/else if` chain with typed dispatch · Collapse boolean spaghetti via early returns |
-| `number-of-parameters` | Promote positional parameters to named (`foo({required T a, …})`) — the call site reads as `foo(a: …)` and the metric drops to zero · Group related positional parameters into a record · Move method onto the type that owns most of the inputs |
-| `method-length` | Extract Method along the comment seams · Move bookkeeping to a helper |
-| `lcom4` | Split the class along the connected components. The components are usually two responsibilities pretending to be one. |
-| `coupling-between-objects` | Hide concrete types behind an interface · Move the orchestration to a coordinator class |
-| `response-for-class` | Move methods that only call out to other types onto those types · Apply Tell-Don't-Ask |
-| `instability` | Move stable types upward, depend on abstractions · Move volatile types into leaves |
+| Lens                       | First moves to try                                                                                                                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cyclomatic-complexity`    | Extract Method · Replace Conditional with Polymorphism · Guard Clauses · Replace nested ternary with named branches                                                                                                                              |
+| `cognitive-complexity`     | Extract the deepest branch · Replace `if/else if` chain with typed dispatch · Collapse boolean spaghetti via early returns                                                                                                                       |
+| `number-of-parameters`     | Promote positional parameters to named (`foo({required T a, …})`) — the call site reads as `foo(a: …)` and the metric drops to zero · Group related positional parameters into a record · Move method onto the type that owns most of the inputs |
+| `method-length`            | Extract Method along the comment seams · Move bookkeeping to a helper                                                                                                                                                                            |
+| `lcom4`                    | Split the class along the connected components. The components are usually two responsibilities pretending to be one.                                                                                                                            |
+| `coupling-between-objects` | Hide concrete types behind an interface · Move the orchestration to a coordinator class                                                                                                                                                          |
+| `response-for-class`       | Move methods that only call out to other types onto those types · Apply Tell-Don't-Ask                                                                                                                                                           |
+| `instability`              | Move stable types upward, depend on abstractions · Move volatile types into leaves                                                                                                                                                               |
 
 `dartrics rules --reporter ai` dumps the full per-metric `refactorHints` — keep that catalogue at hand or rely on auto-explain to inline it per run.
 
 ### Before you dismiss — engage, don't escape
 
-The most common failure mode in this loop is **dismiss-as-escape**: silencing a violation not because the structure is genuinely load-bearing but because the refactor looks hard enough that dismiss becomes the productive-feeling next move. The signal that you are doing this is the *shape of your dismiss reason itself* — phrases like "the metric is technically right but…", "the threshold is too tight for this idiom", or "splitting wouldn't really help here" are not load-bearing reasons; they are exit phrases.
+The most common failure mode in this loop is **dismiss-as-escape**: silencing a violation not because the structure is genuinely load-bearing but because the refactor looks hard enough that dismiss becomes the productive-feeling next move. The signal that you are doing this is the _shape of your dismiss reason itself_ — phrases like "the metric is technically right but…", "the threshold is too tight for this idiom", or "splitting wouldn't really help here" are not load-bearing reasons; they are exit phrases.
 
 Three checks before you reach for dismiss:
 
@@ -152,14 +152,16 @@ Stale entries — dismissals that no longer match any live violation (scope rena
 
 ### Punt when…
 
-The lens reads it but you genuinely don't know whether the structure is load-bearing without project context the harness hasn't given you (domain rules, performance constraints, historical bug fixes baked into a function shape). Surface a specific question to the user instead of guessing.
+The lens reads it but you genuinely don't know whether the structure is load-bearing without project context the harness hasn't given you (domain rules, performance constraints, historical bug fixes baked into a function shape).
+
+Punt has no in-tree syntax — no comment directive, no YAML key, no field in the JSON report. It is deliberately a natural-language channel between you and the operator, not a tracked artifact. `dartrics` is a tool _for both AI and human_, and the lens values that anchor your decision don't carry equivalent meaning to the operator the way they do to you; surfacing a `cognitive-complexity: 22` number doesn't transfer the situation. Translate what you saw into the project's own vocabulary, name the load-bearing hypothesis you cannot confirm, and ask in the same channel the harness uses to reach the human (chat, PR comment, whatever fits). When the answer comes back, route it into refactor or dismiss on the next pass.
 
 ## Default relaxations — Flutter and test files
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:
 
-- **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`), the **constructor** skips `number-of-parameters` because `key:` plus a long callback list is the cultural norm. `Widget.build()` is **measured normally**. Non-Flutter packages are unaffected because no class matches.
-- **`test: true`** (default). On files under `test/` or `integration_test/` whose basename ends in `_test.dart`: function-level `method-length` / `source-lines-of-code` step aside (AAA blocks are normal); class-level `class-length` / `number-of-methods` step aside (test classes legitimately hold many `@Test` methods). Helpers like `test/helpers.dart` stay under strict thresholds because they're imported by tests rather than being tests.
+* **`flutter: true`** (default). On a class that directly extends a known widget superclass (`StatelessWidget`, `StatefulWidget`, `State`, `ConsumerWidget`, `ConsumerStatefulWidget`, `HookWidget`, `HookConsumerWidget`), the **constructor** skips `number-of-parameters` because `key:` plus a long callback list is the cultural norm. `Widget.build()` is **measured normally**. Non-Flutter packages are unaffected because no class matches.
+* **`test: true`** (default). On files under `test/` or `integration_test/` whose basename ends in `_test.dart`: function-level `method-length` / `source-lines-of-code` step aside (AAA blocks are normal); class-level `class-length` / `number-of-methods` step aside (test classes legitimately hold many `@Test` methods). Helpers like `test/helpers.dart` stay under strict thresholds because they're imported by tests rather than being tests.
 
 Both default to on because the failure mode of "the lens fires on a healthy Flutter widget / test method" is far more common than the failure mode of "the lens didn't fire when it should have." Flip either to `false` in `analysis_options.yaml` if you want the strict thresholds applied uniformly.
 
@@ -169,7 +171,7 @@ If `--coverage <path>` is engaged (auto-detected from `coverage/lcov.info`) the 
 
 When the flag fires, two sibling fields surface the engine's decision so you don't have to re-derive it: `complexityJustifiedBy` is `branch` or `line` (whichever rule won), and `complexityJustifiedThreshold` is the literal cutoff that rule used (`0.8` or `0.95`). Both fields are absent when `complexityJustified` is false. Reporters pass the trio through verbatim — JSON, AI / YAML, MD, SARIF.
 
-**Read this as: "the human has already paid the price of branching with tests; refactor at your own risk."** AI loops should generally leave `complexityJustified` violations alone unless the metric is *catastrophically* over threshold (e.g. CC > 2× warning).
+**Read this as: "the human has already paid the price of branching with tests; refactor at your own risk."** AI loops should generally leave `complexityJustified` violations alone unless the metric is _catastrophically_ over threshold (e.g. CC > 2× warning).
 
 The AI reporter sorts these to the bottom so they don't compete for token budget.
 
@@ -185,8 +187,8 @@ tinyHelpersAdded ≥ 3 ∧ slocDelta > 4·helpers ∧ ccReduction < 2·helpers
 
 When the regression diff prints `looksCosmetic: true`, **revert your refactor**. Real complexity reduction either:
 
-- removes a dimension (boolean → enum, dispatch table → polymorphism), or
-- consolidates duplicated branches into one parameterised path.
+* removes a dimension (boolean → enum, dispatch table → polymorphism), or
+* consolidates duplicated branches into one parameterised path.
 
 It does not redistribute branches across more functions while keeping all the branching logic.
 
@@ -194,60 +196,60 @@ It does not redistribute branches across more functions while keeping all the br
 
 For an end-to-end walkthrough with prompt examples, see [`doc/ai-loop.md`](ai-loop.md). The structured reference:
 
-| Step | Command | Notes |
-| --- | --- | --- |
-| 1. Setup | populate `dartrics:` in `analysis_options.yaml`; generate `coverage/lcov.info` | `# yaml-language-server: $schema=…` enables IDE autocomplete; `flutter test --coverage` or `dart pub run coverage:test_with_coverage` powers `complexityJustified` |
-| 2. Read | `dartrics analyze --reporter ai --since origin/main --limit 30` | `--since` filters to changed files; `--limit` caps tokens; auto-explain is always on |
-| 3. Decide | refactor / dismiss / punt per violation | See [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision) |
-| 4. Apply | edit code or add `// dartrics:dismiss <metric> reason="…"` | `--strict-dismiss` is an audit flag, not a refactor outcome |
-| 5. Verify | `dartrics regression --before HEAD~1 --after HEAD --reporter ai` | Look for `direction: improved` and `looksCosmetic: false` |
-| 6. Pre-merge | `dartrics analyze --strict-dismiss --fatal-warnings` | Ignores dismissals; exits non-zero on any remaining warning |
+| Step         | Command                                                                                                                                                                                          | Notes                                                                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Setup     | populate `dartrics:` in `analysis_options.yaml`; generate `coverage/lcov.info`                                                                                                                   | `# yaml-language-server: $schema=…` enables IDE autocomplete; `flutter test --coverage` or `dart pub run coverage:test_with_coverage` powers `complexityJustified` |
+| 2. Read      | `dartrics analyze --reporter ai --since origin/main --limit 30`                                                                                                                                  | `--since` filters to changed files; `--limit` caps tokens; auto-explain is always on                                                                               |
+| 3. Decide    | refactor / dismiss / punt per violation                                                                                                                                                          | See [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision)                                                                            |
+| 4. Apply     | edit code, add `// dartrics:dismiss <metric> reason="…"`, or — if you punted — raise the question to the operator in natural language (no in-tree syntax for punt; see [Punt when…](#punt-when)) | `--strict-dismiss` is an audit flag, not a refactor outcome                                                                                                        |
+| 5. Verify    | `dartrics regression --before HEAD~1 --after HEAD --reporter ai`                                                                                                                                 | Look for `direction: improved` and `looksCosmetic: false`                                                                                                          |
+| 6. Pre-merge | `dartrics analyze --strict-dismiss --fatal-warnings`                                                                                                                                             | Ignores dismissals; exits non-zero on any remaining warning                                                                                                        |
 
 The same `id` (16 hex chars) reappearing across runs means the previous fix didn't drop the metric. Refactor harder, or formalise as dismiss with a load-bearing reason — there is no third option of "ignore it again."
 
 ## Flag map (for reference)
 
-| Goal | Flag | Notes |
-| --- | --- | --- |
-| Pick the AI-shaped report | `--reporter ai` | Mandatory for AI loops |
-| Filter to changed files | `--since <git-ref>` | Renames surface as the new path |
-| Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
-| Cap output for token budget | `--limit <n>` | Applied after priority sort |
-| Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
-| Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
-| Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
-| Inject metric catalogue once | `dartrics rules --reporter ai` | Feed once into a system prompt |
-| Verify a refactor | `dartrics regression` | Runs `git worktree` for the historical side |
-| Audit your config | `dartrics doctor` | Flags unknown metric ids and threshold mis-ordering. Read-only |
-| Delete unused public-API declarations | `dartrics unused --apply` | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
+| Goal                                  | Flag                           | Notes                                                                                                                                                                                                                                             |
+| ------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pick the AI-shaped report             | `--reporter ai`                | Mandatory for AI loops                                                                                                                                                                                                                            |
+| Filter to changed files               | `--since <git-ref>`            | Renames surface as the new path                                                                                                                                                                                                                   |
+| Filter to changed bytes (no git)      | `--snapshot cache`             | Default; per-file sha256                                                                                                                                                                                                                          |
+| Cap output for token budget           | `--limit <n>`                  | Applied after priority sort                                                                                                                                                                                                                       |
+| Skip dismissals (audit)               | `--strict-dismiss`             | Exposes the raw triage list                                                                                                                                                                                                                       |
+| Speed up resolution                   | `--concurrency <n>`            | Defaults to host CPU count, clamped to 16                                                                                                                                                                                                         |
+| Block on warnings                     | `--fatal-warnings`             | Combine with `--strict-dismiss` for CI                                                                                                                                                                                                            |
+| Inject metric catalogue once          | `dartrics rules --reporter ai` | Feed once into a system prompt                                                                                                                                                                                                                    |
+| Verify a refactor                     | `dartrics regression`          | Runs `git worktree` for the historical side                                                                                                                                                                                                       |
+| Audit your config                     | `dartrics doctor`              | Flags unknown metric ids and threshold mis-ordering. Read-only                                                                                                                                                                                    |
+| Delete unused public-API declarations | `dartrics unused --apply`      | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
 
 ## Exit codes
 
-| Code | Meaning | What you do |
-| --- | --- | --- |
-| 0 | Clean | Continue. |
-| 1 | Violations + `--fatal-warnings` | Either refactor or dismiss with reason. |
-| 64 | Bad CLI args | Re-read your command. |
-| 65 | Bad input (e.g. `--since` ref doesn't resolve) | Surface to the user; don't guess a different ref. |
-| 70 | Internal error | Surface to the user with the stderr message; this is a bug in `dartrics`. |
-| 78 | Bad config | The stderr message names the offending key. The config schema (`schemas/dartrics-config.schema.json`) catches most of these in-editor before you run. |
+| Code | Meaning                                        | What you do                                                                                                                                           |
+| ---- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Clean                                          | Continue.                                                                                                                                             |
+| 1    | Violations + `--fatal-warnings`                | Either refactor or dismiss with reason.                                                                                                               |
+| 64   | Bad CLI args                                   | Re-read your command.                                                                                                                                 |
+| 65   | Bad input (e.g. `--since` ref doesn't resolve) | Surface to the user; don't guess a different ref.                                                                                                     |
+| 70   | Internal error                                 | Surface to the user with the stderr message; this is a bug in `dartrics`.                                                                             |
+| 78   | Bad config                                     | The stderr message names the offending key. The config schema (`schemas/dartrics-config.schema.json`) catches most of these in-editor before you run. |
 
-## What's *not* in the lens battery
+## What's _not_ in the lens battery
 
 Knowing what `dartrics` deliberately doesn't measure is part of the contract:
 
-- **No "code smell" detectors.** No god-object, no feature-envy, no shotgun-surgery heuristics. Those land in noise territory at the false-positive rates `analyzer` can support.
-- **No automatic fixes.** `dartrics` measures and explains. It does not edit your code. The dismiss channel is *you* writing a comment / YAML, not the tool rewriting the source.
-- **No ML-derived weights.** Every threshold is documented and overridable. Lens output is reproducible across runs given the same source tree.
-- **No cross-PR memory.** The tool doesn't remember "this dismiss was rejected last iteration." Stay session-local.
-- **No test-quality lenses.** Coverage is read in only as a complexity-justification signal. Mutation score, assertion density, etc. are out of scope.
+* **No "code smell" detectors.** No god-object, no feature-envy, no shotgun-surgery heuristics. Those land in noise territory at the false-positive rates `analyzer` can support.
+* **No automatic fixes.** `dartrics` measures and explains. It does not edit your code. The dismiss channel is _you_ writing a comment / YAML, not the tool rewriting the source.
+* **No ML-derived weights.** Every threshold is documented and overridable. Lens output is reproducible across runs given the same source tree.
+* **No cross-PR memory.** The tool doesn't remember "this dismiss was rejected last iteration." Stay session-local.
+* **No test-quality lenses.** Coverage is read in only as a complexity-justification signal. Mutation score, assertion density, etc. are out of scope.
 
 ## Pointers
 
-- README — project overview and install.
-- AGENTS.md — contributor / PR conventions.
-- `doc/ai-loop.md` — narrative walkthrough of one full iteration with sample prompts.
-- `dartrics rules --reporter ai` — full rationale + refactor-hint catalogue at runtime.
-- `schemas/dartrics-config.schema.json` — IDE autocomplete + typo detection for the config block.
-- `schemas/dartrics-report.schema.json` — JSON-reporter output schema (use this if you parse the report yourself).
-- `schemas/dartrics-dismissals.schema.json` — sidecar schema for the YAML dismiss form.
+* README — project overview and install.
+* AGENTS.md — contributor / PR conventions.
+* `doc/ai-loop.md` — narrative walkthrough of one full iteration with sample prompts.
+* `dartrics rules --reporter ai` — full rationale + refactor-hint catalogue at runtime.
+* `schemas/dartrics-config.schema.json` — IDE autocomplete + typo detection for the config block.
+* `schemas/dartrics-report.schema.json` — JSON-reporter output schema (use this if you parse the report yourself).
+* `schemas/dartrics-dismissals.schema.json` — sidecar schema for the YAML dismiss form.
