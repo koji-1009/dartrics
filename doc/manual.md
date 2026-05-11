@@ -207,6 +207,21 @@ For an end-to-end walkthrough with prompt examples, see [`doc/ai-loop.md`](ai-lo
 
 The same `id` (16 hex chars) reappearing across runs means the previous fix didn't drop the metric. Refactor harder, or formalise as dismiss with a load-bearing reason — there is no third option of "ignore it again."
 
+## Reporters — pick by audience
+
+All four reporters render the same `AnalysisReport`. Pick by *who reads the output*, not by who runs the command — there is no "primary" reporter and the others are not derived from it.
+
+| Reporter | Audience | Shape |
+| --- | --- | --- |
+| `--reporter ai` | You — the AI agent in this loop | Token-shaped: auto-explain inlined, priority-sorted, `complexityJustified` sunk to the bottom |
+| `--reporter md` | A human reviewer reading the report directly | Markdown sections, rationale + refactor-hint blocks per violated metric, suitable for paste-into-PR |
+| `--reporter json` | `jq`, Python, CI gates, programmatic punt-list extraction | Schema-stable; validates against `schemas/dartrics-report.schema.json` |
+| `--reporter sarif` | IDE / CI annotation surfaces | SARIF 2.1.0 |
+
+The reporters are **parallel projections** of the same source data, not stages of a pipeline. The metric IDs (16-hex), exact threshold values, and `complexityJustified` sibling fields are bytes the renderers carry verbatim across all four, so a result you read out of `ai` matches the bytes the other three would emit for the same run.
+
+If you have read `--reporter ai` and the destination is now a human or a CI sink, **re-run dartrics with the appropriate reporter flag.** Do not transcribe the ai output by hand: a reconstructed-from-memory copy drifts from the renderer's bytes, undoes the cross-reporter stability `dartrics` is designed to give you, and turns a verbatim-carried metric id into a stable-looking but unstable hex string.
+
 ## Flag map (for reference)
 
 | Goal                                  | Flag                           | Notes                                                                                                                                                                                                                                             |
