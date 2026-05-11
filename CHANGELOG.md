@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.4
+
+A dead-code cleanup surfaced by dogfooding dartrics on its own source. No metric, threshold, exit-code, or wire-format change.
+
+### `lib/src/models/source_location.dart` — drop unreachable `toJson`
+
+* `SourceLocation.toJson` had no caller in `lib/`: every JSON serializer that holds a `SourceLocation` (`ScopeRef.toJson`, `UnusedDeclaration.toJson`, the SARIF reporter's location blocks, and the `ai` / `md` / `console` reporters' string interpolation) builds its own field set inline and bypasses the method, and the `{path, line, column}` shape it returned matched no emitted output schema. The method is removed along with the lone test that pinned its three-key return; the class stays a plain data holder, and the test file keeps the `SourceLocation` import because `ScopeRef` / `UnusedDeclaration` fixtures still instantiate it. Detected by running `dartrics analyze` on dartrics itself.
+
 ## 0.6.3
 
 A `dartrics unused --apply` correctness fix plus two documentation additions. No metric, threshold, exit-code, or wire-format change.
