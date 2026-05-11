@@ -94,9 +94,4 @@ void main() {
     );
     expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
   });
-
-  test('SourceLocation.toJson preserves all fields', () {
-    const loc = SourceLocation(path: 'x.dart', line: 7, column: 3);
-    expect(loc.toJson(), {'path': 'x.dart', 'line': 7, 'column': 3});
-  });
 }

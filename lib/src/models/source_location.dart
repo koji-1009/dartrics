@@ -9,10 +9,4 @@ class SourceLocation {
   final String path;
   final int line;
   final int column;
-
-  Map<String, Object?> toJson() => {
-    'path': path,
-    'line': line,
-    'column': column,
-  };
 }
