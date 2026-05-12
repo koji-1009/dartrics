@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0
+
+First stable release. The metric battery, the `--reporter ai` wire format (`# dartrics ai-report v1`), the JSON and SARIF schemas, and the embeddable Dart API (`FunctionMetric` family + `dartricsVersion`) commit to semver — non-breaking until 2.0.0. No metric, threshold, exit-code, or wire-format change from 0.8.0. The metric catalogue is `dartrics rules`; the operator reference is `doc/manual.md` and `dartrics manual`; the wire formats are in `schemas/`.
+
+* One-time editorial pass over the 0.x CHANGELOG entries. Verbose originals remain at `pub.dev/packages/dartrics/versions/<version>` and in `git log`.
+
 ## 0.8.0
 
 Correctness release. Several lenses, the coverage reader, the regression diff, and the report writers had edge-case defects; `dartrics unused --apply` is also narrowed to the deletions it can make safely. No metric default or schema change.
@@ -47,9 +53,7 @@ A call-graph release. The element-resolved reachability pass already powering `d
 
 A `dartrics unused` correctness fix. Detection now sees references that live inside machine-generated files. Output changes for any project whose source declarations are reached only from generated code (`.g.dart`, `.freezed.dart`, etc.). No CLI flag, exit code, schema, or threshold change.
 
-### `dartrics unused` — generated files participate in reachability
-
-* `AnalyzerRunner.includeGenerated` existed but no call site flipped it on, so the unused command collected source files only and the reachability BFS never saw edges that live in generated files (e.g. a `riverpod_generator` provider's reference back to its source function). `UnusedCommand` now constructs the runner with `includeGenerated: true`. Snapshot hashing and the reported analyzed-file count still operate on the handwritten subset via the new `AnalyzerRunner.isGeneratedDartPath` helper, so a `dart run build_runner build` re-emit does not churn the snapshot or inflate the count. `dartrics analyze`'s unused output retains the same defect. Surfaced by dogfooding on a multi-module `riverpod_generator` project.
+* `dartrics unused` reachability now includes references from machine-generated files; previously edges like a `riverpod_generator` provider's reference back to its source function were missing and the source was reported unused. Snapshots and the analyzed-file count still track the handwritten subset only. `dartrics analyze`'s unused output retains the same defect. Surfaced by dogfooding on a multi-module `riverpod_generator` project.
 
 ## 0.6.5
 
