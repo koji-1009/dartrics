@@ -67,6 +67,19 @@ void main() {
     expect(files.any((p) => p.endsWith('.g.dart')), isTrue);
   });
 
+  test('isGeneratedDartPath flags the documented codegen suffixes', () {
+    // Consumers that load generated files into the analysis graph
+    // (unused detection) still need to strip them out of snapshot
+    // hashing and per-file metrics. The helper is the single source
+    // of truth for that decision.
+    expect(AnalyzerRunner.isGeneratedDartPath('lib/x.g.dart'), isTrue);
+    expect(AnalyzerRunner.isGeneratedDartPath('lib/x.freezed.dart'), isTrue);
+    expect(AnalyzerRunner.isGeneratedDartPath('lib/x.gr.dart'), isTrue);
+    expect(AnalyzerRunner.isGeneratedDartPath('lib/x.pb.dart'), isTrue);
+    expect(AnalyzerRunner.isGeneratedDartPath('lib/x.dart'), isFalse);
+    expect(AnalyzerRunner.isGeneratedDartPath('lib/g.dart'), isFalse);
+  });
+
   test('exclude globs filter relative paths', () async {
     final runner = AnalyzerRunner(
       roots: ['${dir.path}/lib'],
