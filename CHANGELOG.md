@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.5
+
+A README narrative simplification. No metric, threshold, exit-code, or wire-format change.
+
+### `README.md` — drop duplicated 'wager'/'lens' prose; surface manual premise in doc index
+
+* The two prose paragraphs under `## What it does` (the "wager" and the lens framing) duplicated material already carried by `doc/manual.md`'s `## The premise — multiple lenses on your own writing`, with the same wager also gestured at by the README's `### Designed for the AI loop` bullets and the `## Provided metrics` preamble. They are dropped; the section now keeps the "what is computed" paragraph and the AI-loop feature bullets. The `## Documentation` entry for `dartrics manual` previously read as a flat list of operational topics; with the design premise no longer narrated in the README, the entry now leads with "the design premise (why lenses, why multiple at once)" so the navigation cue to the manual's premise section is explicit rather than inferred.
+
 ## 0.6.4
 
 A dead-code cleanup surfaced by dogfooding dartrics on its own source. No metric, threshold, exit-code, or wire-format change.

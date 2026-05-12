@@ -11,10 +11,6 @@ Dart code-quality metrics and unused public-API detection, designed as the AI-lo
 
 dartrics computes a battery of code-quality metrics — McCabe, Cognitive Complexity (Sonar), Chidamber & Kemerer, Martin, Halstead — on top of `package:analyzer`, alongside an analyzer-element BFS for unreachable public API à la Periphery. Every report mode is shaped to be *consumed*: `--reporter ai` ships a token-efficient YAML-ish bundle, sorted by actionability, with each metric's rationale, refactor hints, and primary-source citation embedded inline.
 
-The wager: the academic catalogue is reusable now in a way it wasn't before — not because the metrics changed, but because the consumer did. Humans cannot compute LCOM4 by eye; the number alone doesn't tell you what to change; even when it does, the refactor isn't free. An AI loop absorbs all three costs. The CLI computes in milliseconds, auto-explain ships the rationale alongside every violation, the agent does the edit, and `dartrics regression` confirms the metric actually settled.
-
-Each metric is treated as a **lens**: one specific dimension of "hard to read", anchored to its original paper. Lenses are independent — a function can be clean by cyclomatic complexity and tangled by cognitive complexity. dartrics does not gate; it surfaces what each lens reads, and leaves the accept / refactor / dismiss decision in the loop.
-
 ### Designed for the AI loop
 
 - **Auto-explain by default** — rationale, refactor hints, and primary-source citation ride alongside every fired metric, so an agent reads the *why* without a second tool call.
@@ -138,7 +134,7 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 
 ## Documentation
 
-- [`dartrics manual`](doc/manual.md) — operator's reference: every flag, dismissal mechanics, refactor / dismiss decision tree, Flutter-aware and test-aware modes, exit codes.
+- [`dartrics manual`](doc/manual.md) — the design premise (why lenses, why multiple at once) and the operator's reference: every flag, dismissal mechanics, refactor / dismiss decision tree, Flutter-aware and test-aware modes, exit codes.
 - [`dartrics ai-loop`](doc/ai-loop.md) — four-station walkthrough of one full refactor iteration with sample prompts.
 - [`doc/calibration.md`](doc/calibration.md) — citation audit, selection principles, counting-rule deviations.
 - [`schemas/`](schemas/) — JSON Schema files: `dartrics-config.schema.json` for `analysis_options.yaml`'s `dartrics:` block, `dartrics-report.schema.json` for the JSON reporter output, `dartrics-dismissals.schema.json` for the dismissals sidecar. All draft-2020-12.
