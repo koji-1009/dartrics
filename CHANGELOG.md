@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.6
+
+A `dartrics unused` correctness fix. Detection now sees references that live inside machine-generated files. Output changes for any project whose source declarations are reached only from generated code (`.g.dart`, `.freezed.dart`, etc.). No CLI flag, exit code, schema, or threshold change.
+
+### `dartrics unused` — generated files participate in reachability
+
+* `AnalyzerRunner.includeGenerated` existed but no call site flipped it on, so the unused command collected source files only and the reachability BFS never saw edges that live in generated files (e.g. a `riverpod_generator` provider's reference back to its source function). `UnusedCommand` now constructs the runner with `includeGenerated: true`. Snapshot hashing and the reported analyzed-file count still operate on the handwritten subset via the new `AnalyzerRunner.isGeneratedDartPath` helper, so a `dart run build_runner build` re-emit does not churn the snapshot or inflate the count. `dartrics analyze`'s unused output retains the same defect. Surfaced by dogfooding on a multi-module `riverpod_generator` project.
+
 ## 0.6.5
 
 A README narrative simplification. No metric, threshold, exit-code, or wire-format change.

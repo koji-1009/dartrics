@@ -141,6 +141,79 @@ class UnusedThing {}
   });
 
   test(
+    'unused: a `.g.dart` reference keeps the source declaration alive',
+    () async {
+      // Generators like riverpod_generator emit `.g.dart` files that
+      // reference back into the source library. Dropping those files
+      // from the analysis graph would strip the only edge into the
+      // source declaration and produce a false positive — `dartrics
+      // unused` runs with includeGenerated: true to keep the edge.
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'wants.g.dart';
+void main() {
+  generatedEntry();
+}
+''');
+      await File('${dir.path}/lib/wants.dart').writeAsString('''
+void wantedByGenerated() {}
+''');
+      await File('${dir.path}/lib/wants.g.dart').writeAsString('''
+import 'wants.dart';
+void generatedEntry() {
+  wantedByGenerated();
+}
+''');
+      final out = File('${dir.path}/u-gen.json');
+      final code = await runQuietly([
+        'unused',
+        '${dir.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        out.path,
+        '--snapshot',
+        'none',
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      expect(code, 0);
+      final body = jsonDecode(out.readAsStringSync()) as Map<String, Object?>;
+      final names = (body['unused']! as List<Object?>)
+          .map((e) => (e! as Map<String, Object?>)['name'])
+          .toSet();
+      expect(names, isNot(contains('wantedByGenerated')));
+    },
+  );
+
+  test('unused: snapshot/analyzedFiles excludes `.g.dart`', () async {
+    // Generated files participate in the reachability graph but must
+    // stay out of the snapshot — a `dart run build_runner build` re-emit
+    // would otherwise churn the snapshot and force re-analysis even
+    // when no handwritten file changed.
+    await File('${dir.path}/lib/g.g.dart').writeAsString('void g() {}\n');
+    final out = File('${dir.path}/u-gen-files.json');
+    final code = await runQuietly([
+      'unused',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      out.path,
+      '--snapshot',
+      'none',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(code, 0);
+    final body = jsonDecode(out.readAsStringSync()) as Map<String, Object?>;
+    final analyzed = (body['analyzedFiles'] as List<Object?>?) ?? const [];
+    for (final f in analyzed) {
+      final path = (f! as Map<String, Object?>)['path']! as String;
+      expect(path.endsWith('.g.dart'), isFalse);
+    }
+  });
+
+  test(
     'analyze --fatal-warnings exits 1 when violations exceed warning threshold',
     () async {
       // Threshold of warning=0 forces every method's CC ≥ 1 to violate.

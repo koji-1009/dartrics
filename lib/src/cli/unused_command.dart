@@ -95,18 +95,29 @@ class UnusedCommand extends Command<int> {
       DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
     }
+    // Reachability needs the references *inside* generated files
+    // (e.g. `xxxProvider` in a `.g.dart` calling back into the source
+    // function it wraps), so collection runs with includeGenerated: true.
+    // Snapshot hashing and the analyzed-file count then strip generated
+    // files back out so a `dart run build_runner build` doesn't churn
+    // the snapshot or inflate the reported count.
     final runner = AnalyzerRunner(
       roots: paths,
       exclude: config.exclude,
       concurrency: analysis.concurrency,
+      includeGenerated: true,
     );
     final units = await runner.resolveAll();
     final unused = await const UnusedDetector().detectResolved([
       for (final u in units) (path: u.path, unit: u.unit),
     ], unusedConfig);
 
+    final handwrittenUnits = [
+      for (final u in units)
+        if (!AnalyzerRunner.isGeneratedDartPath(u.path)) u,
+    ];
     final hashes = hashFiles([
-      for (final u in units) (path: u.path, content: u.unit.content),
+      for (final u in handwrittenUnits) (path: u.path, content: u.unit.content),
     ]);
     final snapshotConfig = resolveSnapshotConfig(
       config.snapshot,
@@ -128,7 +139,7 @@ class UnusedCommand extends Command<int> {
       explanations: const [],
       snapshotMode: snapshotConfig.mode.name,
       changedFileCount: activeFilter?.length,
-    )..attachAnalyzedFileCount(units.length);
+    )..attachAnalyzedFileCount(handwrittenUnits.length);
 
     await _emit(report, io);
 

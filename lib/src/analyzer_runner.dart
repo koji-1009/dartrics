@@ -113,12 +113,18 @@ class AnalyzerRunner {
     final path = entity.path;
     if (!path.endsWith('.dart')) return false;
     if (path.contains('${p.separator}.dart_tool${p.separator}')) return false;
-    if (!includeGenerated && _isGenerated(path)) return false;
+    if (!includeGenerated && isGeneratedDartPath(path)) return false;
     final relative = p.relative(path, from: root);
     return !excluders.any((g) => g.matches(relative));
   }
 
-  bool _isGenerated(String path) {
+  /// `true` if [path] ends in one of the suffixes [_generatedSuffixes]
+  /// reserves for machine-generated Dart. Public so consumers that need
+  /// generated files in the analysis graph (e.g. `dartrics unused`, so
+  /// references inside `.g.dart` count as reachability edges) can keep
+  /// them out of snapshots and per-file metric records, where treating
+  /// generated content as handwritten would mis-report stable values.
+  static bool isGeneratedDartPath(String path) {
     return _generatedSuffixes.any(path.endsWith);
   }
 
