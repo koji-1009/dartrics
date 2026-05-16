@@ -177,13 +177,8 @@ class MdReporter implements Reporter {
     buf.writeln();
   }
 
-  /// Top-N (by fan-in × fan-out) call-graph reference values, for the
-  /// human reviewer to skim alongside violations. The full list lives
-  /// in the JSON / AI reporters; the MD reporter caps at 10 entries
-  /// because the section is meant as a glanceable signal, not an
-  /// exhaustive dump. The lead paragraph spells out the "reference,
-  /// not verdict" framing so a reviewer doesn't read high fan-in as
-  /// automatically bad.
+  /// Top-10 call-graph signals as a glanceable table for the human
+  /// reviewer; the full list stays in the JSON / AI reporters.
   void _writeSignals(StringBuffer buf, AnalysisReport report) {
     if (report.signals.isEmpty) return;
     final sorted = [...report.signals]
@@ -227,11 +222,8 @@ class MdReporter implements Reporter {
     buf.writeln();
   }
 
-  /// Lists dismissals that no longer match a live violation, so a human
-  /// reviewer can prune the dismiss file. Mirrors the AI reporter's
-  /// `staleDismissals:` block (which existed first); the MD reporter
-  /// previously omitted this section, which left human reviewers blind
-  /// to dead dismissal entries during PR review.
+  /// Lists dismissals that no longer match a live violation so a
+  /// human reviewer can prune the dismiss file.
   void _writeStaleDismissals(StringBuffer buf, AnalysisReport report) {
     if (report.staleDismissals.isEmpty) return;
     buf
