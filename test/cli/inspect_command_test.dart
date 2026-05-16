@@ -114,4 +114,103 @@ void target() {}
     ]);
     expect(result.exitCode, isNot(0));
   });
+
+  test('default --output writes to stdout when no file is given', () async {
+    final result = await runCaptured([
+      'inspect',
+      'target',
+      '--root',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(result.exitCode, 0);
+    // The default `--output -` lands on the captured stdout buffer.
+    final body = jsonDecode(result.stdout) as Map<String, Object?>;
+    expect(body['query'], 'target');
+  });
+
+  test(
+    'ai reporter emits `matches: []` when the symbol does not resolve',
+    () async {
+      final out = File('${dir.path}/empty.yaml');
+      final result = await runCaptured([
+        'inspect',
+        'doesNotExist',
+        '--root',
+        '${dir.path}/lib',
+        '--reporter',
+        'ai',
+        '--output',
+        out.path,
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      expect(result.exitCode, 0);
+      final body = out.readAsStringSync();
+      expect(body, contains('matches: []'));
+    },
+  );
+
+  test(
+    'inspect tie-breaker falls through to fanOutCallees in JSON output',
+    () async {
+      // Two callers of `target` with equal fan-in; one of them has a
+      // wider fan-out. The upstream sort uses fanInCallers first then
+      // fanOutCallees, so the wider-fan-out caller should come first.
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+void main() {
+  hi();
+  lo();
+}
+
+void hi() {
+  target();
+  a();
+  b();
+  c();
+  d();
+  e();
+}
+
+void lo() {
+  target();
+}
+
+void target() {}
+void a() {}
+void b() {}
+void c() {}
+void d() {}
+void e() {}
+''');
+      final out = File('${dir.path}/tie.json');
+      final result = await runCaptured([
+        'inspect',
+        'target',
+        '--root',
+        '${dir.path}/lib',
+        '--depth',
+        '1',
+        '--direction',
+        'up',
+        '--reporter',
+        'json',
+        '--output',
+        out.path,
+        '--config',
+        '${dir.path}/no.yaml',
+      ]);
+      expect(result.exitCode, 0);
+      final body = jsonDecode(out.readAsStringSync()) as Map<String, Object?>;
+      final matches = (body['matches']! as List).cast<Map<String, Object?>>();
+      final upstream = (matches.first['upstream']! as List)
+          .cast<Map<String, Object?>>();
+      final firstName =
+          ((upstream.first['signal']! as Map)['scope']! as Map)['name'];
+      expect(firstName, 'hi');
+    },
+  );
 }

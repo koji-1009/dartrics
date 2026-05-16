@@ -146,4 +146,43 @@ class C {
       expect(member.scope.kind, ScopeKind.method);
     },
   );
+
+  test(
+    'ScopeKind covers extensions, typedefs, class fields, and enum constants',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+typedef Predicate = bool Function(int);
+
+enum Mode { fast, slow }
+
+class C {
+  int counter = 0;
+}
+
+extension OnInt on int {
+  int doubled() => this * 2;
+}
+
+void main() {
+  bool Function(int) p = (n) => n > 0;
+  Predicate q = p;
+  q(1);
+  Mode m = Mode.fast;
+  print(m);
+  final c = C();
+  c.counter = 1;
+  print(1.doubled());
+}
+''');
+      final signals = computeCallGraphSignals(await resolveAll());
+      // Typedef stays a function-scope declaration.
+      expect(signalFor(signals, 'Predicate').scope.kind, ScopeKind.function);
+      // Class fields and enum values are exposed as method-scope
+      // because they belong to an enclosing type.
+      expect(signalFor(signals, 'C.counter').scope.kind, ScopeKind.method);
+      expect(signalFor(signals, 'Mode.fast').scope.kind, ScopeKind.method);
+      // Extensions come back as klass-scope.
+      expect(signalFor(signals, 'OnInt').scope.kind, ScopeKind.klass);
+    },
+  );
 }

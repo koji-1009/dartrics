@@ -230,6 +230,61 @@ void main() {
     },
   );
 
+  test(
+    'Signals table tie-breaker falls through to fanOutCallees when fan-in is equal',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      MdReporter().report(
+        AnalysisReport(
+          version: '1.1',
+          metrics: const [],
+          unused: const [],
+          signals: const [
+            CallGraphSignal(
+              file: 'lib/lo.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'lo',
+                location: SourceLocation(
+                  path: 'lib/lo.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 1,
+              fanOutCalls: 1,
+            ),
+            CallGraphSignal(
+              file: 'lib/hi.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'hi',
+                location: SourceLocation(
+                  path: 'lib/hi.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 5,
+              fanOutCalls: 5,
+            ),
+          ],
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body.indexOf('`hi`'), lessThan(body.indexOf('`lo`')));
+    },
+  );
+
   test('omits the Signals section when no signals are present', () async {
     final temp = await File.fromUri(
       Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),

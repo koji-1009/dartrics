@@ -646,6 +646,66 @@ void main() {
   );
 
   test(
+    'signals tie-breaker falls through to fanOutCallees when fan-in is equal',
+    () async {
+      final tmp = Directory.systemTemp.createTempSync();
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final temp = File('${tmp.path}/ai.yaml');
+      final sink = temp.openWrite();
+      AiReporter().report(
+        AnalysisReport(
+          version: '1.1',
+          metrics: const [],
+          unused: const [],
+          signals: const [
+            CallGraphSignal(
+              file: 'lib/lo.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'lo',
+                location: SourceLocation(
+                  path: 'lib/lo.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 1,
+              fanOutCalls: 1,
+            ),
+            CallGraphSignal(
+              file: 'lib/hi.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'hi',
+                location: SourceLocation(
+                  path: 'lib/hi.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 5,
+              fanOutCalls: 5,
+            ),
+          ],
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      final hiIdx = body.indexOf('scope: hi');
+      final loIdx = body.indexOf('scope: lo');
+      expect(hiIdx >= 0 && loIdx >= 0, isTrue);
+      // Tie on fanInCallers → comparator falls through to
+      // fanOutCallees, so `hi` (5) must come before `lo` (1).
+      expect(hiIdx, lessThan(loIdx));
+    },
+  );
+
+  test(
     'signals dropped by --limit are summarised in truncated block',
     () async {
       final tmp = Directory.systemTemp.createTempSync();

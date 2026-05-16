@@ -136,6 +136,47 @@ class B {
     },
   );
 
+  test(
+    'downstream walk sorts by fanOutCallees so the widest callee comes first',
+    () async {
+      // The anchor `root` calls two helpers; `wide` calls three further
+      // helpers while `narrow` calls one. The downstream walk should
+      // surface `wide` before `narrow` because the comparator falls
+      // through to fanOutCallees when fanInCallers ties.
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+void main() => root();
+
+void root() {
+  wide();
+  narrow();
+}
+
+void wide() {
+  a();
+  b();
+  c();
+}
+
+void narrow() {
+  z();
+}
+
+void a() {}
+void b() {}
+void c() {}
+void z() {}
+''');
+      final result = inspectCallGraph(
+        await resolveAll(),
+        query: 'root',
+        depth: 1,
+        direction: InspectionDirection.down,
+      );
+      final downstream = result.matches.single.downstream;
+      expect(downstream.map((n) => n.signal.scope.name), ['wide', 'narrow']);
+    },
+  );
+
   test('returns no matches when the symbol does not exist', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''
 void main() {}

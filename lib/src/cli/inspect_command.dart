@@ -72,14 +72,18 @@ class InspectCommand extends Command<int> {
     }
     final symbol = rest.single;
     final int depth;
-    final InspectionDirection direction;
     try {
       depth = _parsePositiveInt(argResults!['depth'] as String, 'depth');
-      direction = _parseDirection(argResults!['direction'] as String);
     } on FormatException catch (e) {
       DartricsIO.stderrSink.writeln('dartrics inspect: ${e.message}');
       return ExitCode.usage.code;
     }
+    // `--direction` is constrained by `argParser.allowed`, so the
+    // `byName` lookup is total against the supplied value — no need
+    // for an explicit fallback / throw.
+    final direction = InspectionDirection.values.byName(
+      argResults!['direction'] as String,
+    );
 
     // Load the config so that root / since options behave the same way
     // they do on `analyze`. We do not use the config beyond root /
@@ -129,18 +133,6 @@ int _parsePositiveInt(String raw, String name) {
   return n;
 }
 
-InspectionDirection _parseDirection(String raw) {
-  switch (raw) {
-    case 'up':
-      return InspectionDirection.up;
-    case 'down':
-      return InspectionDirection.down;
-    case 'both':
-      return InspectionDirection.both;
-  }
-  throw FormatException('--direction must be up | down | both (got "$raw")');
-}
-
 void _emitJson(InspectionResult result, IOSink sink) {
   const encoder = JsonEncoder.withIndent('  ');
   sink.writeln(encoder.convert(result.toJson()));
@@ -156,7 +148,7 @@ void _emitAi(InspectionResult result, IOSink sink) {
       '# Values are reference information — compare against intent, not '
       'against a threshold.',
     )
-    ..writeln('query: ${_yaml(result.query)}')
+    ..writeln('query: ${result.query}')
     ..writeln('depth: ${result.depth}')
     ..writeln('direction: ${result.direction.name}');
   if (result.matches.isEmpty) {
@@ -199,11 +191,4 @@ void _emitAiNodes(IOSink sink, String key, List<InspectionNode> nodes) {
       ..writeln('        fanOutCallees: ${n.signal.fanOutCallees}')
       ..writeln('        fanOutCalls: ${n.signal.fanOutCalls}');
   }
-}
-
-String _yaml(String s) {
-  if (s.contains(':') || s.contains('#') || s.contains(' ')) {
-    return '"${s.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"';
-  }
-  return s;
 }
