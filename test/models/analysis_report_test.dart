@@ -1,3 +1,4 @@
+import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:dartrics/src/models/source_location.dart';
 import 'package:dartrics/src/models/unused_declaration.dart';
@@ -93,5 +94,72 @@ void main() {
       unused: const [],
     );
     expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
+  });
+
+  test('toJson emits explanations when present and omits when empty', () {
+    final withExplanations = AnalysisReport(
+      version: '1.1',
+      metrics: const [],
+      unused: const [],
+      explanations: const [
+        ExplainEntry(
+          metricId: 'cyclomatic-complexity',
+          rationale: 'High CC hides intent.',
+          refactorHints: ['Extract guard clauses.'],
+          references: ['McCabe (1976).'],
+        ),
+      ],
+    );
+    final json = withExplanations.toJson();
+    expect(json.containsKey('explanations'), isTrue);
+    final explanations = (json['explanations']! as List)
+        .cast<Map<String, Object?>>();
+    expect(explanations.first['metric'], 'cyclomatic-complexity');
+    expect(explanations.first['rationale'], 'High CC hides intent.');
+    expect(explanations.first['references'], ['McCabe (1976).']);
+
+    final empty = AnalysisReport(
+      version: '1.1',
+      metrics: const [],
+      unused: const [],
+    );
+    expect(empty.toJson().containsKey('explanations'), isFalse);
+  });
+
+  test('toJson emits staleDismissals when present and omits the references key '
+      'on an ExplainEntry with no citations', () {
+    final report = AnalysisReport(
+      version: '1.1',
+      metrics: const [],
+      unused: const [],
+      explanations: const [
+        ExplainEntry(
+          metricId: 'cognitive-complexity',
+          rationale: 'Nested control flow is hard to follow.',
+          refactorHints: ['Flatten with early returns.'],
+        ),
+      ],
+      staleDismissals: const [
+        StaleDismissal(
+          file: 'lib/x.dart',
+          scope: 'X.y',
+          metricId: 'cyclomatic-complexity',
+          source: DismissalSource.yaml,
+          reason: 'state machine: splits hide intent',
+        ),
+      ],
+    );
+    final json = report.toJson();
+    final explanations = (json['explanations']! as List)
+        .cast<Map<String, Object?>>();
+    expect(explanations.first.containsKey('references'), isFalse);
+
+    final stale = (json['staleDismissals']! as List)
+        .cast<Map<String, Object?>>();
+    expect(stale.first['file'], 'lib/x.dart');
+    expect(stale.first['scope'], 'X.y');
+    expect(stale.first['metric'], 'cyclomatic-complexity');
+    expect(stale.first['source'], 'yaml');
+    expect(stale.first['reason'], 'state machine: splits hide intent');
   });
 }
