@@ -1,4 +1,5 @@
 import '../dismiss/dismissal.dart';
+import 'call_graph_signal.dart';
 import 'source_location.dart';
 import 'unused_declaration.dart';
 
@@ -216,6 +217,13 @@ class ExplainEntry {
   /// calculator's `references` getter; empty for metrics that don't
   /// trace to a published source.
   final List<String> references;
+
+  Map<String, Object?> toJson() => {
+    'metric': metricId,
+    'rationale': rationale,
+    'refactorHints': refactorHints,
+    if (references.isNotEmpty) 'references': references,
+  };
 }
 
 /// Top-level result returned by the analyzer.
@@ -227,6 +235,7 @@ class AnalysisReport {
     this.analyzedFiles = const [],
     this.explanations = const [],
     this.staleDismissals = const [],
+    this.signals = const [],
     this.snapshotMode = 'none',
     this.changedFileCount,
   });
@@ -234,6 +243,10 @@ class AnalysisReport {
   final String version;
   final List<MetricRecord> metrics;
   final List<UnusedDeclaration> unused;
+
+  /// Call-graph reference signals — distinct from [metrics] / [unused]
+  /// in that they carry no threshold or severity. See [CallGraphSignal].
+  final List<CallGraphSignal> signals;
 
   /// Optional snapshot of every file the analyzer hashed during this run.
   /// Empty when snapshot mode is `none` or the snapshot writer isn't
@@ -287,8 +300,11 @@ class AnalysisReport {
     if (changedFileCount != null) 'changedFileCount': changedFileCount,
     'metrics': metrics.map((m) => m.toJson()).toList(),
     'unused': unused.map((u) => u.toJson()).toList(),
+    if (explanations.isNotEmpty)
+      'explanations': explanations.map((e) => e.toJson()).toList(),
     if (staleDismissals.isNotEmpty)
       'staleDismissals': staleDismissals.map((s) => s.toJson()).toList(),
+    if (signals.isNotEmpty) 'signals': signals.map((s) => s.toJson()).toList(),
   };
 }
 

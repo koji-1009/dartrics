@@ -31,6 +31,8 @@ class MdReporter implements Reporter {
     _writeExplanations(buffer, report);
     _writeViolations(buffer, report);
     _writeUnused(buffer, report);
+    _writeSignals(buffer, report);
+    _writeStaleDismissals(buffer, report);
     sink.write(formatMarkdown(buffer.toString()));
   }
 
@@ -160,10 +162,79 @@ class MdReporter implements Reporter {
     if (report.unused.isEmpty) return;
     buf
       ..writeln('## Unused Declarations')
+      ..writeln()
+      ..writeln(
+        'Reference list — entries here are either leftover code to delete '
+        'or _unwired_ implementations (declared but never called from '
+        'a reachable site). Confirm against intent before acting.',
+      )
       ..writeln();
     for (final u in report.unused) {
       buf.writeln(
         '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`',
+      );
+    }
+    buf.writeln();
+  }
+
+  /// Top-10 call-graph signals as a glanceable table for the human
+  /// reviewer; the full list stays in the JSON / AI reporters.
+  void _writeSignals(StringBuffer buf, AnalysisReport report) {
+    if (report.signals.isEmpty) return;
+    final sorted = [...report.signals]
+      ..sort((a, b) {
+        final byFanIn = b.fanInCallers.compareTo(a.fanInCallers);
+        if (byFanIn != 0) return byFanIn;
+        return b.fanOutCallees.compareTo(a.fanOutCallees);
+      });
+    final shown = sorted.length > 10 ? sorted.sublist(0, 10) : sorted;
+    buf
+      ..writeln('## Signals (reference)')
+      ..writeln()
+      ..writeln(
+        'Call-graph reference values from the resolved reachability pass. '
+        'These are **not verdicts** — compare against intent. A public API '
+        'with fan-in 0 may be an unwired implementation; a high fan-in '
+        'method may be a legitimate utility, not a god method.',
+      )
+      ..writeln()
+      ..writeln(
+        '| Scope | fan-in (callers / calls) | fan-out (callees / calls) |',
+      )
+      ..writeln(
+        '|-------|--------------------------|----------------------------|',
+      );
+    for (final s in shown) {
+      buf.writeln(
+        '| `${s.file}:${s.scope.location.line}` `${s.scope.name}` '
+        '| ${s.fanInCallers} / ${s.fanInCalls} '
+        '| ${s.fanOutCallees} / ${s.fanOutCalls} |',
+      );
+    }
+    final hidden = sorted.length - shown.length;
+    if (hidden > 0) {
+      buf
+        ..writeln()
+        ..writeln(
+          '_+ $hidden more signal(s) — see the JSON / ai reporter for the full list_',
+        );
+    }
+    buf.writeln();
+  }
+
+  /// Lists dismissals that no longer match a live violation so a
+  /// human reviewer can prune the dismiss file.
+  void _writeStaleDismissals(StringBuffer buf, AnalysisReport report) {
+    if (report.staleDismissals.isEmpty) return;
+    buf
+      ..writeln('## Stale Dismissals')
+      ..writeln();
+    for (final s in report.staleDismissals) {
+      final reason = (s.reason != null && s.reason!.isNotEmpty)
+          ? ' — _${s.reason}_'
+          : '';
+      buf.writeln(
+        '- `${s.file}` · `${s.scope}` · ${s.metricId} · ${s.source.name}$reason',
       );
     }
     buf.writeln();

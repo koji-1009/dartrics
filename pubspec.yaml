@@ -3,7 +3,7 @@ description: >-
   Citation-anchored Dart code-quality metrics (CK, Halstead, McCabe, Martin,
   Cognitive) plus Periphery-style unused public-API detection, shaped for
   AI refactor loops.
-version: 0.6.6
+version: 0.7.0
 repository: https://github.com/koji-1009/dartrics
 issue_tracker: https://github.com/koji-1009/dartrics/issues
 topics:

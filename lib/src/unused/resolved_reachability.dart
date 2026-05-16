@@ -5,6 +5,9 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/source/line_info.dart';
 
 import '../config/config.dart';
+import '../models/analysis_report.dart';
+import '../models/call_graph_inspection.dart';
+import '../models/call_graph_signal.dart';
 import '../models/source_location.dart';
 import '../models/unused_declaration.dart';
 import 'declaration_record.dart';
@@ -76,6 +79,313 @@ List<UnusedDeclaration> detectUnusedResolved(
   return out;
 }
 
+/// Snapshot of the resolved-reachability pass keyed for fast lookup by
+/// element id. Built once per request and shared between
+/// [computeCallGraphSignals] (which only needs the per-declaration
+/// signal) and [inspectCallGraph] (which also needs the project-local
+/// adjacency to walk the neighbourhood).
+typedef _GraphIndex = ({
+  List<_ResolvedDeclaration> declarations,
+  Map<int, _ResolvedDeclaration> byId,
+  Map<int, CallGraphSignal> signals,
+});
+
+/// Inverse-adjacency view: target element id → distinct callers
+/// (`callers`) and total call-edge weight (`calls`).
+typedef _IncomingIndex = ({Map<int, Set<int>> callers, Map<int, int> calls});
+
+_GraphIndex _buildGraphIndex(List<ResolvedUnusedSource> sources) {
+  final declarations = <_ResolvedDeclaration>[];
+  for (final s in sources) {
+    _collectFromUnit(s, declarations);
+  }
+  final byId = <int, _ResolvedDeclaration>{
+    for (final d in declarations) d.elementId: d,
+  };
+  final incoming = _buildIncomingIndex(declarations);
+  final signals = <int, CallGraphSignal>{
+    for (final d in declarations) d.elementId: _signalFor(d, byId, incoming),
+  };
+  return (declarations: declarations, byId: byId, signals: signals);
+}
+
+_IncomingIndex _buildIncomingIndex(List<_ResolvedDeclaration> declarations) {
+  final callers = <int, Set<int>>{};
+  final calls = <int, int>{};
+  for (final d in declarations) {
+    for (final entry in d.outgoingCounts.entries) {
+      callers.putIfAbsent(entry.key, () => <int>{}).add(d.elementId);
+      calls.update(
+        entry.key,
+        (n) => n + entry.value,
+        ifAbsent: () => entry.value,
+      );
+    }
+  }
+  return (callers: callers, calls: calls);
+}
+
+CallGraphSignal _signalFor(
+  _ResolvedDeclaration d,
+  Map<int, _ResolvedDeclaration> byId,
+  _IncomingIndex incoming,
+) {
+  var fanOutCallees = 0;
+  var fanOutCalls = 0;
+  for (final entry in d.outgoingCounts.entries) {
+    if (!byId.containsKey(entry.key)) continue;
+    fanOutCallees += 1;
+    fanOutCalls += entry.value;
+  }
+  return CallGraphSignal(
+    file: d.record.location.path,
+    scope: _scopeRefFor(d, byId),
+    fanInCallers: incoming.callers[d.elementId]?.length ?? 0,
+    fanInCalls: incoming.calls[d.elementId] ?? 0,
+    fanOutCallees: fanOutCallees,
+    fanOutCalls: fanOutCalls,
+  );
+}
+
+/// Derives per-declaration call-graph signals (fan-in / fan-out) from
+/// the same element-resolved reachability pass that powers
+/// [detectUnusedResolved]. Signals are *reference information* — no
+/// thresholds, no severity — so the reporter layer surfaces them in a
+/// dedicated `signals:` block instead of mixing them with violations.
+///
+/// Fan-in counts edges arriving at a declaration; `fanInCallers` is the
+/// distinct-caller count and `fanInCalls` is the raw invocation total
+/// (calling `foo()` three times in `A` contributes 1 to `fanInCallers`
+/// and 3 to `fanInCalls`). Fan-out is the dual, restricted to
+/// project-local targets — references that resolved to SDK or
+/// dependency package elements are dropped so the signal stays at
+/// "how coupled is this scope inside my codebase".
+List<CallGraphSignal> computeCallGraphSignals(
+  List<ResolvedUnusedSource> sources,
+) {
+  final index = _buildGraphIndex(sources);
+  return [for (final d in index.declarations) index.signals[d.elementId]!];
+}
+
+/// Walks the resolved call graph from every declaration whose scope
+/// name matches [query], returning the upstream (callers) and
+/// downstream (callees) neighbourhood within [depth] hops.
+///
+/// The match is keyed on the same dotted scope-name shape
+/// [computeCallGraphSignals] emits — so passing either a simple
+/// `foo` or a class-qualified `Foo.bar` works without the caller
+/// having to know which kind a declaration is. When the query
+/// resolves to multiple element ids (homonym methods on different
+/// classes, top-level conflict, etc.) every match is returned; the
+/// reporter layer is responsible for showing the disambiguation.
+///
+/// [depth] is the maximum number of edges from the anchor;
+/// `depth: 1` returns only direct callers / callees. Direction
+/// controls which side(s) of the graph are walked.
+InspectionResult inspectCallGraph(
+  List<ResolvedUnusedSource> sources, {
+  required String query,
+  required int depth,
+  required InspectionDirection direction,
+}) {
+  if (depth < 1) {
+    throw ArgumentError.value(depth, 'depth', 'must be >= 1');
+  }
+  final index = _buildGraphIndex(sources);
+  final inverse = _buildInverseAdjacency(index.declarations);
+  final matches = [
+    for (final anchorId in _matchedAnchorIds(index, query))
+      _inspectFromAnchor(
+        anchorId: anchorId,
+        depth: depth,
+        direction: direction,
+        index: index,
+        inverse: inverse,
+      ),
+  ];
+  return InspectionResult(
+    query: query,
+    depth: depth,
+    direction: direction,
+    matches: matches,
+  );
+}
+
+/// Weighted inverse of [_ResolvedDeclaration.outgoingCounts]: target
+/// id → callers map (caller id → edge count). Lets the upstream walk
+/// keep per-hop weights without re-deriving them per anchor.
+Map<int, Map<int, int>> _buildInverseAdjacency(
+  List<_ResolvedDeclaration> declarations,
+) {
+  // Each `(caller, target)` pair is materialised exactly once — the
+  // outer loop ranges over unique declarations, the inner over the
+  // unique keys of one declaration's `outgoingCounts` — so subscript
+  // assignment is sufficient (no `update` accumulator needed).
+  final inverse = <int, Map<int, int>>{};
+  for (final d in declarations) {
+    for (final entry in d.outgoingCounts.entries) {
+      inverse.putIfAbsent(entry.key, () => <int, int>{})[d.elementId] =
+          entry.value;
+    }
+  }
+  return inverse;
+}
+
+List<int> _matchedAnchorIds(_GraphIndex index, String query) => [
+  for (final d in index.declarations)
+    if (index.signals[d.elementId]!.scope.name == query) d.elementId,
+];
+
+InspectionMatch _inspectFromAnchor({
+  required int anchorId,
+  required int depth,
+  required InspectionDirection direction,
+  required _GraphIndex index,
+  required Map<int, Map<int, int>> inverse,
+}) {
+  final walkUp = direction != InspectionDirection.down;
+  final walkDown = direction != InspectionDirection.up;
+  final upstream = walkUp
+      ? _walkInspection(
+          startId: anchorId,
+          depth: depth,
+          edgesFrom: (id) => inverse[id] ?? const <int, int>{},
+          signals: index.signals,
+          sortBy: (a, b) =>
+              b.signal.fanInCallers.compareTo(a.signal.fanInCallers),
+        )
+      : const <InspectionNode>[];
+  final downstream = walkDown
+      ? _walkInspection(
+          startId: anchorId,
+          depth: depth,
+          // `id` is always in `byId`: the BFS only enqueues targets
+          // whose signal exists, and `index.signals` shares its key
+          // set with `byId`.
+          edgesFrom: (id) => index.byId[id]!.outgoingCounts,
+          signals: index.signals,
+          sortBy: (a, b) =>
+              b.signal.fanOutCallees.compareTo(a.signal.fanOutCallees),
+        )
+      : const <InspectionNode>[];
+  return InspectionMatch(
+    anchor: index.signals[anchorId]!,
+    upstream: upstream,
+    downstream: downstream,
+  );
+}
+
+/// BFS helper for [inspectCallGraph]. [edgesFrom] returns the
+/// adjacency map for a node (caller edges for upstream walks,
+/// callee edges for downstream walks). Off-project ids land in the
+/// map but are dropped here because we only have signals for
+/// project-local declarations.
+List<InspectionNode> _walkInspection({
+  required int startId,
+  required int depth,
+  required Map<int, int> Function(int id) edgesFrom,
+  required Map<int, CallGraphSignal> signals,
+  required int Function(InspectionNode, InspectionNode) sortBy,
+}) {
+  final visited = <int>{startId};
+  final byDepth = <int, List<InspectionNode>>{};
+  var frontier = <int>{startId};
+  for (var d = 1; d <= depth && frontier.isNotEmpty; d++) {
+    frontier = _expandFrontier(
+      frontier: frontier,
+      depth: d,
+      edgesFrom: edgesFrom,
+      signals: signals,
+      visited: visited,
+      byDepth: byDepth,
+    );
+  }
+  return _flattenByDepth(byDepth, sortBy);
+}
+
+/// Expands one BFS layer: for each node in [frontier], records every
+/// previously-unseen project-local target on the [byDepth] list keyed
+/// at [depth]. Returns the next frontier so the caller can keep
+/// walking.
+Set<int> _expandFrontier({
+  required Set<int> frontier,
+  required int depth,
+  required Map<int, int> Function(int id) edgesFrom,
+  required Map<int, CallGraphSignal> signals,
+  required Set<int> visited,
+  required Map<int, List<InspectionNode>> byDepth,
+}) {
+  final next = <int>{};
+  for (final id in frontier) {
+    edgesFrom(id).forEach((targetId, edgeCount) {
+      final signal = signals[targetId];
+      if (signal == null) return;
+      if (!visited.add(targetId)) return;
+      next.add(targetId);
+      byDepth
+          .putIfAbsent(depth, () => <InspectionNode>[])
+          .add(
+            InspectionNode(
+              signal: signal,
+              depth: depth,
+              incomingEdgeCount: edgeCount,
+            ),
+          );
+    });
+  }
+  return next;
+}
+
+List<InspectionNode> _flattenByDepth(
+  Map<int, List<InspectionNode>> byDepth,
+  int Function(InspectionNode, InspectionNode) sortBy,
+) {
+  final out = <InspectionNode>[];
+  final depths = byDepth.keys.toList()..sort();
+  for (final d in depths) {
+    final tier = byDepth[d]!..sort(sortBy);
+    out.addAll(tier);
+  }
+  return out;
+}
+
+/// Maps `_ResolvedDeclaration` (UnusedKind-tagged) into the
+/// `ScopeRef` shape the rest of the report uses (`ScopeKind` +
+/// dotted scope name). Class members come back as
+/// `EnclosingType.memberName` when the enclosing type is in scope so
+/// AI loops don't have to disambiguate homonyms by location alone.
+ScopeRef _scopeRefFor(
+  _ResolvedDeclaration d,
+  Map<int, _ResolvedDeclaration> byId,
+) {
+  final encl = d.enclosingTypeElementId;
+  final qualified = (encl != null && byId.containsKey(encl))
+      ? '${byId[encl]!.record.name}.${d.record.name}'
+      : d.record.name;
+  return ScopeRef(
+    kind: _scopeKindFor(d.record.kind, isInstanceMember: d.isInstanceMember),
+    name: qualified,
+    location: d.record.location,
+  );
+}
+
+ScopeKind _scopeKindFor(UnusedKind kind, {required bool isInstanceMember}) {
+  switch (kind) {
+    case UnusedKind.function:
+      return ScopeKind.function;
+    case UnusedKind.method:
+      return ScopeKind.method;
+    case UnusedKind.klass:
+    case UnusedKind.extension:
+      return ScopeKind.klass;
+    case UnusedKind.field:
+    case UnusedKind.enumValue:
+      return isInstanceMember ? ScopeKind.method : ScopeKind.function;
+    case UnusedKind.typedef:
+      return ScopeKind.function;
+  }
+}
+
 /// Translates the raw `filter` strings from [UnusedConfig] into a kind
 /// set. Returns `null` when no filter is configured (= keep every kind).
 /// Throws [FormatException] for unknown names so the caller (CLI /
@@ -125,7 +435,7 @@ Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
     if (!visited.add(id)) continue;
     final next = byId[id];
     if (next == null) continue;
-    for (final outId in next.outgoingIds) {
+    for (final outId in next.outgoingCounts.keys) {
       if (!visited.contains(outId)) queue.add(outId);
     }
   }
@@ -429,7 +739,7 @@ void _collectInterfaceLike({
         annotations: decl.metadata.map((a) => a.name.name).toList(),
         hasVmEntryPointPragma: decl.metadata.any(_isVmEntryPointPragma),
       ),
-      outgoingIds: _classOutgoing(decl, members, element.id),
+      outgoingCounts: _classOutgoing(decl, members, element.id),
       isInLibPublic: ctx.isLibPublic,
       isInstanceMember: false,
       isOverride: false,
@@ -447,7 +757,7 @@ void _collectInterfaceLike({
 /// - every constructor body's references — folded in here because
 ///   constructors aren't separately tracked, so any code they touch
 ///   must be attributed to the class itself.
-Set<int> _classOutgoing(
+Map<int, int> _classOutgoing(
   CompilationUnitMember decl,
   NodeList<ClassMember> members,
   int ownElementId,
@@ -458,7 +768,10 @@ Set<int> _classOutgoing(
   );
   for (final m in members) {
     if (m is ConstructorDeclaration) {
-      out.addAll(_collectOutgoing(m, ownElementId: ownElementId));
+      final ctor = _collectOutgoing(m, ownElementId: ownElementId);
+      ctor.forEach((id, count) {
+        out.update(id, (n) => n + count, ifAbsent: () => count);
+      });
     }
   }
   return out;
@@ -492,7 +805,7 @@ void _collectExtension(
         annotations: decl.metadata.map((a) => a.name.name).toList(),
         hasVmEntryPointPragma: decl.metadata.any(_isVmEntryPointPragma),
       ),
-      outgoingIds: _classOutgoing(decl, decl.body.members, element.id),
+      outgoingCounts: _classOutgoing(decl, decl.body.members, element.id),
       isInLibPublic: ctx.isLibPublic,
       isInstanceMember: false,
       isOverride: false,
@@ -522,7 +835,7 @@ void _collectEnum(
         annotations: decl.metadata.map((a) => a.name.name).toList(),
         hasVmEntryPointPragma: decl.metadata.any(_isVmEntryPointPragma),
       ),
-      outgoingIds: _classOutgoing(decl, decl.body.members, element.id),
+      outgoingCounts: _classOutgoing(decl, decl.body.members, element.id),
       isInLibPublic: ctx.isLibPublic,
       isInstanceMember: false,
       isOverride: false,
@@ -543,7 +856,7 @@ void _collectEnum(
           annotations: c.metadata.map((a) => a.name.name).toList(),
           hasVmEntryPointPragma: c.metadata.any(_isVmEntryPointPragma),
         ),
-        outgoingIds: _collectOutgoing(c, ownElementId: cElement.id),
+        outgoingCounts: _collectOutgoing(c, ownElementId: cElement.id),
         isInLibPublic: ctx.isLibPublic,
         isInstanceMember: true,
         isOverride: false,
@@ -606,7 +919,7 @@ void _emitMethod(
         annotations: decl.metadata.map((a) => a.name.name).toList(),
         hasVmEntryPointPragma: decl.metadata.any(_isVmEntryPointPragma),
       ),
-      outgoingIds: _collectOutgoing(decl, ownElementId: id),
+      outgoingCounts: _collectOutgoing(decl, ownElementId: id),
       isInLibPublic: ctx.isLibPublic,
       isInstanceMember: true,
       isOverride: isOverride,
@@ -640,7 +953,7 @@ void _emitFields(
           annotations: annotations,
           hasVmEntryPointPragma: hasVmPragma,
         ),
-        outgoingIds: _collectVariableOutgoing(
+        outgoingCounts: _collectVariableOutgoing(
           variable: v,
           sharedType: decl.fields.type,
           metadata: decl.metadata,
@@ -661,13 +974,13 @@ void _emitFields(
 /// and the parent declaration's metadata sit on the parent, not on
 /// each [VariableDeclaration], so per-variable emission walks them
 /// explicitly to keep references on those nodes in scope.
-Set<int> _collectVariableOutgoing({
+Map<int, int> _collectVariableOutgoing({
   required VariableDeclaration variable,
   required TypeAnnotation? sharedType,
   required NodeList<Annotation> metadata,
   required int ownElementId,
 }) {
-  final out = <int>{};
+  final out = <int, int>{};
   final visitor = _OutgoingCollector(out, ownElementId: ownElementId);
   variable.accept(visitor);
   sharedType?.accept(visitor);
@@ -696,7 +1009,7 @@ void _emitTopLevelFunction(
         annotations: decl.metadata.map((a) => a.name.name).toList(),
         hasVmEntryPointPragma: decl.metadata.any(_isVmEntryPointPragma),
       ),
-      outgoingIds: _collectOutgoing(decl, ownElementId: canonical.id),
+      outgoingCounts: _collectOutgoing(decl, ownElementId: canonical.id),
       isInLibPublic: ctx.isLibPublic,
       isInstanceMember: false,
       isOverride: false,
@@ -727,7 +1040,7 @@ void _emitTopLevelVariables(
           annotations: annotations,
           hasVmEntryPointPragma: hasVmPragma,
         ),
-        outgoingIds: _collectVariableOutgoing(
+        outgoingCounts: _collectVariableOutgoing(
           variable: v,
           sharedType: decl.variables.type,
           metadata: decl.metadata,
@@ -763,7 +1076,7 @@ void _emitTypedef({
         annotations: annotations.map((a) => a.name.name).toList(),
         hasVmEntryPointPragma: annotations.any(_isVmEntryPointPragma),
       ),
-      outgoingIds: _collectOutgoing(node, ownElementId: element.id),
+      outgoingCounts: _collectOutgoing(node, ownElementId: element.id),
       isInLibPublic: ctx.isLibPublic,
       isInstanceMember: false,
       isOverride: false,
@@ -780,8 +1093,8 @@ bool _isVmEntryPointPragma(Annotation ann) {
   return first is StringLiteral && first.stringValue == 'vm:entry-point';
 }
 
-Set<int> _collectOutgoing(AstNode node, {required int ownElementId}) {
-  final out = <int>{};
+Map<int, int> _collectOutgoing(AstNode node, {required int ownElementId}) {
+  final out = <int, int>{};
   node.accept(_OutgoingCollector(out, ownElementId: ownElementId));
   return out;
 }
@@ -792,23 +1105,26 @@ Set<int> _collectOutgoing(AstNode node, {required int ownElementId}) {
 /// outgoing edges (annotations, type parameters, extends / implements
 /// / with clauses) — without double-counting the references that
 /// each member already tracks on its own.
-Set<int> _collectOutgoingExcludingMembers(
+Map<int, int> _collectOutgoingExcludingMembers(
   AstNode node, {
   required int ownElementId,
 }) {
-  final out = <int>{};
+  final out = <int, int>{};
   node.accept(_OuterOutgoingCollector(out, ownElementId: ownElementId));
   return out;
 }
 
 /// Walks an AST subtree and records every project-local element id it
-/// references. References to off-project elements (SDK, dependencies)
-/// land in the set as their own ids and are dropped during BFS because
-/// they aren't keys in `byId`.
+/// references, keyed on element id with the per-edge invocation count
+/// as the value. References to off-project elements (SDK,
+/// dependencies) land in the map as their own ids and are dropped
+/// during BFS because they aren't keys in `byId`; the counts on those
+/// orphan entries still feed the fan-in / fan-out signals because
+/// those are derived from `byId` membership before summing.
 class _OutgoingCollector extends RecursiveAstVisitor<void> {
   _OutgoingCollector(this.out, {required this.ownElementId});
 
-  final Set<int> out;
+  final Map<int, int> out;
   final int ownElementId;
 
   void _record(Element? referent) {
@@ -816,7 +1132,7 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
     var e = referent.baseElement.nonSynthetic;
     while (true) {
       if (e.id != ownElementId) {
-        out.add(e.id);
+        out.update(e.id, (n) => n + 1, ifAbsent: () => 1);
       }
       final parent = e.enclosingElement;
       if (parent == null) return;
@@ -845,26 +1161,34 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
 
   @override
   void visitConstructorReference(ConstructorReference node) {
+    // Recording `constructorName.element` covers the constructor and
+    // (via the enclosing-element walk in [_record]) the class. The
+    // default `super` descent would then re-visit the type's identifier
+    // and double-count it; walk the type explicitly instead so the
+    // edge count stays equal to the textual reference count.
     _record(node.constructorName.element);
-    super.visitConstructorReference(node);
+    node.constructorName.type.accept(this);
   }
 
   @override
   void visitInstanceCreationExpression(InstanceCreationExpression node) {
     _record(node.constructorName.element);
-    super.visitInstanceCreationExpression(node);
+    node.constructorName.type.accept(this);
+    node.argumentList.accept(this);
   }
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
     _record(node.methodName.element);
-    super.visitMethodInvocation(node);
+    node.target?.accept(this);
+    node.typeArguments?.accept(this);
+    node.argumentList.accept(this);
   }
 
   @override
   void visitPropertyAccess(PropertyAccess node) {
     _record(node.propertyName.element);
-    super.visitPropertyAccess(node);
+    node.target?.accept(this);
   }
 
   @override
@@ -955,7 +1279,7 @@ class _ResolvedDeclaration {
   _ResolvedDeclaration({
     required this.elementId,
     required this.record,
-    required this.outgoingIds,
+    required this.outgoingCounts,
     required this.isInLibPublic,
     required this.isInstanceMember,
     required this.isOverride,
@@ -965,7 +1289,13 @@ class _ResolvedDeclaration {
 
   final int elementId;
   final DeclarationRecord record;
-  final Set<int> outgoingIds;
+
+  /// Project-local element ids this declaration references, keyed on
+  /// the target id with the per-edge invocation count as the value.
+  /// Counts feed the fan-in / fan-out signals; BFS reachability only
+  /// looks at the keys.
+  final Map<int, int> outgoingCounts;
+
   final bool isInLibPublic;
   final bool isInstanceMember;
   final bool isOverride;

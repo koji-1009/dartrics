@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+A call-graph release. The element-resolved reachability pass already powering `dartrics unused` now also surfaces per-declaration fan-in / fan-out reference signals and backs a new `dartrics inspect <symbol>` subcommand. Signals carry no threshold and no severity — they are reference information, not violations.
+
+* Report schema bumps from `1.0` to `1.1`. Three new top-level fields land in the JSON output: `signals`, `explanations` (previously AI / MD only), and `staleDismissals` (previously AI only). All additive; `additionalProperties: false` is now consistent with `toJson` again. See `schemas/dartrics-report.schema.json`.
+* New `dartrics inspect <symbol> [--depth N] [--direction up|down|both]` subcommand. Walks upstream callers and / or downstream callees within `--depth` hops; emits JSON or the YAML-ish AI shape. Homonym methods on different classes stay disambiguated as separate matches.
+* MD reporter gains `## Signals (reference)` and `## Stale Dismissals` sections. The AI reporter's `unused:` block is reframed in-output: entries may be leftover code OR unwired implementations — the framing comments instruct the loop to confirm against intent before acting.
+
 ## 0.6.6
 
 A `dartrics unused` correctness fix. Detection now sees references that live inside machine-generated files. Output changes for any project whose source declarations are reached only from generated code (`.g.dart`, `.freezed.dart`, etc.). No CLI flag, exit code, schema, or threshold change.

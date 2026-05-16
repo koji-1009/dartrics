@@ -3,6 +3,7 @@ import 'package:args/command_runner.dart';
 import 'ai_loop_command.dart';
 import 'analyze_command.dart';
 import 'doctor_command.dart';
+import 'inspect_command.dart';
 import 'manual_command.dart';
 import 'regression_command.dart';
 import 'report_command.dart';
@@ -22,6 +23,7 @@ CommandRunner<int> buildCommandRunner() {
         )
         ..addCommand(AnalyzeCommand())
         ..addCommand(UnusedCommand())
+        ..addCommand(InspectCommand())
         ..addCommand(ReportCommand())
         ..addCommand(RulesCommand())
         ..addCommand(RegressionCommand())
