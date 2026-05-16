@@ -42,6 +42,11 @@
       "description": "Dismissal entries (YAML or comment) that never matched a live violation in this run. Surfaced so AI loops and reviewers can prune dead entries before they accumulate. Only emitted when at least one stale entry was detected.",
       "type": "array",
       "items": { "$ref": "#/$defs/StaleDismissal" }
+    },
+    "signals": {
+      "description": "Per-declaration call-graph reference signals (fan-in / fan-out). Carries no threshold and no severity — surfaced as reference information for the AI loop to compare against intent, not as a verdict to act on.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/CallGraphSignal" }
     }
   },
   "$defs": {
@@ -205,6 +210,45 @@
           "description": "Citations the metric is anchored to (papers, books, established standards). Only emitted when the calculator declares one.",
           "type": "array",
           "items": { "type": "string" }
+        }
+      }
+    },
+    "CallGraphSignal": {
+      "type": "object",
+      "required": [
+        "file",
+        "scope",
+        "fanInCallers",
+        "fanInCalls",
+        "fanOutCallees",
+        "fanOutCalls"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "description": "Project-relative path of the file declaring the scope.",
+          "type": "string"
+        },
+        "scope": { "$ref": "#/$defs/ScopeRef" },
+        "fanInCallers": {
+          "description": "Distinct project-local declarations that reference this scope. Renaming-blast-radius proxy.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "fanInCalls": {
+          "description": "Total invocation-edge count pointing at this scope. `foo()` mentioned three times in `A` contributes 3 here.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "fanOutCallees": {
+          "description": "Distinct project-local declarations this scope references.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "fanOutCalls": {
+          "description": "Total invocation-edge count originating from this scope.",
+          "type": "integer",
+          "minimum": 0
         }
       }
     },

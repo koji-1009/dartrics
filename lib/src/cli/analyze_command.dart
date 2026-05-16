@@ -132,9 +132,14 @@ class AnalyzeCommand extends Command<int> {
       onDismissalRejection: _logDismissalRejection,
     );
     final records = engine.analyzeResolved(units);
-    final unused = await const UnusedDetector().detectResolved([
+    final resolvedSources = [
       for (final u in units) (path: u.path, unit: u.unit),
-    ], req.unusedConfig);
+    ];
+    final unused = await const UnusedDetector().detectResolved(
+      resolvedSources,
+      req.unusedConfig,
+    );
+    final signals = computeCallGraphSignals(resolvedSources);
 
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),
@@ -158,6 +163,9 @@ class AnalyzeCommand extends Command<int> {
     final filteredUnused = allowed == null
         ? unused
         : unused.where((u) => allowed.contains(u.location.path)).toList();
+    final filteredSignals = allowed == null
+        ? signals
+        : signals.where((s) => allowed.contains(s.file)).toList();
     final explanations = engine.firedExplanations(filteredRecords);
     final staleDismissals = _collectStaleDismissals(
       dismissals: dismissals,
@@ -171,6 +179,7 @@ class AnalyzeCommand extends Command<int> {
       analyzedFiles: hashes,
       explanations: explanations,
       staleDismissals: staleDismissals,
+      signals: filteredSignals,
       snapshotMode: req.snapshotConfig.mode.name,
       changedFileCount: allowed?.length,
     )..attachAnalyzedFileCount(units.length);

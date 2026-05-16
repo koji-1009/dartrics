@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
+import 'package:dartrics/src/models/call_graph_signal.dart';
 import 'package:dartrics/src/models/source_location.dart';
 import 'package:dartrics/src/reporters/md_reporter.dart';
 import 'package:test/test.dart';
@@ -181,6 +182,134 @@ void main() {
     expect(body, contains('_dismissed_'));
     expect(body, contains('_dismissal-rejected_'));
   });
+
+  test(
+    'renders a Signals (reference) section with framing and a top-N table',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      final signals = <CallGraphSignal>[
+        for (var i = 0; i < 12; i++)
+          CallGraphSignal(
+            file: 'lib/foo$i.dart',
+            scope: ScopeRef(
+              kind: ScopeKind.method,
+              name: 'Foo$i.bar',
+              location: SourceLocation(
+                path: 'lib/foo$i.dart',
+                line: 1 + i,
+                column: 1,
+              ),
+            ),
+            fanInCallers: 12 - i,
+            fanInCalls: (12 - i) * 2,
+            fanOutCallees: 3,
+            fanOutCalls: 5,
+          ),
+      ];
+      MdReporter().report(
+        AnalysisReport(
+          version: '1.1',
+          metrics: const [],
+          unused: const [],
+          signals: signals,
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, contains('## Signals (reference)'));
+      expect(body, contains('not verdicts'));
+      // top-N capped at 10; the rest land in a follow-up note
+      expect(body, contains('Foo0.bar'));
+      expect(body, contains('Foo9.bar'));
+      expect(body, isNot(contains('Foo11.bar')));
+      expect(body, contains('+ 2 more signal'));
+    },
+  );
+
+  test(
+    'Signals table tie-breaker falls through to fanOutCallees when fan-in is equal',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      MdReporter().report(
+        AnalysisReport(
+          version: '1.1',
+          metrics: const [],
+          unused: const [],
+          signals: const [
+            CallGraphSignal(
+              file: 'lib/lo.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'lo',
+                location: SourceLocation(
+                  path: 'lib/lo.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 1,
+              fanOutCalls: 1,
+            ),
+            CallGraphSignal(
+              file: 'lib/hi.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'hi',
+                location: SourceLocation(
+                  path: 'lib/hi.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 5,
+              fanOutCalls: 5,
+            ),
+          ],
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body.indexOf('`hi`'), lessThan(body.indexOf('`lo`')));
+    },
+  );
+
+  test('omits the Signals section when no signals are present', () async {
+    final temp = await File.fromUri(
+      Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+    ).create();
+    final sink = temp.openWrite();
+    MdReporter().report(buildSampleReport(), sink);
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, isNot(contains('## Signals')));
+  });
+
+  test(
+    'reframes Unused Declarations with deletion-or-unwired guidance',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      MdReporter().report(buildSampleReport(), sink);
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, contains('## Unused Declarations'));
+      expect(body, contains('unwired'));
+    },
+  );
 
   test(
     'renders a Stale Dismissals section listing reason + source when present',

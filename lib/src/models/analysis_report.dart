@@ -1,4 +1,5 @@
 import '../dismiss/dismissal.dart';
+import 'call_graph_signal.dart';
 import 'source_location.dart';
 import 'unused_declaration.dart';
 
@@ -234,6 +235,7 @@ class AnalysisReport {
     this.analyzedFiles = const [],
     this.explanations = const [],
     this.staleDismissals = const [],
+    this.signals = const [],
     this.snapshotMode = 'none',
     this.changedFileCount,
   });
@@ -241,6 +243,12 @@ class AnalysisReport {
   final String version;
   final List<MetricRecord> metrics;
   final List<UnusedDeclaration> unused;
+
+  /// Call-graph reference signals (fan-in / fan-out per declaration).
+  /// These are *not* violations — they carry no threshold or severity.
+  /// Reporters surface them in a dedicated `signals:` block so the AI
+  /// loop reads them as "compare against intent", not "fix this".
+  final List<CallGraphSignal> signals;
 
   /// Optional snapshot of every file the analyzer hashed during this run.
   /// Empty when snapshot mode is `none` or the snapshot writer isn't
@@ -298,6 +306,7 @@ class AnalysisReport {
       'explanations': explanations.map((e) => e.toJson()).toList(),
     if (staleDismissals.isNotEmpty)
       'staleDismissals': staleDismissals.map((s) => s.toJson()).toList(),
+    if (signals.isNotEmpty) 'signals': signals.map((s) => s.toJson()).toList(),
   };
 }
 

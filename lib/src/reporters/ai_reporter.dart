@@ -37,10 +37,12 @@ class AiReporter implements Reporter {
     final dropped = _writeViolations(body, report);
     final unusedDropped = _writeUnused(body, report);
     _writeStaleDismissals(body, report);
-    if (dropped > 0 || unusedDropped > 0) {
+    final signalsDropped = _writeSignals(body, report);
+    if (dropped > 0 || unusedDropped > 0 || signalsDropped > 0) {
       body.writeln('truncated:');
       if (dropped > 0) body.writeln('  violations: $dropped');
       if (unusedDropped > 0) body.writeln('  unused: $unusedDropped');
+      if (signalsDropped > 0) body.writeln('  signals: $signalsDropped');
     }
     // `package:dapper` 1.4.6 returns 'null<comment>\n' when fed a
     // comment-only string (no parseable body). On a clean codebase the
@@ -223,7 +225,17 @@ class AiReporter implements Reporter {
         ? report.unused
         : report.unused.sublist(0, limit!);
     final dropped = report.unused.length - keep.length;
-    buf.writeln('unused:');
+    buf
+      ..writeln(
+        '# Unused entries may be leftover code to delete OR unwired '
+        'implementations',
+      )
+      ..writeln(
+        '# (declared but never reached — possible wiring gap). Confirm '
+        'against intent',
+      )
+      ..writeln('# before acting.')
+      ..writeln('unused:');
     for (final u in keep) {
       buf
         ..writeln('  - file: ${u.location.path}')
@@ -239,6 +251,60 @@ class AiReporter implements Reporter {
       }
     }
     return dropped;
+  }
+
+  /// Emits per-declaration fan-in / fan-out as a `signals:` block.
+  /// Deliberately separated from `violations:` and `unused:` because
+  /// the values carry no threshold and no verdict — the AI loop is
+  /// meant to read them as "compare against intent" (a new public API
+  /// with `fanInCallers: 0` is a candidate implementation gap; a
+  /// `*Manager`-named scope with low fan-in is a possible naming /
+  /// wiring mismatch). The header line documents this so a downstream
+  /// agent reading the block out of context still treats it correctly.
+  ///
+  /// Entries are sorted by `fanInCallers` desc, then `fanOutCallees`
+  /// desc — the actionable hubs / hot spots float to the top, while
+  /// the long tail of `0/0` declarations sits at the bottom and is
+  /// the first thing `--limit` truncates. Returns the number of
+  /// entries dropped to honour [limit].
+  int _writeSignals(StringBuffer buf, AnalysisReport report) {
+    if (report.signals.isEmpty) return 0;
+    final sorted = [...report.signals]
+      ..sort((a, b) {
+        final byFanIn = b.fanInCallers.compareTo(a.fanInCallers);
+        if (byFanIn != 0) return byFanIn;
+        return b.fanOutCallees.compareTo(a.fanOutCallees);
+      });
+    final keep = limit == null || sorted.length <= limit!
+        ? sorted
+        : sorted.sublist(0, limit!);
+    buf
+      ..writeln(
+        '# Reference values from the resolved call graph — compare '
+        'against intent.',
+      )
+      ..writeln(
+        '# NOT verdicts. A high fan-in is not "bad"; a 0 fan-in on a '
+        'public API is',
+      )
+      ..writeln(
+        '# a possible wiring gap, not necessarily dead code. Use '
+        'snapshot diffs to',
+      )
+      ..writeln('# spot values that moved on this edit.')
+      ..writeln('signals:');
+    for (final s in keep) {
+      buf
+        ..writeln('  - file: ${s.file}')
+        ..writeln('    line: ${s.scope.location.line}')
+        ..writeln('    scope: ${s.scope.name}')
+        ..writeln('    kind: ${s.scope.kind.name}')
+        ..writeln('    fanInCallers: ${s.fanInCallers}')
+        ..writeln('    fanInCalls: ${s.fanInCalls}')
+        ..writeln('    fanOutCallees: ${s.fanOutCallees}')
+        ..writeln('    fanOutCalls: ${s.fanOutCalls}');
+    }
+    return sorted.length - keep.length;
   }
 
   /// Surfaces dismiss entries that never matched a live violation, so

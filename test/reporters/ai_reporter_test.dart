@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
+import 'package:dartrics/src/models/call_graph_signal.dart';
 import 'package:dartrics/src/models/source_location.dart';
+import 'package:dartrics/src/models/unused_declaration.dart';
 import 'package:dartrics/src/reporters/ai_reporter.dart';
 import 'package:test/test.dart';
 
@@ -570,6 +572,178 @@ void main() {
       expect(body, contains('# dartrics ai-report v1'));
       expect(body, contains('snippet:'));
       expect(body, contains('}'));
+    },
+  );
+
+  test('emits signals block with reference-only framing', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    AiReporter().report(
+      AnalysisReport(
+        version: '1.1',
+        metrics: const [],
+        unused: const [],
+        signals: const [
+          CallGraphSignal(
+            file: 'lib/foo.dart',
+            scope: ScopeRef(
+              kind: ScopeKind.method,
+              name: 'Foo.bar',
+              location: SourceLocation(
+                path: 'lib/foo.dart',
+                line: 7,
+                column: 1,
+              ),
+            ),
+            fanInCallers: 4,
+            fanInCalls: 11,
+            fanOutCallees: 2,
+            fanOutCalls: 3,
+          ),
+        ],
+      ),
+      sink,
+    );
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('signals:'));
+    // The framing comments are the load-bearing part of the section —
+    // they're what tells the AI loop "compare against intent, don't
+    // treat as a verdict."
+    expect(body, contains('NOT verdicts'));
+    expect(body, contains('fanInCallers: 4'));
+    expect(body, contains('fanOutCallees: 2'));
+  });
+
+  test(
+    'unused block carries deletion-or-unwired framing as YAML comments',
+    () async {
+      final tmp = Directory.systemTemp.createTempSync();
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final temp = File('${tmp.path}/ai.yaml');
+      final sink = temp.openWrite();
+      AiReporter().report(
+        AnalysisReport(
+          version: '1.1',
+          metrics: const [],
+          unused: const [
+            UnusedDeclaration(
+              kind: UnusedKind.function,
+              name: 'orphan',
+              location: SourceLocation(path: 'lib/x.dart', line: 3, column: 1),
+            ),
+          ],
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, contains('unused:'));
+      expect(body, contains('unwired'));
+    },
+  );
+
+  test(
+    'signals tie-breaker falls through to fanOutCallees when fan-in is equal',
+    () async {
+      final tmp = Directory.systemTemp.createTempSync();
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final temp = File('${tmp.path}/ai.yaml');
+      final sink = temp.openWrite();
+      AiReporter().report(
+        AnalysisReport(
+          version: '1.1',
+          metrics: const [],
+          unused: const [],
+          signals: const [
+            CallGraphSignal(
+              file: 'lib/lo.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'lo',
+                location: SourceLocation(
+                  path: 'lib/lo.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 1,
+              fanOutCalls: 1,
+            ),
+            CallGraphSignal(
+              file: 'lib/hi.dart',
+              scope: ScopeRef(
+                kind: ScopeKind.function,
+                name: 'hi',
+                location: SourceLocation(
+                  path: 'lib/hi.dart',
+                  line: 1,
+                  column: 1,
+                ),
+              ),
+              fanInCallers: 3,
+              fanInCalls: 3,
+              fanOutCallees: 5,
+              fanOutCalls: 5,
+            ),
+          ],
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      final hiIdx = body.indexOf('scope: hi');
+      final loIdx = body.indexOf('scope: lo');
+      expect(hiIdx >= 0 && loIdx >= 0, isTrue);
+      // Tie on fanInCallers → comparator falls through to
+      // fanOutCallees, so `hi` (5) must come before `lo` (1).
+      expect(hiIdx, lessThan(loIdx));
+    },
+  );
+
+  test(
+    'signals dropped by --limit are summarised in truncated block',
+    () async {
+      final tmp = Directory.systemTemp.createTempSync();
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final temp = File('${tmp.path}/ai.yaml');
+      final sink = temp.openWrite();
+      final signals = <CallGraphSignal>[
+        for (var i = 0; i < 5; i++)
+          CallGraphSignal(
+            file: 'lib/foo$i.dart',
+            scope: ScopeRef(
+              kind: ScopeKind.function,
+              name: 'foo$i',
+              location: SourceLocation(
+                path: 'lib/foo$i.dart',
+                line: 1,
+                column: 1,
+              ),
+            ),
+            fanInCallers: 5 - i,
+            fanInCalls: 5 - i,
+            fanOutCallees: 0,
+            fanOutCalls: 0,
+          ),
+      ];
+      AiReporter(limit: 2).report(
+        AnalysisReport(
+          version: '1.1',
+          metrics: const [],
+          unused: const [],
+          signals: signals,
+        ),
+        sink,
+      );
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, contains('truncated:'));
+      expect(body, contains('signals: 3'));
     },
   );
 }

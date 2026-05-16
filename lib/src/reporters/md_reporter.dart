@@ -31,6 +31,7 @@ class MdReporter implements Reporter {
     _writeExplanations(buffer, report);
     _writeViolations(buffer, report);
     _writeUnused(buffer, report);
+    _writeSignals(buffer, report);
     _writeStaleDismissals(buffer, report);
     sink.write(formatMarkdown(buffer.toString()));
   }
@@ -161,11 +162,67 @@ class MdReporter implements Reporter {
     if (report.unused.isEmpty) return;
     buf
       ..writeln('## Unused Declarations')
+      ..writeln()
+      ..writeln(
+        'Reference list — entries here are either leftover code to delete '
+        'or _unwired_ implementations (declared but never called from '
+        'a reachable site). Confirm against intent before acting.',
+      )
       ..writeln();
     for (final u in report.unused) {
       buf.writeln(
         '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`',
       );
+    }
+    buf.writeln();
+  }
+
+  /// Top-N (by fan-in × fan-out) call-graph reference values, for the
+  /// human reviewer to skim alongside violations. The full list lives
+  /// in the JSON / AI reporters; the MD reporter caps at 10 entries
+  /// because the section is meant as a glanceable signal, not an
+  /// exhaustive dump. The lead paragraph spells out the "reference,
+  /// not verdict" framing so a reviewer doesn't read high fan-in as
+  /// automatically bad.
+  void _writeSignals(StringBuffer buf, AnalysisReport report) {
+    if (report.signals.isEmpty) return;
+    final sorted = [...report.signals]
+      ..sort((a, b) {
+        final byFanIn = b.fanInCallers.compareTo(a.fanInCallers);
+        if (byFanIn != 0) return byFanIn;
+        return b.fanOutCallees.compareTo(a.fanOutCallees);
+      });
+    final shown = sorted.length > 10 ? sorted.sublist(0, 10) : sorted;
+    buf
+      ..writeln('## Signals (reference)')
+      ..writeln()
+      ..writeln(
+        'Call-graph reference values from the resolved reachability pass. '
+        'These are **not verdicts** — compare against intent. A public API '
+        'with fan-in 0 may be an unwired implementation; a high fan-in '
+        'method may be a legitimate utility, not a god method.',
+      )
+      ..writeln()
+      ..writeln(
+        '| Scope | fan-in (callers / calls) | fan-out (callees / calls) |',
+      )
+      ..writeln(
+        '|-------|--------------------------|----------------------------|',
+      );
+    for (final s in shown) {
+      buf.writeln(
+        '| `${s.file}:${s.scope.location.line}` `${s.scope.name}` '
+        '| ${s.fanInCallers} / ${s.fanInCalls} '
+        '| ${s.fanOutCallees} / ${s.fanOutCalls} |',
+      );
+    }
+    final hidden = sorted.length - shown.length;
+    if (hidden > 0) {
+      buf
+        ..writeln()
+        ..writeln(
+          '_+ $hidden more signal(s) — see the JSON / ai reporter for the full list_',
+        );
     }
     buf.writeln();
   }
