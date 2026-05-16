@@ -90,16 +90,10 @@ typedef _GraphIndex = ({
   Map<int, CallGraphSignal> signals,
 });
 
-/// Inverse-adjacency view used by [_signalFor]: target element id →
-/// distinct callers (`callers`) and total call-edge weight (`calls`).
-/// Bundled so the signal helper stays at three parameters.
+/// Inverse-adjacency view: target element id → distinct callers
+/// (`callers`) and total call-edge weight (`calls`).
 typedef _IncomingIndex = ({Map<int, Set<int>> callers, Map<int, int> calls});
 
-/// Collects every project-local declaration and pre-computes the
-/// signal for it. The signal calculation is the only step that needs
-/// the inverse-adjacency (incoming) view; we build it inline and
-/// throw it away because the BFS-based inspector rebuilds its own
-/// weighted inverse.
 _GraphIndex _buildGraphIndex(List<ResolvedUnusedSource> sources) {
   final declarations = <_ResolvedDeclaration>[];
   for (final s in sources) {
@@ -223,13 +217,10 @@ InspectionResult inspectCallGraph(
 Map<int, Map<int, int>> _buildInverseAdjacency(
   List<_ResolvedDeclaration> declarations,
 ) {
-  // Each `(caller, target)` pair is materialised exactly once by the
-  // outer + inner loop pairing (the outer loop ranges over unique
-  // declarations, the inner over the keys of `d.outgoingCounts`, which
-  // are unique within a single declaration). That lets us write the
-  // edge count via subscript assignment instead of `update` — no
-  // accumulator branch to test, and the source reads as "set the edge
-  // weight once" which is what actually happens.
+  // Each `(caller, target)` pair is materialised exactly once — the
+  // outer loop ranges over unique declarations, the inner over the
+  // unique keys of one declaration's `outgoingCounts` — so subscript
+  // assignment is sufficient (no `update` accumulator needed).
   final inverse = <int, Map<int, int>>{};
   for (final d in declarations) {
     for (final entry in d.outgoingCounts.entries) {
@@ -268,8 +259,10 @@ InspectionMatch _inspectFromAnchor({
       ? _walkInspection(
           startId: anchorId,
           depth: depth,
-          edgesFrom: (id) =>
-              index.byId[id]?.outgoingCounts ?? const <int, int>{},
+          // `id` is always in `byId`: the BFS only enqueues targets
+          // whose signal exists, and `index.signals` shares its key
+          // set with `byId`.
+          edgesFrom: (id) => index.byId[id]!.outgoingCounts,
           signals: index.signals,
           sortBy: (a, b) =>
               b.signal.fanOutCallees.compareTo(a.signal.fanOutCallees),

@@ -244,10 +244,8 @@ class AnalysisReport {
   final List<MetricRecord> metrics;
   final List<UnusedDeclaration> unused;
 
-  /// Call-graph reference signals (fan-in / fan-out per declaration).
-  /// These are *not* violations — they carry no threshold or severity.
-  /// Reporters surface them in a dedicated `signals:` block so the AI
-  /// loop reads them as "compare against intent", not "fix this".
+  /// Call-graph reference signals — distinct from [metrics] / [unused]
+  /// in that they carry no threshold or severity. See [CallGraphSignal].
   final List<CallGraphSignal> signals;
 
   /// Optional snapshot of every file the analyzer hashed during this run.

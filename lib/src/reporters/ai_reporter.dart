@@ -253,20 +253,9 @@ class AiReporter implements Reporter {
     return dropped;
   }
 
-  /// Emits per-declaration fan-in / fan-out as a `signals:` block.
-  /// Deliberately separated from `violations:` and `unused:` because
-  /// the values carry no threshold and no verdict — the AI loop is
-  /// meant to read them as "compare against intent" (a new public API
-  /// with `fanInCallers: 0` is a candidate implementation gap; a
-  /// `*Manager`-named scope with low fan-in is a possible naming /
-  /// wiring mismatch). The header line documents this so a downstream
-  /// agent reading the block out of context still treats it correctly.
-  ///
-  /// Entries are sorted by `fanInCallers` desc, then `fanOutCallees`
-  /// desc — the actionable hubs / hot spots float to the top, while
-  /// the long tail of `0/0` declarations sits at the bottom and is
-  /// the first thing `--limit` truncates. Returns the number of
-  /// entries dropped to honour [limit].
+  /// Emits per-declaration fan-in / fan-out as a `signals:` block,
+  /// sorted so the most-connected entries come first and the `0/0`
+  /// tail is what `--limit` truncates. Returns the number dropped.
   int _writeSignals(StringBuffer buf, AnalysisReport report) {
     if (report.signals.isEmpty) return 0;
     final sorted = [...report.signals]

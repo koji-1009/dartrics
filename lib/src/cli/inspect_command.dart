@@ -5,16 +5,11 @@ import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 
 import '../analyzer_runner.dart';
-import '../config/config_loader.dart';
 import '../models/call_graph_inspection.dart';
 import '../unused/resolved_reachability.dart';
 import 'common_options.dart';
 import 'io_sinks.dart';
 
-/// Allowed values for `--reporter` on `inspect`. The full set of report
-/// formats does not apply here (e.g. `sarif` and `md` summarise
-/// findings, which the inspector does not produce); JSON and the
-/// YAML-ish AI shape cover the two consumer paths.
 const _inspectReporters = ['ai', 'json'];
 
 /// `dartrics inspect <symbol>` — walks the resolved call graph around
@@ -78,18 +73,10 @@ class InspectCommand extends Command<int> {
       DartricsIO.stderrSink.writeln('dartrics inspect: ${e.message}');
       return ExitCode.usage.code;
     }
-    // `--direction` is constrained by `argParser.allowed`, so the
-    // `byName` lookup is total against the supplied value — no need
-    // for an explicit fallback / throw.
     final direction = InspectionDirection.values.byName(
       argResults!['direction'] as String,
     );
 
-    // Load the config so that root / since options behave the same way
-    // they do on `analyze`. We do not use the config beyond root /
-    // analyzer concurrency; metric and dismissal settings have no
-    // bearing on the call graph.
-    await loadConfig(analysis.configPath);
     final runner = AnalyzerRunner(
       roots: [analysis.root],
       concurrency: analysis.concurrency,
@@ -111,12 +98,10 @@ class InspectCommand extends Command<int> {
       ownsSink = true;
     }
     try {
-      switch (io.reporter) {
-        case 'json':
-          _emitJson(result, sink);
-        case 'ai':
-        default:
-          _emitAi(result, sink);
+      if (io.reporter == 'json') {
+        _emitJson(result, sink);
+      } else {
+        _emitAi(result, sink);
       }
     } finally {
       if (ownsSink) await sink.close();
