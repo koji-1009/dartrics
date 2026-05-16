@@ -6,6 +6,7 @@ import 'package:analyzer/source/line_info.dart';
 
 import '../config/config.dart';
 import '../models/analysis_report.dart';
+import '../models/call_graph_inspection.dart';
 import '../models/call_graph_signal.dart';
 import '../models/source_location.dart';
 import '../models/unused_declaration.dart';
@@ -144,6 +145,184 @@ List<CallGraphSignal> computeCallGraphSignals(
         fanOutCalls: fanOutCalls,
       ),
     );
+  }
+  return out;
+}
+
+/// Walks the resolved call graph from every declaration whose scope
+/// name matches [query], returning the upstream (callers) and
+/// downstream (callees) neighbourhood within [depth] hops.
+///
+/// The match is keyed on the same dotted scope-name shape
+/// [computeCallGraphSignals] emits — so passing either a simple
+/// `foo` or a class-qualified `Foo.bar` works without the caller
+/// having to know which kind a declaration is. When the query
+/// resolves to multiple element ids (homonym methods on different
+/// classes, top-level conflict, etc.) every match is returned; the
+/// reporter layer is responsible for showing the disambiguation.
+///
+/// [depth] is the maximum number of edges from the anchor;
+/// `depth: 1` returns only direct callers / callees. Direction
+/// controls which side(s) of the graph are walked.
+InspectionResult inspectCallGraph(
+  List<ResolvedUnusedSource> sources, {
+  required String query,
+  required int depth,
+  required InspectionDirection direction,
+}) {
+  if (depth < 1) {
+    throw ArgumentError.value(depth, 'depth', 'must be >= 1');
+  }
+  final declarations = <_ResolvedDeclaration>[];
+  for (final s in sources) {
+    _collectFromUnit(s, declarations);
+  }
+  final byId = <int, _ResolvedDeclaration>{
+    for (final d in declarations) d.elementId: d,
+  };
+
+  // Inverse adjacency: target id → callers map (caller id → edge
+  // count). Mirrors the inverse used in [computeCallGraphSignals] but
+  // keeps the per-edge weights so the inspector can surface them on
+  // each hop.
+  final inverse = <int, Map<int, int>>{};
+  for (final d in declarations) {
+    for (final entry in d.outgoingCounts.entries) {
+      inverse
+          .putIfAbsent(entry.key, () => <int, int>{})
+          .update(
+            d.elementId,
+            (n) => n + entry.value,
+            ifAbsent: () => entry.value,
+          );
+    }
+  }
+
+  // Pre-compute the global signal per declaration so the anchor and
+  // every neighbourhood node carries the same numbers a `dartrics
+  // analyze` run would emit.
+  final signals = <int, CallGraphSignal>{};
+  final incomingCallers = <int, Set<int>>{};
+  final incomingCalls = <int, int>{};
+  for (final d in declarations) {
+    for (final entry in d.outgoingCounts.entries) {
+      incomingCallers.putIfAbsent(entry.key, () => <int>{}).add(d.elementId);
+      incomingCalls.update(
+        entry.key,
+        (n) => n + entry.value,
+        ifAbsent: () => entry.value,
+      );
+    }
+  }
+  for (final d in declarations) {
+    var fanOutCallees = 0;
+    var fanOutCalls = 0;
+    for (final entry in d.outgoingCounts.entries) {
+      if (!byId.containsKey(entry.key)) continue;
+      fanOutCallees += 1;
+      fanOutCalls += entry.value;
+    }
+    signals[d.elementId] = CallGraphSignal(
+      file: d.record.location.path,
+      scope: _scopeRefFor(d, byId),
+      fanInCallers: incomingCallers[d.elementId]?.length ?? 0,
+      fanInCalls: incomingCalls[d.elementId] ?? 0,
+      fanOutCallees: fanOutCallees,
+      fanOutCalls: fanOutCalls,
+    );
+  }
+
+  final matchedIds = <int>[
+    for (final d in declarations)
+      if (signals[d.elementId]!.scope.name == query) d.elementId,
+  ];
+
+  final matches = <InspectionMatch>[];
+  final walkUp =
+      direction == InspectionDirection.up ||
+      direction == InspectionDirection.both;
+  final walkDown =
+      direction == InspectionDirection.down ||
+      direction == InspectionDirection.both;
+  for (final anchorId in matchedIds) {
+    final upstream = walkUp
+        ? _walkInspection(
+            startId: anchorId,
+            depth: depth,
+            edgesFrom: (id) => inverse[id] ?? const <int, int>{},
+            signals: signals,
+            sortBy: (a, b) =>
+                b.signal.fanInCallers.compareTo(a.signal.fanInCallers),
+          )
+        : const <InspectionNode>[];
+    final downstream = walkDown
+        ? _walkInspection(
+            startId: anchorId,
+            depth: depth,
+            edgesFrom: (id) => byId[id]?.outgoingCounts ?? const <int, int>{},
+            signals: signals,
+            sortBy: (a, b) =>
+                b.signal.fanOutCallees.compareTo(a.signal.fanOutCallees),
+          )
+        : const <InspectionNode>[];
+    matches.add(
+      InspectionMatch(
+        anchor: signals[anchorId]!,
+        upstream: upstream,
+        downstream: downstream,
+      ),
+    );
+  }
+  return InspectionResult(
+    query: query,
+    depth: depth,
+    direction: direction,
+    matches: matches,
+  );
+}
+
+/// BFS helper for [inspectCallGraph]. [edgesFrom] returns the
+/// adjacency map for a node (caller edges for upstream walks,
+/// callee edges for downstream walks). Off-project ids land in the
+/// map but are dropped here because we only have signals for
+/// project-local declarations.
+List<InspectionNode> _walkInspection({
+  required int startId,
+  required int depth,
+  required Map<int, int> Function(int id) edgesFrom,
+  required Map<int, CallGraphSignal> signals,
+  required int Function(InspectionNode, InspectionNode) sortBy,
+}) {
+  final visited = <int>{startId};
+  final byDepth = <int, List<InspectionNode>>{};
+  var frontier = <int>{startId};
+  for (var d = 1; d <= depth && frontier.isNotEmpty; d++) {
+    final next = <int>{};
+    for (final id in frontier) {
+      for (final entry in edgesFrom(id).entries) {
+        final targetId = entry.key;
+        final signal = signals[targetId];
+        if (signal == null) continue;
+        if (!visited.add(targetId)) continue;
+        next.add(targetId);
+        byDepth
+            .putIfAbsent(d, () => <InspectionNode>[])
+            .add(
+              InspectionNode(
+                signal: signal,
+                depth: d,
+                incomingEdgeCount: entry.value,
+              ),
+            );
+      }
+    }
+    frontier = next;
+  }
+  final out = <InspectionNode>[];
+  final depths = byDepth.keys.toList()..sort();
+  for (final d in depths) {
+    final tier = byDepth[d]!..sort(sortBy);
+    out.addAll(tier);
   }
   return out;
 }
