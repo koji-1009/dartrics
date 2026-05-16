@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "version": {
-      "description": "Reporter schema version. `1.0` for the 0.x series.",
+      "description": "Reporter schema version. Bumped to `1.1` in 0.7.0 to cover `explanations` and `staleDismissals`, both non-breaking additions.",
       "type": "string"
     },
     "analyzedFiles": {
@@ -32,6 +32,16 @@
     "unused": {
       "type": "array",
       "items": { "$ref": "#/$defs/UnusedDeclaration" }
+    },
+    "explanations": {
+      "description": "Rationale + refactor hints + references for each metric that fired at least one violation. Mirrors the AI and Markdown reporters' explanation blocks; previously absent from JSON output, restored so machine consumers see the same context.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/ExplainEntry" }
+    },
+    "staleDismissals": {
+      "description": "Dismissal entries (YAML or comment) that never matched a live violation in this run. Surfaced so AI loops and reviewers can prune dead entries before they accumulate. Only emitted when at least one stale entry was detected.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/StaleDismissal" }
     }
   },
   "$defs": {
@@ -171,6 +181,58 @@
         "name": { "type": "string" },
         "file": { "type": "string" },
         "line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "ExplainEntry": {
+      "type": "object",
+      "required": ["metric", "rationale", "refactorHints"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "description": "Metric id this rationale block describes.",
+          "type": "string"
+        },
+        "rationale": {
+          "description": "Free-form prose explaining why the metric exists and what it tries to surface.",
+          "type": "string"
+        },
+        "refactorHints": {
+          "description": "Bulleted action hints for bringing a violating scope back under threshold.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "references": {
+          "description": "Citations the metric is anchored to (papers, books, established standards). Only emitted when the calculator declares one.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "StaleDismissal": {
+      "type": "object",
+      "required": ["file", "scope", "metric", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "description": "Project-relative path of the file the dismissal targeted.",
+          "type": "string"
+        },
+        "scope": {
+          "description": "Scope name (e.g. `Foo.bar`) the dismissal targeted.",
+          "type": "string"
+        },
+        "metric": {
+          "description": "Metric id (e.g. `cyclomatic-complexity`) the dismissal targeted.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Which channel the dismissal came from. AI loops use this to know whether the cleanup edit is in source or in the YAML file.",
+          "enum": ["comment", "yaml"]
+        },
+        "reason": {
+          "description": "Original `reason:` text from the dismissal, kept so the cleanup decision stays informed. Absent when the dismissal had no reason.",
+          "type": "string"
+        }
       }
     }
   }

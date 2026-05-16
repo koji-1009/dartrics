@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:dartrics/src/models/analysis_report.dart';
 import 'package:dartrics/src/models/source_location.dart';
 import 'package:dartrics/src/reporters/md_reporter.dart';
@@ -180,6 +181,61 @@ void main() {
     expect(body, contains('_dismissed_'));
     expect(body, contains('_dismissal-rejected_'));
   });
+
+  test(
+    'renders a Stale Dismissals section listing reason + source when present',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      final report = AnalysisReport(
+        version: '1.1',
+        metrics: const [],
+        unused: const [],
+        staleDismissals: const [
+          StaleDismissal(
+            file: 'lib/foo.dart',
+            scope: 'Foo.bar',
+            metricId: 'cyclomatic-complexity',
+            source: DismissalSource.yaml,
+            reason: 'state machine: splits hide intent',
+          ),
+          StaleDismissal(
+            file: 'lib/baz.dart',
+            scope: 'Baz.qux',
+            metricId: 'cognitive-complexity',
+            source: DismissalSource.comment,
+          ),
+        ],
+      );
+      MdReporter().report(report, sink);
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, contains('## Stale Dismissals'));
+      expect(body, contains('lib/foo.dart'));
+      expect(body, contains('Foo.bar'));
+      expect(body, contains('cyclomatic-complexity'));
+      expect(body, contains('yaml'));
+      expect(body, contains('state machine: splits hide intent'));
+      expect(body, contains('lib/baz.dart'));
+      expect(body, contains('comment'));
+    },
+  );
+
+  test(
+    'omits the Stale Dismissals section when no stale entries are present',
+    () async {
+      final temp = await File.fromUri(
+        Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+      ).create();
+      final sink = temp.openWrite();
+      MdReporter().report(buildSampleReport(), sink);
+      await sink.close();
+      final body = await temp.readAsString();
+      expect(body, isNot(contains('## Stale Dismissals')));
+    },
+  );
 
   test(
     'renders an Explanations section when explanations are attached',

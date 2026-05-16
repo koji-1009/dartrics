@@ -31,6 +31,7 @@ class MdReporter implements Reporter {
     _writeExplanations(buffer, report);
     _writeViolations(buffer, report);
     _writeUnused(buffer, report);
+    _writeStaleDismissals(buffer, report);
     sink.write(formatMarkdown(buffer.toString()));
   }
 
@@ -164,6 +165,27 @@ class MdReporter implements Reporter {
     for (final u in report.unused) {
       buf.writeln(
         '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`',
+      );
+    }
+    buf.writeln();
+  }
+
+  /// Lists dismissals that no longer match a live violation, so a human
+  /// reviewer can prune the dismiss file. Mirrors the AI reporter's
+  /// `staleDismissals:` block (which existed first); the MD reporter
+  /// previously omitted this section, which left human reviewers blind
+  /// to dead dismissal entries during PR review.
+  void _writeStaleDismissals(StringBuffer buf, AnalysisReport report) {
+    if (report.staleDismissals.isEmpty) return;
+    buf
+      ..writeln('## Stale Dismissals')
+      ..writeln();
+    for (final s in report.staleDismissals) {
+      final reason = (s.reason != null && s.reason!.isNotEmpty)
+          ? ' — _${s.reason}_'
+          : '';
+      buf.writeln(
+        '- `${s.file}` · `${s.scope}` · ${s.metricId} · ${s.source.name}$reason',
       );
     }
     buf.writeln();
