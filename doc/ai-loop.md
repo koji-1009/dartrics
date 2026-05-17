@@ -176,6 +176,22 @@ dartrics analyze --strict-dismiss --fatal-warnings
 
 `--strict-dismiss` ignores every dismissal — both comment and YAML — so the operator (or CI) sees the raw triage list. Combined with `--fatal-warnings`, this exits non-zero if the codebase still has unsuppressed warnings, suitable as a pre-merge gate.
 
+## When the metric alone isn't enough — `dartrics inspect`
+
+The ai-report carries `signals:` (per-declaration fan-in / fan-out, reference-only — no thresholds, no severity) for the same scopes the metrics fire on. When a violation reads ambiguously — *should I refactor this hub, or is it correctly central?* — drill in:
+
+```bash
+dartrics inspect Parser.parse --direction up --depth 2 --reporter ai
+```
+
+The output is a YAML-shaped subgraph: matched anchors with their fan-in / fan-out signal, then upstream callers (`--direction up`) and / or downstream callees (`--direction down`) up to `--depth` edges away. Three common entry points for an agent:
+
+* **Disambiguating an unused report** — before deleting an `unused:` entry, walk `--direction up --depth 3` to confirm no inbound edge exists. If something *was* wiring to it through an indirection the unused detector missed, the inspect output reveals the call site.
+* **Sizing the blast radius of a CC / Cognitive refactor** — `--direction up --depth 2` enumerates the call sites that would have to follow a signature change.
+* **Reading a coordinator's surface** — `--direction down --depth 2` on a scope with high `fanOutCallees` shows whether `response-for-class` is over-firing (the callees are siblings of the same protocol) or correctly firing (the callees span unrelated subsystems).
+
+Inspect is **not part of the refactor / dismiss / punt decision**; it feeds that decision with structure that the metric value alone doesn't carry. There are no `md` or `sarif` reporters for `inspect` because the output is reference-only — there's no finding to render.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -198,6 +214,7 @@ dartrics analyze --strict-dismiss --fatal-warnings
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
+| Probe the call graph around a symbol | `dartrics inspect <symbol>` | `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reference-only; `ai` / `json` reporters. Feeds the refactor / dismiss / punt decision with structure the metric value alone doesn't carry. |
 
 ## What's outside this loop
 
