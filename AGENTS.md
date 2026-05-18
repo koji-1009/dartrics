@@ -107,7 +107,3 @@ The CLI and analyzer plugin both read from a `dartrics:` section inside `analysi
 ## Scratch space
 
 `./tmp/` is gitignored. Put plans, intermediate artefacts, and debug scripts there. Nothing under `tmp/` may be referenced from tracked files (README, source, comments) — those references would dead-end for fresh clones.
-
-## Skills
-
-`.claude/skills/dart-cli-app-best-practices/` is bundled from `kevmoo/dash_skills`. Honor its entrypoint-structure / `exitCode`-vs-`exit()` / cross-platform-path guidance for any change touching `bin/` or CLI plumbing.
