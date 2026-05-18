@@ -230,18 +230,20 @@ The AI reporter sorts these to the bottom so they don't compete for token budget
 
 Common AI failure mode: split a 30-line function with CC = 14 into ten three-line helpers. CC drops to 4 in the original, but each helper is now a one-line passthrough and the total readability got worse, not better.
 
-`dartrics regression` detects this:
+`dartrics regression` surfaces this in the `cosmetic:` block. The block is **a narrow optional signal — parallel to the `signals:` block in `analyze` — not a verdict on the refactor.** The detector matches one specific signature:
 
 ```
 tinyHelpersAdded ≥ 3 ∧ slocDelta > 4·helpers ∧ ccReduction < 2·helpers
 ```
 
-When the regression diff prints `looksCosmetic: true`, **revert your refactor**. Real complexity reduction either:
+`cosmeticSplitDetected: true` is load-bearing — **revert your refactor**. Real complexity reduction either:
 
 * removes a dimension (boolean → enum, dispatch table → polymorphism), or
 * consolidates duplicated branches into one parameterised path.
 
 It does not redistribute branches across more functions while keeping all the branching logic.
+
+`cosmeticSplitDetected: false` is **not a passing grade**. The detector is strong-positive / weak-negative — `false` only means this specific signature did not match. Mid-size helpers (body > `smallBodyThreshold`, default 3 SLOC), one-off cosmetic extractions, and refactors that average a real CC drop together with cosmetic helpers all return `false`. The reporters carry a `# narrow heuristic, not a global verdict` reminder alongside the boolean for this reason. Always cross-check `false` with a metric-free self-review of the diff before treating the refactor as accepted.
 
 ## The operational protocol
 
@@ -253,7 +255,7 @@ For an end-to-end walkthrough with prompt examples, see [`doc/ai-loop.md`](ai-lo
 | 2. Read      | `dartrics analyze --reporter ai --since origin/main --limit 30`                                                                                                                                  | `--since` filters to changed files; `--limit` caps tokens; auto-explain is always on                                                                               |
 | 3. Decide    | refactor / dismiss / punt per violation                                                                                                                                                          | See [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision)                                                                            |
 | 4. Apply     | edit code, add `// dartrics:dismiss <metric> reason="…"`, or — if you punted — raise the question to the operator in natural language (no in-tree syntax for punt; see [Punt when…](#punt-when)) | `--strict-dismiss` is an audit flag, not a refactor outcome                                                                                                        |
-| 5. Verify    | `dartrics regression --before HEAD~1 --after HEAD --reporter ai`                                                                                                                                 | Look for `direction: improved` and `looksCosmetic: false`                                                                                                          |
+| 5. Verify    | `dartrics regression --before HEAD~1 --after HEAD --reporter ai`                                                                                                                                 | Look for `direction: improved`. `cosmeticSplitDetected: true` means revert; `false` is a narrow signal, not a passing grade. If you re-run `analyze` to verify a fix on the same file, pass `--snapshot none` — the cache rewrites itself every run, so two consecutive runs always report `changedFiles: 0` |
 | 6. Pre-merge | `dartrics analyze --strict-dismiss --fatal-warnings`                                                                                                                                             | Ignores dismissals; exits non-zero on any remaining warning                                                                                                        |
 
 The same `id` (16 hex chars) reappearing across runs means the previous fix didn't drop the metric. Refactor harder, or formalise as dismiss with a load-bearing reason — there is no third option of "ignore it again."
