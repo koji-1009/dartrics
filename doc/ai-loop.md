@@ -88,6 +88,9 @@ Sample report excerpt the agent would see:
 
 ```yaml
 # dartrics ai-report v1
+snapshot:
+  mode: cache
+  changedFiles: 12 of 247
 explain:
   - metric: cognitive-complexity
     rationale: |
@@ -98,7 +101,6 @@ explain:
       - Extract the deepest branch into a named helper.
       - Replace `if/else if` chains with a typed dispatch.
       - Collapse boolean spaghetti via early returns.
-
 violations:
   - file: lib/parser.dart
     id: a3f1c4e9b2d70218
@@ -112,15 +114,32 @@ violations:
     branchCoverage: 0.78
     snippet: |
       …7 lines centred on line 42…
+# Reference values from the resolved call graph — compare against intent.
+# NOT verdicts. A high fan-in is not "bad"; a 0 fan-in on a public API is
+# a possible wiring gap, not necessarily dead code. Use snapshot diffs to
+# spot values that moved on this edit.
+signals:
+  - file: lib/parser.dart
+    line: 42
+    scope: Parser.parse
+    kind: method
+    fanInCallers: 7
+    fanInCalls: 18
+    fanOutCallees: 12
+    fanOutCalls: 24
 truncated:
   violations: 8
+  signals: 41
 ```
 
-Three signals the agent should act on:
+On a clean run with no metric over threshold the `violations:` and `explain:` blocks are absent entirely; `signals:` keeps emitting because it is reference information, not a finding.
 
-- **`id: a3f1c4e9b2d70218`** — stable across runs. If the same id reappears next iteration, the previous fix didn't actually drop the metric.
+Four cues the agent should act on:
+
+- **`id: a3f1c4e9b2d70218`** on the violation — stable across runs. If the same id reappears next iteration, the previous fix didn't actually drop the metric.
 - **`coverage: 0.91` + `branchCoverage: 0.78`** — well-tested. Refactor risk is low; go ahead.
-- **`truncated: { violations: 8 }`** — there are 8 more below the cap. Once the visible 30 are done, re-run without `--limit`.
+- **`signals:` for the same scope** — `fanInCallers: 7` enumerates the call sites that would have to follow a signature change; `fanOutCallees: 12` flags that the scope coordinates many other types (overlaps in spirit with `response-for-class`). Reference-only — feed it into the refactor / dismiss decision; do not treat it as a violation.
+- **`truncated: { violations: 8, signals: 41 }`** — 8 more violations and 41 more signals below the cap. Once the visible 30 violations are done, re-run without `--limit` to drain the rest.
 
 ## 3. Apply (the agent edits code)
 
@@ -176,6 +195,52 @@ dartrics analyze --strict-dismiss --fatal-warnings
 
 `--strict-dismiss` ignores every dismissal — both comment and YAML — so the operator (or CI) sees the raw triage list. Combined with `--fatal-warnings`, this exits non-zero if the codebase still has unsuppressed warnings, suitable as a pre-merge gate.
 
+## The unused-detector loop
+
+`dartrics analyze` already lists unreachable public declarations in the AI report as an `unused:` block. `dartrics unused` is the focused subcommand that emits only that block (no metric battery, no signals); reach for it when you specifically want a dead-code sweep:
+
+```bash
+dartrics unused --reporter ai
+```
+
+Read each `unused:` entry **as a question, not a verdict**. A 0-reachability reading can mean any of:
+
+- **Genuine leftover** — call sites were removed and the implementation was left behind. Delete.
+- **Unwired implementation** — the implementation landed but the caller integration never followed. Deleting here hides a real bug.
+- **Reflective / generated consumer** — codegen makes calls the static graph can't see. Built-in keep-alive presets cover `@JsonSerializable`, `@reflectiveTest`, and the standard codegen toolchain; project-specific annotations may need to be added to the presets.
+
+### Confirm before deleting
+
+```bash
+dartrics inspect <symbol> --direction up --depth 3
+```
+
+Empty upstream → the detector saw it correctly, safe to delete. Non-empty upstream → the detector missed an indirection; do **not** `--apply`. Investigate the missing wiring, file a bug, or extend the keep-alive presets.
+
+### Apply
+
+```bash
+dartrics unused --apply
+```
+
+In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree so the deletion lands in its own diff (override with `--force` only if you've accepted the audit trade-off). `test/` and `integration_test/` are excluded by default — pass `--include-tests` to widen. Imports left dangling after deletion are cleaned up with `dart fix --apply` afterwards.
+
+## When the metric alone isn't enough — `dartrics inspect`
+
+The ai-report carries `signals:` (per-declaration fan-in / fan-out, reference-only — no thresholds, no severity) for the same scopes the metrics fire on. When a violation reads ambiguously — *should I refactor this hub, or is it correctly central?* — drill in:
+
+```bash
+dartrics inspect Parser.parse --direction up --depth 2 --reporter ai
+```
+
+The output is a YAML-shaped subgraph: matched anchors with their fan-in / fan-out signal, then upstream callers (`--direction up`) and / or downstream callees (`--direction down`) up to `--depth` edges away. Three common entry points for an agent:
+
+* **Disambiguating an unused report** — before deleting an `unused:` entry, walk `--direction up --depth 3` to confirm no inbound edge exists. If something *was* wiring to it through an indirection the unused detector missed, the inspect output reveals the call site.
+* **Sizing the blast radius of a CC / Cognitive refactor** — `--direction up --depth 2` enumerates the call sites that would have to follow a signature change.
+* **Reading a coordinator's surface** — `--direction down --depth 2` on a scope with high `fanOutCallees` shows whether `response-for-class` is over-firing (the callees are siblings of the same protocol) or correctly firing (the callees span unrelated subsystems).
+
+Inspect is **not part of the refactor / dismiss / punt decision**; it feeds that decision with structure that the metric value alone doesn't carry. There are no `md` or `sarif` reporters for `inspect` because the output is reference-only — there's no finding to render.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -198,6 +263,8 @@ dartrics analyze --strict-dismiss --fatal-warnings
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
+| Delete unused public-API declarations | `dartrics unused --apply` | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
+| Probe the call graph around a symbol | `dartrics inspect <symbol>` | `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reference-only; `ai` / `json` reporters. Feeds the refactor / dismiss / punt decision with structure the metric value alone doesn't carry. |
 
 ## What's outside this loop
 
