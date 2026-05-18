@@ -177,10 +177,6 @@ dart pub run coverage:test_with_coverage  # 100% line coverage is required
 
 See [`AGENTS.md`](AGENTS.md) for the contributor / AI-agent workflow notes.
 
-### Bundled Claude Code skill
-
-`.claude/skills/dart-cli-app-best-practices/` is a verbatim copy of the [`dart-cli-app-best-practices`](https://github.com/kevmoo/dash_skills) skill from [kevmoo/dash_skills](https://github.com/kevmoo/dash_skills) (Apache-2.0). It informs the CLI entrypoint conventions used in `bin/` and `lib/src/entry_point.dart` — keep it in sync upstream when refactoring.
-
 ## License
 
-MIT for dartrics itself; the bundled skill in `.claude/skills/` is Apache-2.0 (see its `SKILL.md` frontmatter).
+MIT.
