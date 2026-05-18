@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1
+
+Documentation-only release. The 0.7.0 surface — `dartrics inspect`, the `signals:` reference block — shipped without matching updates to `dartrics manual` and `dartrics ai-loop`. 0.7.1 catches the in-binary walkthroughs up to the released CLI surface. No code, schema, or threshold change.
+
+* `dartrics ai-loop` sample report now carries `signals:` and `snapshot:`; documents what the agent reads out of it and clarifies that `violations:` / `explain:` go absent on a clean run while `signals:` keeps emitting. New "The unused-detector loop" section covers the `read → inspect → --apply` flow.
+* `dartrics manual` gains a "Signals — reference information, not verdicts" section, an inline `dartrics inspect` subsection, and an `inspect` entry in the operational protocol flag map.
+
 ## 0.7.0
 
 A call-graph release. The element-resolved reachability pass already powering `dartrics unused` now also surfaces per-declaration fan-in / fan-out reference signals and backs a new `dartrics inspect <symbol>` subcommand. Signals carry no threshold and no severity — they are reference information, not violations.
