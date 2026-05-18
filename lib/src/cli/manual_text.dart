@@ -95,6 +95,39 @@ All three are polarity `neutral` (no default warning) and rank change-impact rat
 | `afferent-coupling` (Ca) | "Touching this file ripples everywhere." | Incoming internal-import edges.                                          |
 | `instability` (I)        | "This is a fragile hub."                 | `Ce / (Ca + Ce)`. 0 = maximally stable, 1 = maximally unstable.          |
 
+## Signals — reference information, not verdicts
+
+Alongside the lens battery, `dartrics analyze` emits a `signals:` block: per-declaration **fan-in** (`callers`, `calls`) and **fan-out** (`callees`, `calls`) computed off the same element-resolved reachability pass that powers `dartrics unused`. Signals are **not thresholded** — they carry no `severity`, no `threshold`, no warning. A high fan-in is not a violation; a fan-in of zero is not automatically a delete candidate (`unused` is the verdict for that). The framing is deliberate: signals answer *"what does the graph look like here?"* so you can compare it against intent. The lens battery answers *"did this scope cross a citation-backed threshold?"*.
+
+How to read a signal:
+
+| Signal                | What it tells you                                                                                                                                                                                                                                                                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fanInCallers` = 0    | Nobody invokes this declaration. Could be leftover code (delete candidate) **or** an unwired implementation that was supposed to be called from somewhere but the wiring never landed. The `unused` block is verdict-grade; the `fanInCallers = 0` framing on `signals` is the version that asks the loop to confirm against intent first.   |
+| High `fanInCallers`   | The declaration is a hub. Refactoring it ripples; check `coverage` before deciding the risk is acceptable.                                                                                                                                                                                                                                   |
+| High `fanOutCallees`  | The declaration coordinates many other types — overlaps in spirit with `response-for-class`, but at the declaration level and across files. A natural place to look when CC / Cognitive flagged the same scope.                                                                                                                              |
+| `calls` ≫ `callees`   | Same callee invoked repeatedly. Often legitimate (loop body, retries); occasionally a sign that a helper should absorb the repetition.                                                                                                                                                                                                       |
+
+Signals reach the AI / JSON reporters in full and the MD reporter as a top-10 reference table; SARIF and console don't carry them (no surface to render reference-only data without confusing them for findings). The JSON shape lives in `schemas/dartrics-report.schema.json` under `$defs.CallGraphSignal`.
+
+### Drilling in — `dartrics inspect <symbol>`
+
+When the `signals:` block surfaces something interesting but the surrounding neighbourhood is what you actually need to see, use:
+
+```bash
+dartrics inspect <symbol> [--depth N] [--direction up|down|both]
+```
+
+`<symbol>` matches by declared name. Homonym methods on different classes (`A.work`, `B.work`) stay disambiguated as separate `matches:` entries; pass `A.work` to narrow. The walker BFSs the resolved call graph from each matched anchor: `--direction up` returns the upstream callers, `--direction down` returns the downstream callees, `--direction both` (default) returns the union. `--depth` caps the number of edges from the anchor (default 2). Output is `--reporter ai` (token-shaped YAML, default) or `--reporter json` — there is no `md` or `sarif` form because `inspect` is itself a reference-only probe, not a finding list.
+
+Typical entry points:
+
+* **Disambiguating `unused`** — `dartrics unused` flags `Foo.helper`. Before deleting, run `dartrics inspect Foo.helper --direction up --depth 3` and confirm the graph really has no inbound edge. If the unused detector saw it correctly, the upstream block is empty; if it didn't, the missing wiring shows up in the matches.
+* **Sizing a refactor blast radius** — CC or Cognitive flagged `Parser.parse`. Run `dartrics inspect Parser.parse --direction up --depth 2` to see which call sites would have to follow if you change the signature.
+* **Tracing what a coordinator owns** — high `fanOutCallees` on `Service.handleRequest`. Run `dartrics inspect Service.handleRequest --direction down --depth 2` to see the immediate downstream surface before you decide whether `response-for-class` is over-firing or correctly firing.
+
+`inspect` does not gate, does not classify, and is **not** part of the refactor / dismiss / punt decision — it feeds that decision with structure that the lens output alone doesn't carry.
+
 ## Polarity — which way is healthier
 
 Each lens declares a `polarity`:
@@ -255,6 +288,7 @@ If you have read `--reporter ai` and the destination is now a human or a CI sink
 | Verify a refactor                     | `dartrics regression`          | Runs `git worktree` for the historical side                                                                                                                                                                                                       |
 | Audit your config                     | `dartrics doctor`              | Flags unknown metric ids and threshold mis-ordering. Read-only                                                                                                                                                                                    |
 | Delete unused public-API declarations | `dartrics unused --apply`      | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
+| Walk the call graph around a symbol   | `dartrics inspect <symbol>`    | Reference-only probe (no thresholds, no severity). `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reporters: `ai` (default), `json`. See [Signals — reference information, not verdicts](#signals--reference-information-not-verdicts) |
 
 ## Exit codes
 

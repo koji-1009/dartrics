@@ -41,8 +41,9 @@ dartrics ai-loop
 
 | Command | Purpose |
 | --- | --- |
-| `analyze` | Every metric + the public-API unused detector. |
+| `analyze` | Every metric + the public-API unused detector. Emits `signals:` (call-graph fan-in / fan-out per declaration) as reference information alongside the thresholded metrics. |
 | `unused` | Public-API reachability only (fast path). |
+| `inspect <symbol>` | Walk the resolved call graph around a named declaration; `--depth` / `--direction up\|down\|both` configure the walk. Reference-only output; emits `ai` (default) or `json`. |
 | `report <input.json>` | Re-emit a previously saved JSON report in another format. |
 | `rules` | Catalogue every metric with rationale, refactor hints, and references. |
 | `regression` | Compare metrics between two git states; classify each delta as improved / regressed / unchanged / added / removed. |

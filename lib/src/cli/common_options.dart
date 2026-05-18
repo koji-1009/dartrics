@@ -6,9 +6,10 @@ import '../config/config.dart';
 
 /// Allowed values for `--reporter` across the analysis-shaped subcommands
 /// (`analyze`, `unused`, `report`). The lighter subcommands (`rules`,
-/// `regression`) declare their own allowed lists locally because they do
-/// not support every reporter (`sarif` only makes sense for analyses
-/// that produce per-file findings).
+/// `regression`, `inspect`) declare their own allowed lists locally
+/// because they do not support every reporter (`sarif` only makes sense
+/// for analyses that produce per-file findings; `inspect` is
+/// reference-only and skips `md` / `sarif` / `console` too).
 const List<String> analysisReporters = ['console', 'json', 'md', 'ai', 'sarif'];
 
 // === IO options ===
