@@ -40,16 +40,21 @@ class RegressionReporter {
     if (_cosmeticHasSignal(report.cosmetic)) {
       buf
         ..writeln('cosmetic:')
+        ..writeln('  # narrow heuristic, not a global verdict — `false`')
+        ..writeln('  # only means the cosmetic-split signature did not')
+        ..writeln('  # match; still cross-check with a metric-free review.')
         ..writeln('  tinyHelpersAdded: ${report.cosmetic.tinyHelpersAdded}')
         ..writeln('  slocDelta: ${report.cosmetic.slocDelta}')
         ..writeln('  ccReduction: ${report.cosmetic.ccReduction}')
         ..writeln('  smallBodyThreshold: ${report.cosmetic.smallBodyThreshold}')
-        ..writeln('  looksCosmetic: ${report.cosmetic.looksCosmetic}');
-      if (report.cosmetic.looksCosmetic) {
+        ..writeln(
+          '  cosmeticSplitDetected: ${report.cosmetic.cosmeticSplitDetected}',
+        );
+      if (report.cosmetic.cosmeticSplitDetected) {
         buf
           ..writeln('warning: |')
           ..writeln(
-            '  This refactor looks cosmetic: ${report.cosmetic.tinyHelpersAdded} '
+            '  Cosmetic-split signature matched: ${report.cosmetic.tinyHelpersAdded} '
             'new functions with bodies <= ${report.cosmetic.smallBodyThreshold} '
             'lines were added; total SLOC grew by ${report.cosmetic.slocDelta} '
             'while cyclomatic complexity only dropped by '
@@ -92,9 +97,16 @@ class RegressionReporter {
     if (_cosmeticHasSignal(report.cosmetic)) {
       buf
         ..writeln(
-          report.cosmetic.looksCosmetic
+          report.cosmetic.cosmeticSplitDetected
               ? '## ⚠️ Cosmetic-split warning'
               : '## Cosmetic signals',
+        )
+        ..writeln()
+        ..writeln(
+          '> Narrow heuristic, not a global verdict — '
+          '`cosmeticSplitDetected: false` only means the cosmetic-split '
+          'signature did not match; still cross-check with a metric-free '
+          'review.',
         )
         ..writeln()
         ..writeln(
@@ -103,12 +115,14 @@ class RegressionReporter {
         )
         ..writeln('- slocDelta: ${report.cosmetic.slocDelta}')
         ..writeln('- ccReduction: ${report.cosmetic.ccReduction}')
-        ..writeln('- looksCosmetic: ${report.cosmetic.looksCosmetic}')
+        ..writeln(
+          '- cosmeticSplitDetected: ${report.cosmetic.cosmeticSplitDetected}',
+        )
         ..writeln();
-      if (report.cosmetic.looksCosmetic) {
+      if (report.cosmetic.cosmeticSplitDetected) {
         buf
           ..writeln(
-            'The refactor looks cosmetic: helpers added without a '
+            'The cosmetic-split signature matched: helpers added without a '
             'matching CC reduction. Consider whether the refactor '
             'improved readability or just spread the same logic '
             'across more methods.',
@@ -140,8 +154,8 @@ class RegressionReporter {
         '${report.summary.removed} removed.',
       );
     if (_cosmeticHasSignal(report.cosmetic)) {
-      final prefix = report.cosmetic.looksCosmetic
-          ? 'WARNING: refactor looks cosmetic — '
+      final prefix = report.cosmetic.cosmeticSplitDetected
+          ? 'WARNING: cosmetic-split signature matched — '
           : 'cosmetic signals: ';
       buf.writeln(
         '$prefix'
