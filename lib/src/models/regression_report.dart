@@ -133,6 +133,11 @@ class RegressionSummary {
 /// Heuristic signals that try to tell substantive refactors apart from
 /// cosmetic ones (e.g. AI extracting a stream of one-line helpers just
 /// to lower cyclomatic complexity).
+///
+/// The boolean [cosmeticSplitDetected] is **one narrow signature**, not
+/// a global verdict on the refactor's quality. `false` only means "this
+/// particular signature did not fire" — it does **not** validate the
+/// refactor. AI consumers must still perform a metric-free self-review.
 class CosmeticSignals {
   const CosmeticSignals({
     required this.tinyHelpersAdded,
@@ -156,10 +161,18 @@ class CosmeticSignals {
   /// Threshold for what counts as a "tiny" helper.
   final int smallBodyThreshold;
 
-  /// True when the diff matches a cosmetic-split signature: several new
-  /// tiny helpers, total SLOC grew faster than they justified, and the
-  /// cyclomatic-complexity reduction is small per helper.
-  bool get looksCosmetic =>
+  /// True when the diff matches the cosmetic-split signature: several
+  /// new tiny helpers, total SLOC grew faster than they justified, and
+  /// the cyclomatic-complexity reduction is small per helper.
+  ///
+  /// **Narrow heuristic, not a passing grade.** The detector is
+  /// strong-positive / weak-negative: `true` is a load-bearing alert,
+  /// `false` only means this specific signature did not match. Mid-size
+  /// helpers (body > [smallBodyThreshold]), one-off cosmetic
+  /// extractions, and refactors that average a real CC drop together
+  /// with cosmetic helpers can all return `false`. Cross-check against
+  /// a metric-free self-review.
+  bool get cosmeticSplitDetected =>
       tinyHelpersAdded >= 3 &&
       slocDelta > tinyHelpersAdded * 4 &&
       ccReduction < tinyHelpersAdded * 2;
@@ -169,7 +182,7 @@ class CosmeticSignals {
     'slocDelta': slocDelta,
     'ccReduction': ccReduction,
     'smallBodyThreshold': smallBodyThreshold,
-    'looksCosmetic': looksCosmetic,
+    'cosmeticSplitDetected': cosmeticSplitDetected,
   };
 }
 

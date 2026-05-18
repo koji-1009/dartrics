@@ -41,24 +41,28 @@ void main() {
     return tmp.readAsString();
   }
 
-  test('ai reporter renders a cosmetic warning when looksCosmetic', () async {
-    final report = build(
-      cosmetic: const CosmeticSignals(
-        tinyHelpersAdded: 5,
-        slocDelta: 25,
-        ccReduction: 4,
-        smallBodyThreshold: 3,
-      ),
-      changes: [change(ChangeDirection.improved)],
-    );
-    final body = await render(report, 'ai');
-    expect(body, contains('warning:'));
-    expect(body, contains('refactor looks cosmetic'));
-    expect(body, contains('changes:'));
-    // Stable id for the (file, scope, metric) triple is emitted so AI
-    // loops can correlate this row with the matching analyze violation.
-    expect(body, contains('    id: ${report.changes.single.id}'));
-  });
+  test(
+    'ai reporter renders a cosmetic warning when cosmeticSplitDetected',
+    () async {
+      final report = build(
+        cosmetic: const CosmeticSignals(
+          tinyHelpersAdded: 5,
+          slocDelta: 25,
+          ccReduction: 4,
+          smallBodyThreshold: 3,
+        ),
+        changes: [change(ChangeDirection.improved)],
+      );
+      final body = await render(report, 'ai');
+      expect(body, contains('warning:'));
+      expect(body, contains('Cosmetic-split signature matched'));
+      expect(body, contains('cosmeticSplitDetected: true'));
+      expect(body, contains('changes:'));
+      // Stable id for the (file, scope, metric) triple is emitted so AI
+      // loops can correlate this row with the matching analyze violation.
+      expect(body, contains('    id: ${report.changes.single.id}'));
+    },
+  );
 
   test('md reporter renders the cosmetic-split section', () async {
     final report = build(
@@ -90,7 +94,7 @@ void main() {
   });
 
   test(
-    'console reporter prints WARNING line on cosmetic looksCosmetic',
+    'console reporter prints WARNING line on cosmeticSplitDetected',
     () async {
       final report = build(
         cosmetic: const CosmeticSignals(
@@ -102,6 +106,7 @@ void main() {
       );
       final body = await render(report, 'console');
       expect(body, contains('WARNING'));
+      expect(body, contains('cosmetic-split signature matched'));
     },
   );
 
@@ -123,7 +128,10 @@ void main() {
       expect(body, contains('tinyHelpersAdded: 2'));
       expect(body, contains('slocDelta: 8'));
       expect(body, contains('ccReduction: 1'));
-      expect(body, contains('looksCosmetic: false'));
+      expect(body, contains('cosmeticSplitDetected: false'));
+      // Below-threshold runs surface a clarifying comment so AI loops
+      // don't read the bare `false` as a passing grade.
+      expect(body, contains('narrow heuristic'));
       // Threshold-crossing warning should NOT appear.
       expect(body, isNot(contains('warning:')));
     },
@@ -144,6 +152,10 @@ void main() {
       expect(body, contains('Cosmetic signals'));
       expect(body, isNot(contains('Cosmetic-split warning')));
       expect(body, contains('tinyHelpersAdded: 2'));
+      // Below-threshold sections still print the narrow-heuristic
+      // disclaimer so human readers don't infer a passing grade either.
+      expect(body, contains('Narrow heuristic'));
+      expect(body, contains('cosmeticSplitDetected: false'));
     },
   );
 

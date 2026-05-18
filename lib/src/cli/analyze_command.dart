@@ -24,6 +24,12 @@ import 'git_diff.dart';
 import 'io_sinks.dart';
 import 'snapshot.dart';
 
+/// Matches the leading slice of a `// dartrics:dismiss …` comment.
+/// Used only to spot stray dismiss comments when the corresponding
+/// config opt-in is off — the actual parser ([scanCommentDismissals])
+/// runs a stricter pattern when the source is enabled.
+final RegExp _strayDismissPattern = RegExp(r'//\s*dartrics:dismiss\s+\S+');
+
 /// `dartrics analyze` — runs every metric calculator and the unused
 /// detector over the analysis root and emits a combined report.
 class AnalyzeCommand extends Command<int> {
@@ -253,12 +259,21 @@ class AnalyzeCommand extends Command<int> {
   /// lookup table the engine can hit per violation. Returns an empty
   /// index when [strictDismiss] is on or when neither source is
   /// enabled in [DismissalConfig].
+  ///
+  /// When `commentSource` is off (and the run is not `--strict-dismiss`,
+  /// which deliberately ignores all dismissals), the source is scanned
+  /// for stray `// dartrics:dismiss` comments and a stderr WARN is
+  /// emitted if any are found — silently no-op'ing those comments is
+  /// the failure mode the dismissal channel is built to prevent.
   DismissalIndex _buildDismissalIndex({
     required bool strictDismiss,
     required DismissalConfig config,
     required String root,
     required List<({String path, ResolvedUnitResult unit})> units,
   }) {
+    if (!strictDismiss && !config.commentSource) {
+      _warnIfStrayDismissComments(units);
+    }
     if (strictDismiss || !config.enabled) return DismissalIndex.empty();
     final comments = <Dismissal>[];
     if (config.commentSource) {
@@ -276,6 +291,35 @@ class AnalyzeCommand extends Command<int> {
         ? loadYamlDismissals(_resolveYamlPath(config, root))
         : const <Dismissal>[];
     return DismissalIndex.build(comments: comments, yaml: yaml);
+  }
+
+  /// Cheap source-level scan for `// dartrics:dismiss …` comments. Runs
+  /// only when `commentSource` is disabled — the goal is to break the
+  /// silent-no-op failure mode where an AI authors a dismiss comment
+  /// thinking it took, and the engine quietly ignores it because the
+  /// config never opted in.
+  void _warnIfStrayDismissComments(
+    List<({String path, ResolvedUnitResult unit})> units,
+  ) {
+    final hits = <String>[];
+    for (final entry in units) {
+      if (_strayDismissPattern.hasMatch(entry.unit.content)) {
+        hits.add(entry.path);
+      }
+    }
+    if (hits.isEmpty) return;
+    final example = hits.first;
+    final suffix = hits.length == 1
+        ? ' ($example)'
+        : ' (e.g. $example, +${hits.length - 1} more)';
+    final filesWord = hits.length == 1 ? 'file' : 'files';
+    DartricsIO.stderrSink.writeln(
+      'dartrics: detected `// dartrics:dismiss` comment(s) in '
+      '${hits.length} $filesWord$suffix but commentSource is disabled — '
+      'they are being ignored. Enable with '
+      '`dartrics: { dismissals: { sources: [comment] } }` in '
+      'analysis_options.yaml.',
+    );
   }
 
   String _resolveYamlPath(DismissalConfig config, String root) {

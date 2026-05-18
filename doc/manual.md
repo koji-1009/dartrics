@@ -10,7 +10,7 @@ Decades of software-engineering research has converted those felt reactions into
 
 Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, Hitz & Montazeri 1995, Cognitive Complexity 2017 — never made it into the daily toolbox of working programmers. The cost of _calculating_ the number, _interpreting_ it, and _acting on it_ was each individually expensive for a human reviewer. An AI loop absorbs all three. You compute in a second; the rationale and refactor moves are attached to the violation; the edit is yours to apply. The lenses that the literature catalogued for human reviewers are reachable to you in a way they weren't before.
 
-`dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, or formally dismiss with a reason. That decision step is first-class.
+`dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, dismiss with a reason, or punt to the operator. That decision step is first-class.
 
 ```
                 you propose code
@@ -23,17 +23,22 @@ Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, Hitz & Montazeri
                        │
               for each violation:
                        │
-       ┌───────────────┼───────────────┐
-       ▼               ▼               ▼
-  REFACTOR         DISMISS         PUNT
-  (lens shows      (lens reads     (mark unsure
-   real fix)        it but the      and surface
-                    structure is    a question)
-                    load-bearing)
+       ┌──────┬────────┼────────┬──────┐
+       ▼      ▼        ▼        ▼
+  REFACTOR DISMISS    PUNT    ACCEPT
+  (lens    (load-     (need    (borderline
+   shows    bearing    project  value on
+   real     structure; context  healthy
+   fix)     tracked    the      code; no
+            reason)    harness  edit, no
+                       lacks)   dismiss)
                        │
                        ▼
        ┌──────────────────────────────┐
        │  verify the lens moved       │  ← dartrics regression --reporter ai
+       │  (REFACTOR / DISMISS only —  │
+       │   PUNT awaits operator;      │
+       │   ACCEPT loops to next)      │
        └──────────────────────────────┘
 ```
 
@@ -140,6 +145,14 @@ The metric points at a real readability problem and the structure is **decomposa
 
 `dartrics rules --reporter ai` dumps the full per-metric `refactorHints` — keep that catalogue at hand or rely on auto-explain to inline it per run.
 
+### Accept when…
+
+The lens fired, you read the code end-to-end, and a careful human reviewer would also leave it alone — typically a value at or barely over threshold on code that reads fine. **Accept = no edit, no `// dartrics:dismiss`, no punt. Move to the next violation.**
+
+Accept is a distinct outcome from dismiss. Dismiss commits a tracked `reason="…"` because the structure is load-bearing and future readers need to see why the metric will keep firing on this scope. Accept is for cases where there is no recurring story to track — the next refactor in the area may legitimately drop the value under threshold, or the value may already be low enough that the warning is more of a heads-up than a finding. Adding a dismiss comment here pollutes the source with a tool annotation that does not function.
+
+When the same kind of violation accepts repeatedly across many sites on the same idiom, that is the **threshold-calibration** signal (see the calibration note below): adjust `dartrics: { metrics: { <id>: { warning: <n> } } }` once instead of accepting N times across the project.
+
 ### Before you dismiss — engage, don't escape
 
 The most common failure mode in this loop is **dismiss-as-escape**: silencing a violation not because the structure is genuinely load-bearing but because the refactor looks hard enough that dismiss becomes the productive-feeling next move. The signal that you are doing this is the _shape of your dismiss reason itself_ — phrases like "the metric is technically right but…", "the threshold is too tight for this idiom", or "splitting wouldn't really help here" are not load-bearing reasons; they are exit phrases.
@@ -212,18 +225,20 @@ The AI reporter sorts these to the bottom so they don't compete for token budget
 
 Common AI failure mode: split a 30-line function with CC = 14 into ten three-line helpers. CC drops to 4 in the original, but each helper is now a one-line passthrough and the total readability got worse, not better.
 
-`dartrics regression` detects this:
+`dartrics regression` surfaces this in the `cosmetic:` block. The block is **a narrow optional signal — parallel to the `signals:` block in `analyze` — not a verdict on the refactor.** The detector matches one specific signature:
 
 ```
 tinyHelpersAdded ≥ 3 ∧ slocDelta > 4·helpers ∧ ccReduction < 2·helpers
 ```
 
-When the regression diff prints `looksCosmetic: true`, **revert your refactor**. Real complexity reduction either:
+`cosmeticSplitDetected: true` is load-bearing — **revert your refactor**. Real complexity reduction either:
 
 * removes a dimension (boolean → enum, dispatch table → polymorphism), or
 * consolidates duplicated branches into one parameterised path.
 
 It does not redistribute branches across more functions while keeping all the branching logic.
+
+`cosmeticSplitDetected: false` is **not a passing grade**. The detector is strong-positive / weak-negative — `false` only means this specific signature did not match. Mid-size helpers (body > `smallBodyThreshold`, default 3 SLOC), one-off cosmetic extractions, and refactors that average a real CC drop together with cosmetic helpers all return `false`. The reporters carry a `# narrow heuristic, not a global verdict` reminder alongside the boolean for this reason. Always cross-check `false` with a metric-free self-review of the diff before treating the refactor as accepted.
 
 ## The operational protocol
 
@@ -235,7 +250,7 @@ For an end-to-end walkthrough with prompt examples, see [`doc/ai-loop.md`](ai-lo
 | 2. Read      | `dartrics analyze --reporter ai --since origin/main --limit 30`                                                                                                                                  | `--since` filters to changed files; `--limit` caps tokens; auto-explain is always on                                                                               |
 | 3. Decide    | refactor / dismiss / punt per violation                                                                                                                                                          | See [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision)                                                                            |
 | 4. Apply     | edit code, add `// dartrics:dismiss <metric> reason="…"`, or — if you punted — raise the question to the operator in natural language (no in-tree syntax for punt; see [Punt when…](#punt-when)) | `--strict-dismiss` is an audit flag, not a refactor outcome                                                                                                        |
-| 5. Verify    | `dartrics regression --before HEAD~1 --after HEAD --reporter ai`                                                                                                                                 | Look for `direction: improved` and `looksCosmetic: false`                                                                                                          |
+| 5. Verify    | `dartrics regression --before HEAD~1 --after HEAD --reporter ai`                                                                                                                                 | Look for `direction: improved`. `cosmeticSplitDetected: true` means revert; `false` is a narrow signal, not a passing grade. If you re-run `analyze` to verify a fix on the same file, pass `--snapshot none` — the cache rewrites itself every run, so two consecutive runs always report `changedFiles: 0` |
 | 6. Pre-merge | `dartrics analyze --strict-dismiss --fatal-warnings`                                                                                                                                             | Ignores dismissals; exits non-zero on any remaining warning                                                                                                        |
 
 The same `id` (16 hex chars) reappearing across runs means the previous fix didn't drop the metric. Refactor harder, or formalise as dismiss with a load-bearing reason — there is no third option of "ignore it again."

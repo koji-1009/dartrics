@@ -221,7 +221,7 @@ void main() {
       afterRecords: after,
     );
     expect(report.cosmetic.tinyHelpersAdded, 5);
-    expect(report.cosmetic.looksCosmetic, isTrue);
+    expect(report.cosmetic.cosmeticSplitDetected, isTrue);
   });
 
   test('does not flag a substantive refactor that extracts large helpers', () {
@@ -253,7 +253,7 @@ void main() {
       beforeRecords: before,
       afterRecords: after,
     );
-    expect(report.cosmetic.looksCosmetic, isFalse);
+    expect(report.cosmetic.cosmeticSplitDetected, isFalse);
   });
 
   test('unchanged values come last in the sorted change list', () {

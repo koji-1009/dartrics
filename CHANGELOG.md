@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.2
+
+AI-consumer ergonomics release driven by a real dartrics session report from another agent. No metric, threshold, or schema change.
+
+* **`looksCosmetic` → `cosmeticSplitDetected`** in `dartrics regression`. The old name read as a verdict; the detector is a narrow opt-in signal (the cosmetic-split signature) parallel to `analyze`'s `signals:` block, not a refactor-quality verdict. All reporters now emit `# narrow heuristic, not a global verdict` alongside the boolean, and the manual reframes the block as a signal rather than a pass/fail.
+* **Stray `// dartrics:dismiss` comments no longer silently no-op.** When `commentSource` is off (the default — the `dismissals:` block is not yet authored) and the run is not `--strict-dismiss`, `analyze` scans for dismiss-shaped comments and emits a stderr WARN naming the affected files and the opt-in needed.
+* **Operational protocol step 5 documents `--snapshot none`.** The snapshot cache rewrites itself every run, so two consecutive `analyze` runs always report `changedFiles: 0`. The manual now flags this on the verify step.
+* **README directs AI agents to `dartrics manual` first.** The subcommand was hidden behind `--help`; the README banner makes it the explicit entrypoint for AI consumers.
+* **ACCEPT becomes a first-class decision** in the loop diagram and manual. Borderline values on healthy code are now explicitly "no edit, no `// dartrics:dismiss`, no punt — move to the next violation," distinct from dismiss (which is a tracked, recurring-reason commitment).
+
 ## 0.7.1
 
 Documentation-only release. The 0.7.0 surface — `dartrics inspect`, the `signals:` reference block — shipped without matching updates to `dartrics manual` and `dartrics ai-loop`. 0.7.1 catches the in-binary walkthroughs up to the released CLI surface. No code, schema, or threshold change.

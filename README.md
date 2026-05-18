@@ -7,6 +7,8 @@
 
 Dart code-quality metrics and unused public-API detection, designed as the AI-loop counterpart of `dart analyze`.
 
+> **AI agents — start here:** run `dartrics manual` (or read [`doc/manual.md`](doc/manual.md)) before driving the tool. The manual covers the refactor / dismiss / accept / punt decision tree, the cosmetic-split heuristic's narrow shape (it surfaces a signal, not a verdict), dismissal opt-in, and the snapshot-cache caveat for verify loops. Skim once per session; it is shipped in the binary so `dart pub global activate dartrics` is enough.
+
 ## What it does
 
 dartrics computes a battery of code-quality metrics — McCabe, Cognitive Complexity (Sonar), Chidamber & Kemerer, Martin, Halstead — on top of `package:analyzer`, alongside an analyzer-element BFS for unreachable public API à la Periphery. Every report mode is shaped to be *consumed*: `--reporter ai` ships a token-efficient YAML-ish bundle, sorted by actionability, with each metric's rationale, refactor hints, and primary-source citation embedded inline.

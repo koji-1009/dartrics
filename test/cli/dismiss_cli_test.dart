@@ -264,6 +264,158 @@ dartrics:
     },
   );
 
+  test(
+    'stray `// dartrics:dismiss` comment surfaces stderr WARN when commentSource is off',
+    () async {
+      // The dismiss block itself is missing — both sources default to
+      // disabled at the config layer. Without the WARN the comment
+      // would be a silent no-op, exactly the failure mode the dismiss
+      // channel is built to prevent.
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+// dartrics:dismiss cyclomatic-complexity reason="state machine: splits hide intent"
+int branchy(int x) {
+  if (x > 0) return 1;
+  if (x < 0) return -1;
+  if (x == 0) return 0;
+  return 99;
+}
+''');
+      final config = await writeConfig('''
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      warning: 1
+''');
+      final out = File('${dir.path}/out.json');
+      final captured = await runCaptured([
+        'analyze',
+        dir.path,
+        '--reporter',
+        'json',
+        '--output',
+        out.path,
+        '--root',
+        dir.path,
+        '--config',
+        config.path,
+      ]);
+      expect(captured.exitCode, 0);
+      expect(captured.stderr, contains('dartrics:dismiss'));
+      expect(captured.stderr, contains('commentSource is disabled'));
+      expect(captured.stderr, contains('sources: [comment]'));
+      // The comment really is being ignored — the violation should
+      // still fire as a regular non-dismissed entry.
+      final body = jsonDecode(out.readAsStringSync()) as Map<String, dynamic>;
+      final v = _findViolation(body, 'branchy', 'cyclomatic-complexity');
+      expect(v.containsKey('dismissed'), isFalse);
+    },
+  );
+
+  test('commentSource enabled: stray-comment WARN does not fire', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+// dartrics:dismiss cyclomatic-complexity reason="state machine: splits hide intent"
+int branchy(int x) {
+  if (x > 0) return 1;
+  if (x < 0) return -1;
+  if (x == 0) return 0;
+  return 99;
+}
+''');
+    final config = await writeConfig('''
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      warning: 1
+  dismissals:
+    sources:
+      comment: true
+      yaml: false
+''');
+    final out = File('${dir.path}/out.json');
+    final captured = await runCaptured([
+      'analyze',
+      dir.path,
+      '--reporter',
+      'json',
+      '--output',
+      out.path,
+      '--root',
+      dir.path,
+      '--config',
+      config.path,
+    ]);
+    expect(captured.exitCode, 0);
+    expect(captured.stderr, isNot(contains('commentSource is disabled')));
+  });
+
+  test('stray-comment WARN aggregates across multiple files', () async {
+    // Two files with stray dismiss comments → the WARN renders the
+    // `+N more` suffix and the plural noun, exercising the multi-hit
+    // branches that the single-file test cannot reach.
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+// dartrics:dismiss cyclomatic-complexity reason="state machine; splits hide intent"
+int branchy(int x) => x;
+''');
+    await File('${dir.path}/lib/bar.dart').writeAsString('''
+// dartrics:dismiss cyclomatic-complexity reason="state machine; splits hide intent"
+int alsoBranchy(int x) => x;
+''');
+    final config = await writeConfig('''
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      warning: 1
+''');
+    final out = File('${dir.path}/out.json');
+    final captured = await runCaptured([
+      'analyze',
+      dir.path,
+      '--reporter',
+      'json',
+      '--output',
+      out.path,
+      '--root',
+      dir.path,
+      '--config',
+      config.path,
+    ]);
+    expect(captured.exitCode, 0);
+    expect(captured.stderr, contains('2 files'));
+    expect(captured.stderr, contains('+1 more'));
+  });
+
+  test('--strict-dismiss suppresses the stray-comment WARN', () async {
+    // `--strict-dismiss` is the audit mode — the operator deliberately
+    // wants every dismissal ignored. Surfacing the WARN there would
+    // be noise.
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+// dartrics:dismiss cyclomatic-complexity reason="state machine: splits hide intent"
+int branchy(int x) => x;
+''');
+    final config = await writeConfig('''
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      warning: 1
+''');
+    final out = File('${dir.path}/out.json');
+    final captured = await runCaptured([
+      'analyze',
+      dir.path,
+      '--reporter',
+      'json',
+      '--output',
+      out.path,
+      '--root',
+      dir.path,
+      '--config',
+      config.path,
+      '--strict-dismiss',
+    ]);
+    expect(captured.exitCode, 0);
+    expect(captured.stderr, isNot(contains('commentSource is disabled')));
+  });
+
   test('config error: both sources disabled exits with EX_CONFIG', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('void main() {}\n');
     final config = await writeConfig('''
