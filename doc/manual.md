@@ -10,7 +10,7 @@ Decades of software-engineering research has converted those felt reactions into
 
 Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, Hitz & Montazeri 1995, Cognitive Complexity 2017 — never made it into the daily toolbox of working programmers. The cost of _calculating_ the number, _interpreting_ it, and _acting on it_ was each individually expensive for a human reviewer. An AI loop absorbs all three. You compute in a second; the rationale and refactor moves are attached to the violation; the edit is yours to apply. The lenses that the literature catalogued for human reviewers are reachable to you in a way they weren't before.
 
-`dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, or formally dismiss with a reason. That decision step is first-class.
+`dartrics` does not gate. It surfaces. Its core value is letting you, the AI, run the same battery of lenses a careful human reviewer would, then **decide** — refactor, accept, dismiss with a reason, or punt to the operator. That decision step is first-class.
 
 ```
                 you propose code
@@ -23,17 +23,22 @@ Most of that catalogue — McCabe 1976, Halstead 1977, CK 1994, Hitz & Montazeri
                        │
               for each violation:
                        │
-       ┌───────────────┼───────────────┐
-       ▼               ▼               ▼
-  REFACTOR         DISMISS         PUNT
-  (lens shows      (lens reads     (mark unsure
-   real fix)        it but the      and surface
-                    structure is    a question)
-                    load-bearing)
+       ┌──────┬────────┼────────┬──────┐
+       ▼      ▼        ▼        ▼
+  REFACTOR DISMISS    PUNT    ACCEPT
+  (lens    (load-     (need    (borderline
+   shows    bearing    project  value on
+   real     structure; context  healthy
+   fix)     tracked    the      code; no
+            reason)    harness  edit, no
+                       lacks)   dismiss)
                        │
                        ▼
        ┌──────────────────────────────┐
        │  verify the lens moved       │  ← dartrics regression --reporter ai
+       │  (REFACTOR / DISMISS only —  │
+       │   PUNT awaits operator;      │
+       │   ACCEPT loops to next)      │
        └──────────────────────────────┘
 ```
 
@@ -139,6 +144,14 @@ The metric points at a real readability problem and the structure is **decomposa
 | `instability`              | Move stable types upward, depend on abstractions · Move volatile types into leaves                                                                                                                                                               |
 
 `dartrics rules --reporter ai` dumps the full per-metric `refactorHints` — keep that catalogue at hand or rely on auto-explain to inline it per run.
+
+### Accept when…
+
+The lens fired, you read the code end-to-end, and a careful human reviewer would also leave it alone — typically a value at or barely over threshold on code that reads fine. **Accept = no edit, no `// dartrics:dismiss`, no punt. Move to the next violation.**
+
+Accept is a distinct outcome from dismiss. Dismiss commits a tracked `reason="…"` because the structure is load-bearing and future readers need to see why the metric will keep firing on this scope. Accept is for cases where there is no recurring story to track — the next refactor in the area may legitimately drop the value under threshold, or the value may already be low enough that the warning is more of a heads-up than a finding. Adding a dismiss comment here pollutes the source with a tool annotation that does not function.
+
+When the same kind of violation accepts repeatedly across many sites on the same idiom, that is the **threshold-calibration** signal (see the calibration note below): adjust `dartrics: { metrics: { <id>: { warning: <n> } } }` once instead of accepting N times across the project.
 
 ### Before you dismiss — engage, don't escape
 
