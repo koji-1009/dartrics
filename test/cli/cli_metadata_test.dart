@@ -9,4 +9,9 @@ void main() {
     expect(runner.commands['report']!.description, isNotEmpty);
     expect(runner.commands['rules']!.description, isNotEmpty);
   });
+
+  test('top-level help footer points AI agents at ai-loop first', () {
+    final usage = buildCommandRunner().usage;
+    expect(usage, contains('AI agents: run `dartrics ai-loop` first'));
+  });
 }

@@ -18,6 +18,8 @@
 const String manualText = r'''
 # dartrics manual — for AI agents
 
+> **For commands and prompts, start with [`dartrics ai-loop`](ai-loop.md).** That walkthrough is the operational playbook — shell commands, prompt examples, dismiss syntax. This manual is the conceptual reference: lens design, refactor / dismiss decision tree, full flag catalogue, and the snapshot / coverage / regression mechanics. Read the playbook to run the tool; come back here when you need to understand _why_ a lens fires.
+
 > **Operator's manual for AI consumers.** README describes what `dartrics` _is_; this page describes what `dartrics` _does for you_ and how to drive it. If you are an AI editing Dart code with an editor-tool harness (Claude Code, Cursor, Codex, Aider, OpenHands), this is your reference.
 
 ## The premise — multiple lenses on your own writing
