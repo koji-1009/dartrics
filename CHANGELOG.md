@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.3
+
+Detection-fidelity and discoverability release driven by external agent feedback. No metric, threshold, or schema change.
+
+* **Unused detector now follows operator-method calls through `IndexExpression`, `BinaryExpression`, and the operator element on `PrefixExpression` / `PostfixExpression`.** User-defined `operator []`, binary operators (including custom `+` / `==`), unary `-`, and the `+` reached via `c++` / `c--` were previously flagged as unused when their only caller was the textual operator form. `==` overrides were already kept alive by the `Object` dunder auto-root, but their `signals:` fan-in / fan-out (and `dartrics inspect ==` upstream walk) now reflect the actual call sites. **Stale-dismissal note:** projects with `// dartrics:dismiss unused` comments suppressing the prior false-positives on those operators may now see those dismissals reported as stale — remove them.
+* **`dartrics ai-loop` repositioned as the operational entry point.** Its `--help` one-liner now reads "Operational playbook: commands, prompts, dismiss syntax (start here for AI agents)."; `dartrics --help` gains a footer pointing at it; `doc/manual.md` opens with a cross-ref banner; and the README "AI agents — start here" admonition, Quick start block, Subcommands table, and Documentation list all lead with `ai-loop` and reframe `manual` as the conceptual reference (lens design, decision tree, flag catalogue). Driven by an agent who skipped `ai-loop` because the prior blurb read as a recap of the manual.
+
 ## 0.7.2
 
 AI-consumer ergonomics release driven by a real dartrics session report from another agent. No metric, threshold, or schema change.
