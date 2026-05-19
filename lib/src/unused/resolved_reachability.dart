@@ -1204,18 +1204,44 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
   @override
   void visitPostfixExpression(PostfixExpression node) {
     // `x++` / `x--` writes back through a setter / variable just like
-    // an assignment.
+    // an assignment; `node.element` is the user-defined `+` / `-`
+    // operator on the operand's type (null for built-in numerics).
     _record(node.writeElement);
     _record(node.readElement);
+    _record(node.element);
     super.visitPostfixExpression(node);
   }
 
   @override
   void visitPrefixExpression(PrefixExpression node) {
-    // `++x` / `--x` — same as postfix.
+    // `++x` / `--x` — same as postfix. `node.element` also covers
+    // unary `-foo` / `~foo` / `!foo` when the operand's type defines
+    // the operator.
     _record(node.writeElement);
     _record(node.readElement);
+    _record(node.element);
     super.visitPrefixExpression(node);
+  }
+
+  @override
+  void visitBinaryExpression(BinaryExpression node) {
+    // `a + b`, `a == b`, etc. — `node.element` is the user-defined
+    // operator method on the LHS's type (null for built-in numeric /
+    // boolean ops). Without this hook, custom `operator +` /
+    // `operator ==` overrides show up only via the dunder auto-root
+    // and their call-graph fan-in stays at zero.
+    _record(node.element);
+    super.visitBinaryExpression(node);
+  }
+
+  @override
+  void visitIndexExpression(IndexExpression node) {
+    // `target[key]` — `node.element` resolves to the `operator []`
+    // (or `operator []=` in a write position) method on the target's
+    // type. The default RecursiveAstVisitor descent walks the target
+    // and the index but never records the operator itself.
+    _record(node.element);
+    super.visitIndexExpression(node);
   }
 
   @override
