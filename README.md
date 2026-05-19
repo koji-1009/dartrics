@@ -7,7 +7,7 @@
 
 Dart code-quality metrics and unused public-API detection, designed as the AI-loop counterpart of `dart analyze`.
 
-> **AI agents — start here:** run `dartrics manual` (or read [`doc/manual.md`](doc/manual.md)) before driving the tool. The manual covers the refactor / dismiss / accept / punt decision tree, the cosmetic-split heuristic's narrow shape (it surfaces a signal, not a verdict), dismissal opt-in, and the snapshot-cache caveat for verify loops. Skim once per session; it is shipped in the binary so `dart pub global activate dartrics` is enough.
+> **AI agents — start here:** run `dartrics ai-loop` (or read [`doc/ai-loop.md`](doc/ai-loop.md)) before driving the tool. It is the operational playbook — the shell commands you actually run, the prompt examples that wire them into Claude / Cursor / Codex / Aider / OpenHands, and the dismiss-comment syntax. `dartrics manual` is the conceptual companion: lens design, refactor / dismiss / accept / punt decision tree, full flag catalogue, snapshot-cache caveat for verify loops. Both ship in the binary so `dart pub global activate dartrics` is enough.
 
 ## What it does
 
@@ -17,7 +17,7 @@ dartrics computes a battery of code-quality metrics — McCabe, Cognitive Comple
 
 - **Auto-explain by default** — rationale, refactor hints, and primary-source citation ride alongside every fired metric, so an agent reads the *why* without a second tool call.
 - **Stable IDs across runs** — every violation carries a 16-hex-char id (`sha256("<file>|<scope>|<metric>")`), reappearing across runs so AI loops can detect "my fix didn't take". Surfaces as `partialFingerprints.dartrics/v1` in SARIF.
-- **Docs in the binary** — `dartrics manual` and `dartrics ai-loop` print the operator's reference and the four-station walkthrough; `dart pub global activate dartrics` is enough, no separate doc download.
+- **Docs in the binary** — `dartrics ai-loop` prints the operational playbook (commands, prompts, dismiss syntax) and `dartrics manual` prints the lens reference; `dart pub global activate dartrics` is enough, no separate doc download.
 
 ## Install
 
@@ -34,9 +34,9 @@ dartrics analyze lib/ --reporter ai | claude -p "Refactor the threshold violatio
 # After the agent applies a fix: confirm metrics actually improved.
 dartrics regression --before HEAD~1 --after HEAD --reporter ai
 
-# Read the operator's manual or the AI-loop walkthrough in the terminal.
-dartrics manual
+# Read the operational playbook (start here) or the lens reference in the terminal.
 dartrics ai-loop
+dartrics manual
 ```
 
 ## Subcommands
@@ -49,11 +49,11 @@ dartrics ai-loop
 | `report <input.json>` | Re-emit a previously saved JSON report in another format. |
 | `rules` | Catalogue every metric with rationale, refactor hints, and references. |
 | `regression` | Compare metrics between two git states; classify each delta as improved / regressed / unchanged / added / removed. |
-| `manual` | Print the operator's manual (mirrors [`doc/manual.md`](doc/manual.md)). |
-| `ai-loop` | Print the AI-loop walkthrough (mirrors [`doc/ai-loop.md`](doc/ai-loop.md)). |
+| `ai-loop` | Operational playbook: commands, prompts, dismiss syntax — start here for agents (mirrors [`doc/ai-loop.md`](doc/ai-loop.md)). |
+| `manual` | Conceptual reference: lens design, decision tree, full flag catalogue (mirrors [`doc/manual.md`](doc/manual.md)). |
 | `doctor` | Validate the `dartrics:` block in `analysis_options.yaml`. |
 
-Each subcommand only exposes the flags it actually consumes — `dartrics <command> --help` lists them. Full flag reference, dismissal mechanics, coverage / snapshot / regression details, and the refactor / dismiss decision tree all live in [`dartrics manual`](doc/manual.md) and [`dartrics ai-loop`](doc/ai-loop.md).
+Each subcommand only exposes the flags it actually consumes — `dartrics <command> --help` lists them. Full flag reference, dismissal mechanics, coverage / snapshot / regression details, and the refactor / dismiss decision tree all live in [`dartrics ai-loop`](doc/ai-loop.md) (the playbook) and [`dartrics manual`](doc/manual.md) (the reference).
 
 ## Provided metrics
 
@@ -137,8 +137,8 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 
 ## Documentation
 
-- [`dartrics manual`](doc/manual.md) — the design premise (why lenses, why multiple at once) and the operator's reference: every flag, dismissal mechanics, refactor / dismiss decision tree, Flutter-aware and test-aware modes, exit codes.
-- [`dartrics ai-loop`](doc/ai-loop.md) — four-station walkthrough of one full refactor iteration with sample prompts.
+- [`dartrics ai-loop`](doc/ai-loop.md) — operational playbook: shell commands, prompt examples, dismiss syntax, four-station walkthrough of one full refactor iteration. Start here when you want to run dartrics.
+- [`dartrics manual`](doc/manual.md) — conceptual reference: lens design (why multiple at once), every flag, dismissal mechanics, refactor / dismiss decision tree, Flutter-aware and test-aware modes, exit codes. Come back here when you need to know _why_ a lens fires.
 - [`doc/calibration.md`](doc/calibration.md) — citation audit, selection principles, counting-rule deviations.
 - [`schemas/`](schemas/) — JSON Schema files: `dartrics-config.schema.json` for `analysis_options.yaml`'s `dartrics:` block, `dartrics-report.schema.json` for the JSON reporter output, `dartrics-dismissals.schema.json` for the dismissals sidecar. All draft-2020-12.
 
