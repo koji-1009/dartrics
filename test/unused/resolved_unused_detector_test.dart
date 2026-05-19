@@ -107,6 +107,111 @@ class A {
     expect(names, isNot(contains('==')));
   });
 
+  test(
+    'operator [] is reachable through an IndexExpression call site',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+
+void main() {
+  final b = Box(1);
+  print(b['key']);
+}
+''');
+      await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Box {
+  final int v;
+  const Box(this.v);
+  int operator [](String k) => v;
+}
+''');
+      final unused = await detectIn(const UnusedConfig(excludeExported: false));
+      final methodNames = unused
+          .where((u) => u.kind == UnusedKind.method)
+          .map((u) => u.name)
+          .toList();
+      expect(methodNames, isNot(contains('[]')));
+    },
+  );
+
+  test('user-defined binary + is reachable through a BinaryExpression '
+      'call site', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+
+void main() {
+  print(Vec(1) + Vec(2));
+}
+''');
+    await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Vec {
+  final int v;
+  const Vec(this.v);
+  Vec operator +(Vec other) => Vec(v + other.v);
+}
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final methodNames = unused
+        .where((u) => u.kind == UnusedKind.method)
+        .map((u) => u.name)
+        .toList();
+    expect(methodNames, isNot(contains('+')));
+  });
+
+  test(
+    'unary -operator is reachable through a PrefixExpression call site',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+
+void main() {
+  print(-Num(3));
+}
+''');
+      await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Num {
+  final int v;
+  const Num(this.v);
+  Num operator -() => Num(-v);
+}
+''');
+      final unused = await detectIn(const UnusedConfig(excludeExported: false));
+      final methodNames = unused
+          .where((u) => u.kind == UnusedKind.method)
+          .map((u) => u.name)
+          .toList();
+      expect(methodNames, isNot(contains('-')));
+    },
+  );
+
+  test(
+    'compound ++ is reachable through a PostfixExpression call site',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+
+void main() {
+  var c = Counter(0);
+  c++;
+  print(c);
+}
+''');
+      await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Counter {
+  final int v;
+  const Counter(this.v);
+  Counter operator +(int n) => Counter(v + n);
+}
+''');
+      final unused = await detectIn(const UnusedConfig(excludeExported: false));
+      final methodNames = unused
+          .where((u) => u.kind == UnusedKind.method)
+          .map((u) => u.name)
+          .toList();
+      expect(methodNames, isNot(contains('+')));
+    },
+  );
+
   test('unused method is reported at member granularity even when its '
       'class is reachable', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''
