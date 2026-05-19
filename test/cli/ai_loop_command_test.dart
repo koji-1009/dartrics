@@ -50,7 +50,8 @@ void main() {
     test('appears in the top-level help', () {
       final usage = buildCommandRunner().usage;
       expect(usage, contains('ai-loop'));
-      expect(usage, contains('AI-loop walkthrough'));
+      expect(usage, contains('Operational playbook'));
+      expect(usage, contains('start here for AI agents'));
     });
   });
 }

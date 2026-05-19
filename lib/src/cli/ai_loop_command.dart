@@ -28,7 +28,8 @@ class AiLoopCommand extends Command<int> {
 
   @override
   String get description =>
-      'Print the AI-loop walkthrough (setup / propose / apply / verify).';
+      'Operational playbook: commands, prompts, dismiss syntax '
+      '(start here for AI agents).';
 
   @override
   Future<int> run() async {
