@@ -62,14 +62,15 @@ const _reservedScalars = {
   'Off',
 };
 
+/// Characters that force quoting wherever they appear: `:` and `#` start a
+/// mapping / comment, and a newline or tab would break an inline scalar.
+final _quoteTrigger = RegExp(r'[:#\n\t]');
+
 bool _needsYamlQuoting(String value) {
   if (value.isEmpty) return true;
-  // Preserve the original "any `:` or `#` quotes" behaviour.
-  if (value.contains(':') || value.contains('#')) return true;
-  if (_leadingIndicators.contains(value[0])) return true;
   if (value.startsWith(' ') || value.endsWith(' ')) return true;
-  if (value.contains('\n') || value.contains('\t')) return true;
+  if (value.contains(_quoteTrigger)) return true;
+  if (_leadingIndicators.contains(value[0])) return true;
   if (_reservedScalars.contains(value)) return true;
-  if (num.tryParse(value) != null) return true;
-  return false;
+  return num.tryParse(value) != null;
 }
