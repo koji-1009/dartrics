@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dapper/dapper.dart';
 
 import '../models/analysis_report.dart';
+import '../models/call_graph_signal.dart';
 import '../models/unused_declaration.dart';
 import 'reporter.dart';
 
@@ -181,12 +182,7 @@ class MdReporter implements Reporter {
   /// reviewer; the full list stays in the JSON / AI reporters.
   void _writeSignals(StringBuffer buf, AnalysisReport report) {
     if (report.signals.isEmpty) return;
-    final sorted = [...report.signals]
-      ..sort((a, b) {
-        final byFanIn = b.fanInCallers.compareTo(a.fanInCallers);
-        if (byFanIn != 0) return byFanIn;
-        return b.fanOutCallees.compareTo(a.fanOutCallees);
-      });
+    final sorted = [...report.signals]..sort(CallGraphSignal.byConnectivity);
     final shown = sorted.length > 10 ? sorted.sublist(0, 10) : sorted;
     buf
       ..writeln('## Signals (reference)')
@@ -205,8 +201,12 @@ class MdReporter implements Reporter {
         '|-------|--------------------------|----------------------------|',
       );
     for (final s in shown) {
+      // A literal `|` in a scope name (e.g. an `operator |`) would split
+      // the table row into phantom columns; escape it for the cell.
+      final file = _escapeTableCell(s.file);
+      final scope = _escapeTableCell(s.scope.name);
       buf.writeln(
-        '| `${s.file}:${s.scope.location.line}` `${s.scope.name}` '
+        '| `$file:${s.scope.location.line}` `$scope` '
         '| ${s.fanInCallers} / ${s.fanInCalls} '
         '| ${s.fanOutCallees} / ${s.fanOutCalls} |',
       );
@@ -240,3 +240,8 @@ class MdReporter implements Reporter {
     buf.writeln();
   }
 }
+
+/// Escapes a value for a Markdown table cell. A literal `|` (even inside a
+/// code span) is read by GFM as a column delimiter, so it must be
+/// backslash-escaped to render as part of the cell.
+String _escapeTableCell(String value) => value.replaceAll('|', r'\|');

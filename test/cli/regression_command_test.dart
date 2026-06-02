@@ -64,6 +64,53 @@ int f(int x) {
     },
   );
 
+  test('regression with --root pointing at a sub-directory package compares '
+      'the matching sub-tree on both sides', () async {
+    // A package that lives in a sub-directory of the git repo. The
+    // historical side must analyze `pkg/` within the worktree, not the
+    // whole repo normalized against the repo root, or no scope key
+    // lines up and `improved` collapses to 0. A distinct filename keeps
+    // the root package's `lib/foo.dart` from masking the bug via a key
+    // collision.
+    await Directory('${repo.path}/pkg/lib').create(recursive: true);
+    final bar = File('${repo.path}/pkg/lib/bar.dart');
+    await bar.writeAsString('''
+int g(int x) {
+  if (x > 0) return 1;
+  if (x < 0) return -1;
+  return 0;
+}
+''');
+    await _runGit(repo.path, ['add', '.']);
+    await _runGit(repo.path, ['commit', '-m', 'add pkg']);
+    await bar.writeAsString('''
+int g(int x) {
+  if (x > 0) return 1;
+  return 0;
+}
+''');
+    await _runGit(repo.path, ['add', '.']);
+    await _runGit(repo.path, ['commit', '-m', 'simplify pkg']);
+
+    final out = '${repo.path}/diff.json';
+    final code = await runQuietly([
+      'regression',
+      '--root',
+      '${repo.path}/pkg',
+      '--reporter',
+      'json',
+      '--output',
+      out,
+      '--config',
+      '${repo.path}/no.yaml',
+    ]);
+    expect(code, 0);
+    final body =
+        jsonDecode(File(out).readAsStringSync()) as Map<String, Object?>;
+    final summary = body['summary']! as Map<String, Object?>;
+    expect((summary['improved']! as int) >= 1, isTrue);
+  });
+
   test('regression --metric filters to the named ids', () async {
     final code = await runQuietly([
       'regression',

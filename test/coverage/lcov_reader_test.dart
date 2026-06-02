@@ -27,8 +27,28 @@ BRDA:5,0,1,-
 end_of_record
 ''';
     final fc = CoverageIndex.parse(lcov).forFile('/repo/lib/foo.dart')!;
-    expect(fc.branchHits[(5, 0)], 3);
-    expect(fc.branchHits[(5, 1)], 0);
+    expect(fc.branchHits[(5, 0, 0)], 3);
+    expect(fc.branchHits[(5, 0, 1)], 0);
+  });
+
+  test('keys BRDA by (line, block, branch) so branches in different '
+      'blocks on one line do not collide', () {
+    // Two blocks on line 7, each with branch ids 0 and 1. Keying on
+    // (line, branch) alone would collapse the four records into two
+    // (last-write-wins) and report 1/2 covered instead of 3/4.
+    const lcov = '''
+SF:/repo/lib/foo.dart
+BRDA:7,0,0,1
+BRDA:7,0,1,1
+BRDA:7,1,0,1
+BRDA:7,1,1,0
+end_of_record
+''';
+    final fc = CoverageIndex.parse(lcov).forFile('/repo/lib/foo.dart')!;
+    expect(fc.branchHits.length, 4);
+    expect(fc.branchHits[(7, 0, 0)], 1);
+    expect(fc.branchHits[(7, 1, 1)], 0);
+    expect(fc.branchCoverageInRange(7, 7), 0.75);
   });
 
   test('lineCoverageInRange averages over the range', () {

@@ -78,4 +78,18 @@ int outer(int x) {
 ''', name: 'outer');
     expect(cc.compute(input), 1, reason: 'inner if must not affect outer CC');
   });
+
+  test('nested closures do not leak decision points into the enclosing '
+      'function', () {
+    // The lambda carries an `if` and an `&&`; neither may count toward
+    // `outer`, which has no decision points of its own.
+    final input = inputFor('''
+void outer(List<int> xs) {
+  xs.forEach((y) {
+    if (y > 0 && y < 10) print(y);
+  });
+}
+''', name: 'outer');
+    expect(cc.compute(input), 1, reason: 'closure branches are measured apart');
+  });
 }

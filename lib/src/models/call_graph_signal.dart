@@ -54,4 +54,14 @@ class CallGraphSignal {
     'fanOutCallees': fanOutCallees,
     'fanOutCalls': fanOutCalls,
   };
+
+  /// Ranks the most-connected declarations first: fan-in callers
+  /// descending, then fan-out callees as the tiebreak. Shared by every
+  /// reporter that emits a signals block so the ordering stays identical
+  /// across formats.
+  static int byConnectivity(CallGraphSignal a, CallGraphSignal b) {
+    final byFanIn = b.fanInCallers.compareTo(a.fanInCallers);
+    if (byFanIn != 0) return byFanIn;
+    return b.fanOutCallees.compareTo(a.fanOutCallees);
+  }
 }

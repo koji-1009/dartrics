@@ -60,6 +60,22 @@ dartrics:
     expect(config.metricThresholds['number-of-parameters']?.warning, 4);
   });
 
+  test('rejects a non-numeric threshold with ConfigException — including a '
+      'quoted number, which YAML reads as a string, rather than silently '
+      'dropping or coercing it', () async {
+    final f = File('${dir.path}/quoted.yaml');
+    // `"15"` is deliberately a string in YAML. A threshold expects a
+    // number, so this is a config type error: surface it instead of
+    // silently dropping the gate or guessing the author meant `15`.
+    await f.writeAsString('''
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      error: "15"
+''');
+    await expectLater(loadConfig(f.path), throwsA(isA<ConfigException>()));
+  });
+
   test(
     'parses metric thresholds, exclude globs, and unused settings',
     () async {
