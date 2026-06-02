@@ -11,9 +11,13 @@ enum ApplyOutcome {
   /// Declaration's source range was deleted from the file.
   deleted,
 
-  /// Declaration kind isn't deletable (e.g. the only constant in an
-  /// enum, where removal would leave invalid Dart). The user gets a
-  /// notice and the entry is untouched.
+  /// The declaration can't be removed by a clean whole-node slice — it is
+  /// a member of a comma-separated list (one of several variables in
+  /// `int x, y, z;`, or an enum constant). Auto-deleting it would mean
+  /// rebalancing the surrounding commas (or could leave an invalid empty
+  /// enum), which is exactly the kind of judgement `dartrics` surfaces
+  /// rather than performs: the entry is reported untouched so the AI or
+  /// operator can remove it by hand.
   unsupportedKind,
 
   /// File was under `test/` or `integration_test/` and `--include-tests`
@@ -74,30 +78,22 @@ class ApplyResultDetail {
 /// Deletes every declaration in [targets] from disk. Returns one
 /// [ApplyResult] per input. Callers should print a summary.
 ///
-/// Supports every [UnusedKind] the resolved-AST detector emits:
-/// top-level functions / classes / mixins / extensions / extension
-/// types / enums / typedefs, instance methods (incl. operators,
-/// getters, setters), instance fields and top-level variables (both
-/// single-variable and one-of-N in multi-variable declarations), and
-/// individual enum constants.
+/// `--apply` only performs the deletions it can make as a clean
+/// whole-node slice: top-level functions / classes / mixins / extensions
+/// / extension types / enums / typedefs, instance methods (incl.
+/// operators, getters, setters), and a field or top-level variable that
+/// is the *sole* declarator in its statement.
+///
+/// Anything that would need the surrounding syntax rebalanced is **not**
+/// auto-deleted — it is reported as [ApplyOutcome.unsupportedKind] and
+/// left in place for the AI / operator to remove. That covers a variable
+/// that shares a `int x, y, z;` declaration with siblings, and enum
+/// constants (whose removal touches commas or could empty the enum body).
+/// `dartrics` surfaces those decisions rather than guessing at them.
 ///
 /// Filters:
 /// - Files under `test/` or `integration_test/` are excluded unless
 ///   [includeTests] is true.
-/// - Targets that would leave invalid Dart (e.g. removing the only
-///   constant in an enum) emit `ApplyOutcome.unsupportedKind`
-///   without touching the file.
-///
-/// Range computation: each declaration is identified by `(file, name,
-/// line)` against the freshly-parsed file. The deletion range starts
-/// at the *first* of (declaration offset, leading doc comment offset,
-/// first metadata annotation offset) and extends to the end of the
-/// declaration plus a trailing newline if present, so the file
-/// doesn't end up with a row of blank lines where the declaration
-/// used to be. For a member of a comma-separated list (one variable
-/// in `int x, y, z;`, one constant in `enum E { a, b, c }`), the
-/// range covers the member and the comma that joins it to the
-/// surviving siblings, so the resulting list stays well-formed.
 ///
 /// Multiple declarations from the same file are deleted in *descending
 /// offset order* so each deletion doesn't shift offsets the next one
@@ -266,8 +262,9 @@ class _Coupled extends _LocatorResult {
 }
 
 /// Per-kind dispatch that returns a deletion range, an unsupported
-/// marker (e.g. the only constant in an enum), or a notFound marker
-/// (the source has shifted since detection).
+/// marker (a comma-list member that `--apply` declines to surgically
+/// remove), or a notFound marker (the source has shifted since
+/// detection).
 _LocatorResult _resolveDeletionRange({
   required CompilationUnit unit,
   required UnusedDeclaration target,
@@ -294,7 +291,6 @@ _LocatorResult _resolveDeletionRange({
       unit: unit,
       name: target.name,
       line: target.location.line,
-      source: source,
     ),
   };
 }
@@ -382,14 +378,10 @@ _LocatorResult _resolveTopLevelField({
       lineInfo: lineInfo,
     );
     if (hit == null) continue;
-    return _Resolved(
-      _rangeForVariable(
-        parentDeclaration: d,
-        list: d.variables,
-        target: hit,
-        source: source,
-      ),
-    );
+    // Only a sole-declarator statement is a clean whole-node slice; a
+    // member of `var x, y;` is surfaced for the AI / operator instead.
+    if (d.variables.variables.length > 1) return const _Unsupported();
+    return _Resolved(_rangeFor(d, source));
   }
   return const _NotFound();
 }
@@ -437,6 +429,9 @@ _LocatorResult _resolveInstanceFieldInBody({
       lineInfo: lineInfo,
     );
     if (hit == null) continue;
+    // A member of `int x, y;` is declined and surfaced, not surgically
+    // un-commaed.
+    if (member.fields.variables.length > 1) return const _Unsupported();
     final coupledCtors = _constructorsReferencingFormal(
       container: container,
       body: body,
@@ -445,14 +440,7 @@ _LocatorResult _resolveInstanceFieldInBody({
     if (coupledCtors.isNotEmpty) {
       return _Coupled(constructorNames: coupledCtors);
     }
-    return _Resolved(
-      _rangeForVariable(
-        parentDeclaration: member,
-        list: member.fields,
-        target: hit,
-        source: source,
-      ),
-    );
+    return _Resolved(_rangeFor(member, source));
   }
   return const _NotFound();
 }
@@ -508,25 +496,22 @@ VariableDeclaration? _resolveVariableInList({
   return null;
 }
 
+/// Enum constants are never auto-deleted: removing one touches the
+/// surrounding commas and removing the last would empty the enum body
+/// into invalid Dart. `--apply` surfaces the unused constant
+/// ([_Unsupported]) and leaves the edit to the AI / operator.
 _LocatorResult _resolveEnumValue({
   required CompilationUnit unit,
   required String name,
   required int line,
-  required String source,
 }) {
   final lineInfo = unit.lineInfo;
   for (final d in unit.declarations) {
     if (d is! EnumDeclaration) continue;
-    final constants = d.body.constants;
-    for (var i = 0; i < constants.length; i++) {
-      final c = constants[i];
+    for (final c in d.body.constants) {
       if (c.name.lexeme != name) continue;
       if (lineInfo.getLocation(c.offset).lineNumber != line) continue;
-      if (constants.length == 1) {
-        // Removing the only constant would leave invalid Dart; punt.
-        return const _Unsupported();
-      }
-      return _Resolved(_rangeForEnumConstant(constants, i));
+      return const _Unsupported();
     }
   }
   return const _NotFound();
@@ -570,52 +555,6 @@ NodeList<ClassMember>? _classLikeBody(CompilationUnitMember d) {
     start--;
   }
   return (start: start, end: _trailingEnd(node.end, source));
-}
-
-/// Range for one variable inside a [VariableDeclarationList].
-///
-/// - Single-variable list: the whole parent declaration is removed
-///   (same shape as a top-level deletion).
-/// - First / middle variable: the slice from the variable's start to
-///   the next variable's start. This swallows the comma separator
-///   between this variable and the next.
-/// - Last variable: the slice from the previous variable's end to
-///   this variable's end. This swallows the comma separator that
-///   joined the previous variable to this one.
-({int start, int end}) _rangeForVariable({
-  required AstNode parentDeclaration,
-  required VariableDeclarationList list,
-  required VariableDeclaration target,
-  required String source,
-}) {
-  if (list.variables.length == 1) {
-    return _rangeFor(parentDeclaration, source);
-  }
-  final index = list.variables.indexOf(target);
-  if (index < list.variables.length - 1) {
-    final next = list.variables[index + 1];
-    return (start: target.offset, end: next.offset);
-  }
-  final prev = list.variables[index - 1];
-  return (start: prev.end, end: target.end);
-}
-
-/// Range for one constant in a non-singleton [EnumDeclaration]
-/// constants list. Same comma-aware logic as [_rangeForVariable] but
-/// applied to [EnumConstantDeclaration] siblings — the enum body's
-/// trailing `;` separator (when present) and any nested members are
-/// outside the deleted slice.
-({int start, int end}) _rangeForEnumConstant(
-  NodeList<EnumConstantDeclaration> constants,
-  int index,
-) {
-  final target = constants[index];
-  if (index < constants.length - 1) {
-    final next = constants[index + 1];
-    return (start: _leadingStart(target), end: _leadingStart(next));
-  }
-  final prev = constants[index - 1];
-  return (start: prev.end, end: target.end);
 }
 
 /// Earliest offset that "belongs to" [node] for deletion purposes:

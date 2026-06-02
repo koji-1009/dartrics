@@ -180,15 +180,16 @@ class C {
     expect(after, isNot(contains('int unused')));
   });
 
-  test('deletes one variable from a multi-variable declaration: '
-      'middle of `int x, y, z;` becomes `int x, z;`', () {
+  test('declines a member of a multi-variable instance field, surfacing it '
+      'for the AI / operator instead of rebalancing commas', () {
     final f = File('${dir.path}/lib.dart');
-    f.writeAsStringSync('''
+    const before = '''
 class C {
   int x = 1, y = 2, z = 3;
   int sum() => x + z;
 }
-''');
+''';
+    f.writeAsStringSync(before);
     final results = applyDeletions([
       UnusedDeclaration(
         kind: UnusedKind.field,
@@ -196,32 +197,24 @@ class C {
         location: SourceLocation(path: f.path, line: 2, column: 14),
       ),
     ], includeTests: false);
-    expect(results.single.outcome, ApplyOutcome.deleted);
-    final after = f.readAsStringSync();
-    expect(after, contains('int x = 1, z = 3;'));
-    expect(after, isNot(contains('y = 2')));
+    expect(results.single.outcome, ApplyOutcome.unsupportedKind);
+    // Left untouched — the comma surgery is the AI's call, not the CLI's.
+    expect(f.readAsStringSync(), before);
   });
 
-  test('deletes the last variable from a multi-variable declaration: '
-      '`int x, y, z;` becomes `int x, y;`', () {
+  test('declines a member of a multi-variable top-level declaration', () {
     final f = File('${dir.path}/lib.dart');
-    f.writeAsStringSync('''
-class C {
-  int x = 1, y = 2, z = 3;
-  int sum() => x + y;
-}
-''');
+    const before = 'const a = 1, b = 2;\nvoid main() => print(a);\n';
+    f.writeAsStringSync(before);
     final results = applyDeletions([
       UnusedDeclaration(
         kind: UnusedKind.field,
-        name: 'z',
-        location: SourceLocation(path: f.path, line: 2, column: 21),
+        name: 'b',
+        location: SourceLocation(path: f.path, line: 1, column: 14),
       ),
     ], includeTests: false);
-    expect(results.single.outcome, ApplyOutcome.deleted);
-    final after = f.readAsStringSync();
-    expect(after, contains('int x = 1, y = 2;'));
-    expect(after, isNot(contains('z = 3')));
+    expect(results.single.outcome, ApplyOutcome.unsupportedKind);
+    expect(f.readAsStringSync(), before);
   });
 
   test('deletes a top-level variable in a single-variable declaration', () {
@@ -244,15 +237,17 @@ void main() => print(kept);
     expect(after, isNot(contains('const unused = 2;')));
   });
 
-  test('deletes one enum constant from a multi-constant enum', () {
+  test('declines an enum constant deletion, surfacing it for the AI / '
+      'operator', () {
     final f = File('${dir.path}/lib.dart');
-    f.writeAsStringSync('''
+    const before = '''
 enum E {
   a,
   b,
   c,
 }
-''');
+''';
+    f.writeAsStringSync(before);
     final results = applyDeletions([
       UnusedDeclaration(
         kind: UnusedKind.enumValue,
@@ -260,11 +255,8 @@ enum E {
         location: SourceLocation(path: f.path, line: 3, column: 3),
       ),
     ], includeTests: false);
-    expect(results.single.outcome, ApplyOutcome.deleted);
-    final after = f.readAsStringSync();
-    expect(after, contains('a,'));
-    expect(after, contains('c,'));
-    expect(after, isNot(contains('b,')));
+    expect(results.single.outcome, ApplyOutcome.unsupportedKind);
+    expect(f.readAsStringSync(), before);
   });
 
   test(
@@ -284,27 +276,17 @@ enum E {
     },
   );
 
-  test('deletes the last enum constant in a multi-constant enum', () {
+  test('reports notFound for an enum value that matches no constant', () {
     final f = File('${dir.path}/lib.dart');
-    f.writeAsStringSync('''
-enum E {
-  a,
-  b,
-  c,
-}
-''');
+    f.writeAsStringSync('enum E { a, b }\nvoid main() => print(E.a);\n');
     final results = applyDeletions([
       UnusedDeclaration(
         kind: UnusedKind.enumValue,
-        name: 'c',
-        location: SourceLocation(path: f.path, line: 4, column: 3),
+        name: 'ghost',
+        location: SourceLocation(path: f.path, line: 1, column: 1),
       ),
     ], includeTests: false);
-    expect(results.single.outcome, ApplyOutcome.deleted);
-    final after = f.readAsStringSync();
-    expect(after, contains('a,'));
-    expect(after, contains('b,'));
-    expect(after, isNot(contains('c,')));
+    expect(results.single.outcome, ApplyOutcome.notFound);
   });
 
   test('deletes a top-level extension type', () {
@@ -471,8 +453,8 @@ void main() {}
       ]);
       expect(body, contains('deleted 0'));
       expect(body, contains('unsupported 1'));
-      expect(body, contains('would leave invalid Dart'));
-      expect(body, contains('last constant of an enum'));
+      expect(body, contains('comma-separated list'));
+      expect(body, contains('surfaces them'));
     });
 
     test('summary names notFound addendum when relevant', () {

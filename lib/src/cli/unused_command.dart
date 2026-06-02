@@ -278,9 +278,10 @@ class _ApplyCounts {
 }
 
 const _unsupportedAddendum =
-    '  "unsupported" entries cannot be auto-deleted because removal '
-    'would leave invalid Dart (currently: removing the last constant '
-    'of an enum). Reported but left untouched on disk.';
+    '  "unsupported" entries are members of a comma-separated list (one '
+    'of several variables in `int x, y, z;`, or an enum constant). '
+    '`--apply` surfaces them rather than rebalancing the surrounding '
+    'syntax — reported but left untouched on disk for you to remove.';
 
 const _notFoundAddendum =
     '  "not found" entries indicate the source changed between '
