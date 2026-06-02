@@ -8,9 +8,13 @@ class FileCoverage {
   /// reported in the lcov record (typically blank or comment-only).
   final Map<int, int> lineHits;
 
-  /// `(line, branchId)` → `hit count`. Empty when the lcov source
-  /// didn't include `BRDA:` records.
-  final Map<(int, int), int> branchHits;
+  /// `(line, block, branchId)` → `hit count`. Empty when the lcov source
+  /// didn't include `BRDA:` records. The `block` field is part of the key
+  /// because two distinct branches on the same source line can share a
+  /// branch number across different blocks (e.g. a `&&` that lowers to
+  /// two basic blocks); dropping it would collapse them last-write-wins
+  /// and corrupt the branch-coverage fraction.
+  final Map<(int, int, int), int> branchHits;
 
   /// Fraction of executable lines covered in `[start, end]`. Returns
   /// 1.0 when no executable lines fall inside the range (e.g. abstract
@@ -66,14 +70,14 @@ class CoverageIndex {
     final files = <String, FileCoverage>{};
     String? currentPath;
     var lineHits = <int, int>{};
-    var branchHits = <(int, int), int>{};
+    var branchHits = <(int, int, int), int>{};
 
     for (final raw in content.split('\n')) {
       final line = raw.trim();
       if (line.startsWith('SF:')) {
         currentPath = line.substring(3);
         lineHits = <int, int>{};
-        branchHits = <(int, int), int>{};
+        branchHits = <(int, int, int), int>{};
         continue;
       }
       if (line.startsWith('DA:')) {
@@ -103,16 +107,17 @@ class CoverageIndex {
     lineHits[int.parse(parts[0])] = int.parse(parts[1]);
   }
 
-  static void _parseBRDA(String line, Map<(int, int), int> branchHits) {
+  static void _parseBRDA(String line, Map<(int, int, int), int> branchHits) {
     final parts = line.substring(5).split(',');
     if (parts.length < 4) {
       throw FormatException('malformed BRDA line: $line');
     }
     final ln = int.parse(parts[0]);
+    final block = int.parse(parts[1]);
     final branchId = int.parse(parts[2]);
     // `-` means the branch was never evaluated; treat as 0 hits.
     final count = parts[3] == '-' ? 0 : int.parse(parts[3]);
-    branchHits[(ln, branchId)] = count;
+    branchHits[(ln, block, branchId)] = count;
   }
 
   /// Returns the [FileCoverage] for [absolutePath], or `null` when the
