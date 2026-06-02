@@ -228,7 +228,19 @@ List<String> _parseStringList(
   return fallback;
 }
 
-num? _asNum(Object? v) => v is num ? v : null;
+/// Returns a YAML threshold value as a [num], or `null` when the field is
+/// absent. A non-numeric value — including a quoted number like
+/// `error: "15"`, which YAML deliberately reads as a string — is a config
+/// type error: it surfaces as a [ConfigException] rather than being
+/// silently dropped to "no gate" or coerced to a number we merely guessed
+/// the author meant.
+num? _asNum(Object? v) {
+  if (v == null) return null;
+  if (v is num) return v;
+  throw ConfigException(
+    'metric threshold must be a number (got ${v.runtimeType}: $v)',
+  );
+}
 
 /// Builds the implicit-defaults configuration used when the file is
 /// missing or has no `dartrics:` block. Centralised so every fallback
