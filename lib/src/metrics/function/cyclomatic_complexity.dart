@@ -67,7 +67,6 @@ class CyclomaticComplexity extends FunctionMetric {
 
 class _CyclomaticVisitor extends RecursiveAstVisitor<void> {
   int count = 0;
-  bool _enteredRootBody = false;
 
   /// Stack of "are we inside a sealed-dispatch switch right now" flags.
   /// The visitor pushes `true` on entry to a switch whose subject is a
@@ -78,14 +77,13 @@ class _CyclomaticVisitor extends RecursiveAstVisitor<void> {
   bool get _currentSwitchIsSealed =>
       _insideSealedSwitch.isNotEmpty && _insideSealedSwitch.last;
 
-  // Skip nested closures: only descend into the first body we encounter.
+  // Skip nested closures: they are measured separately and don't add to
+  // the enclosing function's value. `compute` accepts the function body
+  // directly (a `FunctionBody`, never a `FunctionExpression`), so every
+  // `FunctionExpression` reached here is a nested lambda — never recurse
+  // into it.
   @override
-  void visitFunctionExpression(FunctionExpression node) {
-    if (!_enteredRootBody) {
-      _enteredRootBody = true;
-      super.visitFunctionExpression(node);
-    }
-  }
+  void visitFunctionExpression(FunctionExpression node) {}
 
   @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
