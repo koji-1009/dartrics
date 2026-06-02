@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:dapper/dapper.dart';
 
 import '../models/analysis_report.dart';
+import '../models/call_graph_signal.dart';
 import '../models/unused_declaration.dart';
 import 'reporter.dart';
+import 'yaml_scalar.dart';
 
 /// LLM-optimized reporter — emits only the violations and unused
 /// declarations along with a 7-line code snippet around each location
@@ -84,22 +86,15 @@ class AiReporter implements Reporter {
         ..writeln('      ${e.rationale.replaceAll('\n', '\n      ')}')
         ..writeln('    refactorHints:');
       for (final hint in e.refactorHints) {
-        buf.writeln('      - ${_escape(hint)}');
+        buf.writeln('      - ${yamlInlineScalar(hint)}');
       }
       if (e.references.isNotEmpty) {
         buf.writeln('    references:');
         for (final ref in e.references) {
-          buf.writeln('      - ${_escape(ref)}');
+          buf.writeln('      - ${yamlInlineScalar(ref)}');
         }
       }
     }
-  }
-
-  String _escape(String value) {
-    if (value.contains(':') || value.contains('#')) {
-      return '"${value.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"';
-    }
-    return value;
   }
 
   /// Returns the number of violations dropped to honour [limit].
@@ -136,7 +131,9 @@ class AiReporter implements Reporter {
     _writeJustification(buf, v);
     _writeDismiss(buf, v);
     if (v.dismissalRejected != null) {
-      buf.writeln('    dismissalRejected: ${_escape(v.dismissalRejected!)}');
+      buf.writeln(
+        '    dismissalRejected: ${yamlInlineScalar(v.dismissalRejected!)}',
+      );
     }
     _writeSnippet(buf, m.file, m.scope.location.line);
   }
@@ -173,14 +170,14 @@ class AiReporter implements Reporter {
       buf.writeln('    dismissedFrom: ${v.dismissedFrom!.name}');
     }
     if (v.dismissReason != null && v.dismissReason!.isNotEmpty) {
-      buf.writeln('    dismissReason: ${_escape(v.dismissReason!)}');
+      buf.writeln('    dismissReason: ${yamlInlineScalar(v.dismissReason!)}');
     }
     if (v.dismissedBy != null) {
-      buf.writeln('    dismissedBy: ${_escape(v.dismissedBy!)}');
+      buf.writeln('    dismissedBy: ${yamlInlineScalar(v.dismissedBy!)}');
     }
     if (v.dismissedAt != null) {
       buf.writeln(
-        '    dismissedAt: ${_escape(v.dismissedAt!.toIso8601String())}',
+        '    dismissedAt: ${yamlInlineScalar(v.dismissedAt!.toIso8601String())}',
       );
     }
   }
@@ -241,14 +238,8 @@ class AiReporter implements Reporter {
         ..writeln('  - file: ${u.location.path}')
         ..writeln('    line: ${u.location.line}')
         ..writeln('    kind: ${unusedKindJsonName(u.kind)}')
-        ..writeln('    name: ${u.name}')
-        // See the snippet writer in `_writeViolations` for why `|2` is
-        // needed. Same root cause: a deeply-indented declaration line
-        // would break YAML auto-detect.
-        ..writeln('    snippet: |2');
-      for (final line in _snippetFor(u.location.path, u.location.line)) {
-        buf.writeln('      $line');
-      }
+        ..writeln('    name: ${u.name}');
+      _writeSnippet(buf, u.location.path, u.location.line);
     }
     return dropped;
   }
@@ -258,12 +249,7 @@ class AiReporter implements Reporter {
   /// tail is what `--limit` truncates. Returns the number dropped.
   int _writeSignals(StringBuffer buf, AnalysisReport report) {
     if (report.signals.isEmpty) return 0;
-    final sorted = [...report.signals]
-      ..sort((a, b) {
-        final byFanIn = b.fanInCallers.compareTo(a.fanInCallers);
-        if (byFanIn != 0) return byFanIn;
-        return b.fanOutCallees.compareTo(a.fanOutCallees);
-      });
+    final sorted = [...report.signals]..sort(CallGraphSignal.byConnectivity);
     final keep = limit == null || sorted.length <= limit!
         ? sorted
         : sorted.sublist(0, limit!);
@@ -312,7 +298,7 @@ class AiReporter implements Reporter {
         ..writeln('    metric: ${s.metricId}')
         ..writeln('    source: ${s.source.name}');
       if (s.reason != null && s.reason!.isNotEmpty) {
-        buf.writeln('    reason: ${_escape(s.reason!)}');
+        buf.writeln('    reason: ${yamlInlineScalar(s.reason!)}');
       }
     }
   }

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:dapper/dapper.dart';
 
+import 'yaml_scalar.dart';
+
 /// Lightweight description of a single metric rule, used by the
 /// `dartrics rules` subcommand and by the auto-explain block injected
 /// into the AI / md / SARIF reporters.
@@ -98,12 +100,12 @@ class RulesReporter {
         ..writeln('      ${r.rationale.replaceAll('\n', '\n      ')}')
         ..writeln('    refactorHints:');
       for (final hint in r.refactorHints) {
-        buf.writeln('      - ${_escapeYamlInline(hint)}');
+        buf.writeln('      - ${yamlInlineScalar(hint)}');
       }
       if (r.references.isNotEmpty) {
         buf.writeln('    references:');
         for (final ref in r.references) {
-          buf.writeln('      - ${_escapeYamlInline(ref)}');
+          buf.writeln('      - ${yamlInlineScalar(ref)}');
         }
       }
     }
@@ -161,12 +163,5 @@ class RulesReporter {
       }
     }
     return buf.toString();
-  }
-
-  String _escapeYamlInline(String value) {
-    if (value.contains(':') || value.contains('#')) {
-      return '"${value.replaceAll(r'\', r'\\').replaceAll('"', r'\"')}"';
-    }
-    return value;
   }
 }
