@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0
+
+Correctness release. Several lenses, the coverage reader, the regression diff, and the report writers had edge-case defects; `dartrics unused --apply` is also narrowed to the deletions it can make safely. No metric default or schema change.
+
+* **`dartrics unused --apply` now performs only whole-node deletions.** A variable that shares an `int x, y, z;` declaration with siblings, and enum constants, are reported as `unsupported` and left in place for you to remove — `--apply` no longer rebalances the surrounding commas (which could leave invalid Dart). dartrics surfaces those decisions rather than guessing at them; the unused detector still lists the declaration.
+* **Cyclomatic complexity no longer folds a nested closure into the enclosing function.** A lambda's `if` / `&&` / `case` decision points were leaking into the value of the function that contained it; nested closures are measured separately, as documented.
+* **lcov branch coverage keys on `(line, block, branch)`.** Two distinct branches that share a line and branch number across different blocks (e.g. an `&&` that lowers to two blocks) no longer collapse last-write-wins, so the branch-coverage fraction behind `complexityJustified` is correct.
+* **`dartrics regression --root <sub-dir>` compares the matching sub-tree on both sides.** `git worktree add` checks out the whole repository, so the historical side previously analysed the entire repo and normalised paths against the repo root — every scope reported as added + removed. It is now scoped to the sub-directory.
+* **Report output escapes special characters.** A free-text field such as a dismiss reason starting with `-` or `[` no longer breaks the re-parsed `ai` / `rules` YAML, and a `|` in a scope name (e.g. `operator |`) no longer splits the Markdown signals table.
+* **A non-numeric metric threshold raises a config error.** A quoted or otherwise non-numeric value (`error: "15"`, which YAML reads as a string) was silently dropped, so a gate without a built-in default never fired; it is now reported instead of dropped or coerced.
+
 ## 0.7.3
 
 Detection-fidelity and discoverability release driven by external agent feedback. No metric, threshold, or schema change.
