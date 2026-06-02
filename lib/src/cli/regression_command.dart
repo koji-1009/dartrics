@@ -87,9 +87,10 @@ class RegressionCommand extends Command<int> {
     GitWorktree? afterWt;
     try {
       beforeWt = await _addWorktree(beforeRef, root);
+      final beforePath = await _analyzeRootInWorktree(beforeWt, root);
       final beforeRecords = _normalizePaths(
-        await _runAnalyze(beforeWt.path, config),
-        root: beforeWt.path,
+        await _runAnalyze(beforePath, config),
+        root: beforePath,
       );
 
       final String afterPath;
@@ -97,7 +98,7 @@ class RegressionCommand extends Command<int> {
         afterPath = root;
       } else {
         afterWt = await _addWorktree(afterRef, root);
-        afterPath = afterWt.path;
+        afterPath = await _analyzeRootInWorktree(afterWt, root);
       }
       final afterRecords = _normalizePaths(
         await _runAnalyze(afterPath, config),
@@ -125,6 +126,27 @@ class RegressionCommand extends Command<int> {
 
   Future<GitWorktree> _addWorktree(String ref, String root) async {
     return GitWorktree.add(ref: ref, from: root);
+  }
+
+  /// Maps the analysis [root] onto the matching directory inside the
+  /// freshly-materialised worktree [wt]. `git worktree add` always checks
+  /// out the whole repository, so when [root] is a sub-directory (e.g. a
+  /// package in a monorepo) the historical side must be scoped to that
+  /// same sub-directory — otherwise it analyzes the entire repo and
+  /// normalizes paths against the repo root, so no scope key lines up with
+  /// the working-tree side and every entry reports as added + removed.
+  Future<String> _analyzeRootInWorktree(GitWorktree wt, String root) async {
+    final res = await Process.run('git', [
+      'rev-parse',
+      '--show-toplevel',
+    ], workingDirectory: root);
+    final top = p.normalize((res.stdout as String).trim());
+    final abs = p.normalize(p.absolute(root));
+    // `root` is the repository top → analyze the whole worktree as before.
+    if (!p.isWithin(top, abs)) return wt.path;
+    // `root` is a sub-directory → analyze the matching sub-directory of
+    // the worktree so both sides see the same files and path keys.
+    return p.normalize(p.join(wt.path, p.relative(abs, from: top)));
   }
 
   Future<List<MetricRecord>> _runAnalyze(String root, Config config) async {
