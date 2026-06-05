@@ -20,6 +20,18 @@ import '../metric.dart';
 /// themselves contribute to the score. The outer method's score is computed
 /// independently of inner methods (each function gets its own score).
 ///
+/// **Test-DSL discount:** on conventional test files (`*_test.dart` under
+/// `test/` / `integration_test/`, signalled via
+/// [FunctionMetricInput.isTestFile]), closures passed as invocation
+/// arguments are skipped entirely — neither their contents nor their
+/// nesting accrue to the enclosing function. Under the unmodified rules a
+/// `group()` / `test()` registration tree charges every branch inside
+/// every test body to `main()` at two extra nesting levels per construct,
+/// firing the lens on flat, idiomatic test suites. The function's *own*
+/// control flow — loops generating parameterized tests, branches in named
+/// helpers — stays fully scored, so a genuinely branchy test file still
+/// surfaces. Gated by `dartrics: { test: true }` (the default).
+///
 /// Reference: G. Ann Campbell, *Cognitive Complexity — A new way of measuring
 /// understandability*, SonarSource white paper, first published 2017
 /// (subsequent revisions in 2018, 2021, 2023). The source is an industry
@@ -60,13 +72,22 @@ class CognitiveComplexity extends FunctionMetric {
 
   @override
   num compute(FunctionMetricInput input) {
-    final visitor = _CognitiveVisitor();
+    final visitor = _CognitiveVisitor(skipArgumentClosures: input.isTestFile);
     input.body.accept(visitor);
     return visitor.score;
   }
 }
 
 class _CognitiveVisitor extends RecursiveAstVisitor<void> {
+  _CognitiveVisitor({required this.skipArgumentClosures});
+
+  /// Test-DSL discount switch — see the class doc on
+  /// [CognitiveComplexity]. When set, closures passed as invocation
+  /// arguments are not visited at all: declarative registration
+  /// callbacks (`test('…', () { … })`) are data handed to the DSL, not
+  /// control flow of the enclosing function.
+  final bool skipArgumentClosures;
+
   int score = 0;
   int nesting = 0;
 
@@ -200,9 +221,19 @@ class _CognitiveVisitor extends RecursiveAstVisitor<void> {
       super.visitFunctionExpression(node);
       return;
     }
+    if (skipArgumentClosures && _isInvocationArgument(node)) return;
     _enterNesting();
     super.visitFunctionExpression(node);
     _exitNesting();
+  }
+
+  /// True when [node] is a closure handed to a call site — directly
+  /// (`test('x', () { … })`) or via a named argument
+  /// (`onError: (e) { … }`). These are the test-DSL registration shape.
+  static bool _isInvocationArgument(FunctionExpression node) {
+    final parent = node.parent;
+    if (parent is ArgumentList) return true;
+    return parent is NamedArgument && parent.parent is ArgumentList;
   }
 
   @override

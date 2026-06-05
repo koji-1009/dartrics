@@ -85,4 +85,91 @@ int loops() {
     // break label: 1
     expect(cog.compute(input), 7);
   });
+
+  group('test-DSL discount (isTestFile)', () {
+    // Without the discount, every branch inside every test body accrues
+    // to main() at +2 nesting through the group()/test() closure stack.
+    const dslSource = '''
+void main() {
+  group('runs', () {
+    test('a', () {
+      if (kIsWeb) return;
+      for (var i = 0; i < 3; i++) {
+        if (i == 2) check(i);
+      }
+    });
+    test('b', () {
+      if (kIsWeb) return;
+    });
+  });
+}
+''';
+
+    test('argument closures do not accrue to main on test files', () {
+      final input = inputFor(dslSource, name: 'main', isTestFile: true);
+      // The group()/test() callbacks are registration data, not control
+      // flow of main — main's own flow is straight-line.
+      expect(cog.compute(input), 0);
+    });
+
+    test('production files keep the spec behavior (regression guard)', () {
+      final input = inputFor(dslSource, name: 'main');
+      // group closure: nesting 1; test closures: nesting 2.
+      // test 'a': if (1+2) + for (1+2) + if (1+3) = 10
+      // test 'b': if (1+2) = 3
+      expect(cog.compute(input), 13);
+    });
+
+    test('named-argument closures are also skipped on test files', () {
+      final input = inputFor(
+        '''
+void main() {
+  run(onError: (e) {
+    if (e is StateError) rethrow;
+  });
+}
+''',
+        name: 'main',
+        isTestFile: true,
+      );
+      expect(cog.compute(input), 0);
+    });
+
+    test("main's own control flow stays scored on test files", () {
+      final input = inputFor(
+        '''
+void main() {
+  for (final c in cases) {
+    test(c.name, () {
+      if (c.skip) return;
+    });
+  }
+}
+''',
+        name: 'main',
+        isTestFile: true,
+      );
+      // The parameterizing for-loop is main's own flow: 1 + 0 = 1.
+      // The test callback's if is registration data: skipped.
+      expect(cog.compute(input), 1);
+    });
+
+    test('non-argument closures still accrue on test files', () {
+      final input = inputFor(
+        '''
+void main() {
+  final check = (int x) {
+    if (x > 0) print(x);
+  };
+  check(1);
+}
+''',
+        name: 'main',
+        isTestFile: true,
+      );
+      // Closure assigned to a local is read inline, not handed to a
+      // DSL — its if is charged at nesting 1: 1 + 1 = 2.
+      expect(cog.compute(input), 2);
+    });
+  });
 }

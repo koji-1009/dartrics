@@ -5,8 +5,13 @@ import 'package:dartrics/src/metrics/metric.dart';
 
 /// Parses [source] and returns a [FunctionMetricInput] for the function or
 /// method matching [name]. Falls back to the first declaration when [name]
-/// is omitted.
-FunctionMetricInput inputFor(String source, {String? name}) {
+/// is omitted. [isTestFile] feeds the input's test-file flag so tests can
+/// exercise path-sensitive lenses without a real file path.
+FunctionMetricInput inputFor(
+  String source, {
+  String? name,
+  bool isTestFile = false,
+}) {
   final result = parseString(content: source);
   final visitor = _Finder(name);
   result.unit.accept(visitor);
@@ -17,6 +22,7 @@ FunctionMetricInput inputFor(String source, {String? name}) {
   return FunctionMetricInput(
     context: (unit: result.unit, source: source, lineInfo: result.lineInfo),
     declaration: found,
+    isTestFile: isTestFile,
   );
 }
 

@@ -5,7 +5,13 @@
 /// arrange/act/assert blocks that are legitimately long and N-test-method
 /// classes — so the size-and-shape lenses fire by default and AI loops
 /// churn on them. Cyclomatic / cognitive complexity stay engaged because
-/// a branchy test is still hard to read.
+/// a branchy test is still hard to read — but cognitive complexity
+/// applies a test-DSL discount on these files (closures passed as
+/// invocation arguments don't accrue to the enclosing function; see the
+/// class doc on `CognitiveComplexity`), because `group()` / `test()`
+/// registration trees would otherwise charge every test body's branches
+/// to `main()` at inflated nesting. Cyclomatic complexity never had the
+/// problem: it skips nested closures by definition.
 abstract final class TestAware {
   /// Path segments that mark the enclosing tree as test code. Directly
   /// matches the standard `dart test` conventions: `test/...` and
