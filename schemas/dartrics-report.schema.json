@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "version": {
-      "description": "Reporter schema version. Bumped to `1.1` in 0.7.0 to cover `explanations` and `staleDismissals`, both non-breaking additions.",
+      "description": "Reporter schema version. Bumped to `1.1` in 0.7.0 to cover `explanations` and `staleDismissals`; to `1.2` for `ScopeRef.endLine` — all non-breaking additions.",
       "type": "string"
     },
     "analyzedFiles": {
@@ -71,7 +71,12 @@
           "enum": ["function", "method", "klass", "file", "library"]
         },
         "name": { "type": "string" },
-        "line": { "type": "integer", "minimum": 1 }
+        "line": { "type": "integer", "minimum": 1 },
+        "endLine": {
+          "description": "Last line of the scope's declaration, inclusive. Populated on fresh analysis; `--since` intersects this span with the diff's hunk ranges so untouched scopes in a changed file stay out of the report. Absent on reports written before 1.2.",
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "MetricRecord": {

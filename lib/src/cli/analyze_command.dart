@@ -73,9 +73,9 @@ class AnalyzeCommand extends Command<int> {
       DartricsIO.stderrSink.writeln('dartrics analyze: ${e.message}');
       return ExitCode.usage.code;
     }
-    final Set<String>? changed;
+    final Map<String, List<LineRange>>? changed;
     try {
-      changed = await _resolveChangedFiles(analysis.since);
+      changed = await _resolveChangedRanges(analysis.since);
     } on GitDiffException catch (e) {
       DartricsIO.stderrSink.writeln(e);
       return ExitCode.data.code;
@@ -110,9 +110,23 @@ class AnalyzeCommand extends Command<int> {
     return _emit(report, io, analysis);
   }
 
-  Future<Set<String>?> _resolveChangedFiles(String? since) async {
+  Future<Map<String, List<LineRange>>?> _resolveChangedRanges(
+    String? since,
+  ) async {
     if (since == null) return null;
-    return (await changedDartFilesSince(since)).toSet();
+    return changedDartLineRangesSince(since);
+  }
+
+  /// True when [scope]'s line span intersects any of [ranges]. `null`
+  /// ranges means the file isn't in the diff at all. A scope without
+  /// [ScopeRef.endLine] data falls back to its start line — the
+  /// engine always populates the field on fresh runs, so the fallback
+  /// only matters for synthetic inputs.
+  static bool _scopeTouched(ScopeRef scope, List<LineRange>? ranges) {
+    if (ranges == null) return false;
+    final start = scope.location.line;
+    final end = scope.endLine ?? start;
+    return ranges.any((r) => r.start <= end && r.end >= start);
   }
 
   Future<AnalysisReport> _analyze(_AnalyzeRequest req) async {
@@ -162,8 +176,18 @@ class AnalyzeCommand extends Command<int> {
     // `--since` and snapshot diffs are mutually exclusive (snapshotChanged
     // is only computed when `--since` isn't active), so a coalescing read
     // is enough — no need to intersect.
-    final allowed = req.changed ?? snapshotChanged;
-    final filteredRecords = allowed == null
+    final allowed = req.changed?.keys.toSet() ?? snapshotChanged;
+    // Metric violations are intrinsic to the scope's text: an untouched
+    // function's values cannot have moved, so `--since` drops scopes
+    // whose line span misses every diff hunk instead of re-litigating
+    // the whole changed file. Snapshot diffs are hash-per-file and stay
+    // file-granular. `unused` / `signals` are relational (call-graph
+    // derived) — a change elsewhere in the file can legitimately flip
+    // them on an untouched declaration — so both keep the file filter.
+    final ranges = req.changed;
+    final filteredRecords = ranges != null
+        ? records.where((r) => _scopeTouched(r.scope, ranges[r.file])).toList()
+        : allowed == null
         ? records
         : records.where((r) => allowed.contains(r.file)).toList();
     final filteredUnused = allowed == null
@@ -179,7 +203,7 @@ class AnalyzeCommand extends Command<int> {
       analyzedPaths: {for (final u in units) u.path},
     );
     return AnalysisReport(
-      version: '1.1',
+      version: '1.2',
       metrics: filteredRecords,
       unused: filteredUnused,
       analyzedFiles: hashes,
@@ -346,7 +370,7 @@ typedef _AnalyzeRequest = ({
   UnusedConfig unusedConfig,
   AnalysisOptions analysis,
   MetricsReadingOptions reading,
-  Set<String>? changed,
+  Map<String, List<LineRange>>? changed,
   SnapshotConfig snapshotConfig,
   CoverageIndex? coverage,
 });

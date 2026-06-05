@@ -407,6 +407,66 @@ int f() { return 1; }
     expect(files.any((f) => f.toString().endsWith('keep.dart')), isFalse);
   });
 
+  test('analyze --since drops untouched scopes in a changed file', () async {
+    // A file-granular filter re-surfaces functions the diff never
+    // touched. Violations are intrinsic to the scope's text, so an
+    // untouched function in a changed file must stay out of the report.
+    final repo = await _initGitRepo('cli_flow_since_scope_');
+    addTearDown(() => repo.delete(recursive: true));
+    await Directory('${repo.path}/lib').create();
+    await File(
+      '${repo.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${repo.path}/lib/two.dart').writeAsString('''
+void alpha() {
+  print('alpha');
+}
+
+void beta() {
+  print('beta');
+}
+''');
+    await _runGit(repo.path, ['add', '.']);
+    await _runGit(repo.path, ['commit', '-m', 'init']);
+    // Touch beta only; alpha's text is identical.
+    await File('${repo.path}/lib/two.dart').writeAsString('''
+void alpha() {
+  print('alpha');
+}
+
+void beta() {
+  print('beta!');
+}
+''');
+    await _runGit(repo.path, ['add', '.']);
+    await _runGit(repo.path, ['commit', '-m', 'edit beta']);
+
+    final out = File('${repo.path}/out.json');
+    final code = await Directory(repo.path).runIn(() async {
+      return runQuietly([
+        'analyze',
+        '${repo.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        out.path,
+        '--since',
+        'HEAD~1',
+        '--config',
+        '${repo.path}/no.yaml',
+      ]);
+    });
+    expect(code, 0);
+    final decoded =
+        jsonDecode(await out.readAsString()) as Map<String, Object?>;
+    final scopes = (decoded['metrics']! as List<Object?>)
+        .cast<Map<String, Object?>>()
+        .map((m) => (m['scope']! as Map<String, Object?>)['name'])
+        .toSet();
+    expect(scopes, contains('beta'));
+    expect(scopes, isNot(contains('alpha')));
+  });
+
   test('analyze --since exits 65 when ref is bogus', () async {
     final repo = await _initGitRepo('cli_flow_since_bad_');
     addTearDown(() => repo.delete(recursive: true));

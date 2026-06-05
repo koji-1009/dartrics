@@ -22,16 +22,25 @@ class ScopeRef {
     required this.kind,
     required this.name,
     required this.location,
+    this.endLine,
   });
 
   final ScopeKind kind;
   final String name;
   final SourceLocation location;
 
+  /// Last line of the scope's declaration, inclusive. Populated by the
+  /// engine on fresh analysis — `--since` uses it to intersect scopes
+  /// with the diff's hunk ranges. `null` on inputs that predate the
+  /// field (re-decoded 1.1 JSON reports); consumers needing a span fall
+  /// back to [location]`.line`.
+  final int? endLine;
+
   Map<String, Object?> toJson() => {
     'type': kind.name,
     'name': name,
     'line': location.line,
+    if (endLine != null) 'endLine': endLine,
   };
 }
 
