@@ -74,6 +74,98 @@ void main() {
     expect(body, contains('_legacyFormatter'));
   });
 
+  test('counts block reports per-section entry totals', () async {
+    // The four sections all start entries with the same `  - file:`
+    // shape, so agents that grep to count violations over-count by the
+    // other sections' entries. `counts:` is the one place that holds
+    // the per-section totals.
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    final report = buildSampleReport();
+    AiReporter(
+      sourceLoader: (path) => {
+        path: List.generate(100, (i) => 'line${i + 1}').join('\n'),
+      },
+    ).report(report, sink);
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('counts:'));
+    expect(body, contains('violations: 1'));
+    expect(body, contains('unused: 1'));
+    expect(body, contains('staleDismissals: 0'));
+    expect(body, contains('signals: 0'));
+    // counts precedes every section so agents see it before the entries.
+    expect(body.indexOf('counts:'), lessThan(body.indexOf('violations:')));
+  });
+
+  test('counts reflects kept entries under --limit, not totals', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    final signals = <CallGraphSignal>[
+      for (var i = 0; i < 5; i++)
+        CallGraphSignal(
+          file: 'lib/foo$i.dart',
+          scope: ScopeRef(
+            kind: ScopeKind.function,
+            name: 'foo$i',
+            location: SourceLocation(
+              path: 'lib/foo$i.dart',
+              line: 1,
+              column: 1,
+            ),
+          ),
+          fanInCallers: 5 - i,
+          fanInCalls: 5 - i,
+          fanOutCallees: 0,
+          fanOutCalls: 0,
+        ),
+    ];
+    AiReporter(limit: 2).report(
+      AnalysisReport(
+        version: '1.1',
+        metrics: const [],
+        unused: const [],
+        signals: signals,
+      ),
+      sink,
+    );
+    await sink.close();
+    final body = await temp.readAsString();
+    // counts holds what this report includes (2); truncated holds the
+    // dropped tail (3); the section total is their sum.
+    expect(body, contains('counts:'));
+    expect(body, contains('signals: 2'));
+    expect(body, contains('truncated:'));
+    expect(body, contains('signals: 3'));
+  });
+
+  test('counts block appears alongside a snapshot-only report', () async {
+    // A --since run with zero findings still carries explicit zero
+    // counts so "nothing fired in the changed set" is machine-readable.
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    AiReporter().report(
+      AnalysisReport(
+        version: '1.1',
+        metrics: const [],
+        unused: const [],
+        snapshotMode: 'none',
+        changedFileCount: 2,
+      )..attachAnalyzedFileCount(3),
+      sink,
+    );
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('counts:'));
+    expect(body, contains('violations: 0'));
+  });
+
   test('renders coverage and complexityJustified on violations', () async {
     final tmp = Directory.systemTemp.createTempSync();
     addTearDown(() => tmp.deleteSync(recursive: true));
