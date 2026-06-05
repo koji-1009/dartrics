@@ -195,6 +195,7 @@ class MetricEngine {
         kind: .library,
         name: file.path,
         location: SourceLocation(path: file.path, line: 1, column: 1),
+        endLine: lineCount,
       ),
       values: values,
       violations: _violationsFor(
@@ -217,7 +218,11 @@ class MetricEngine {
     );
     final isTestFile = test && TestAware.isTestPath(file.path);
     for (final decl in collector.declarations) {
-      final input = FunctionMetricInput(context: ctx, declaration: decl);
+      final input = FunctionMetricInput(
+        context: ctx,
+        declaration: decl,
+        isTestFile: isTestFile,
+      );
       final skip = <String>{
         if (flutter) ...FlutterAware.skipsFor(decl),
         if (isTestFile) ...TestAware.functionSkips,
@@ -232,7 +237,7 @@ class MetricEngine {
       final endLine = file.unit.lineInfo.getLocation(decl.end).lineNumber;
       yield MetricRecord(
         file: file.path,
-        scope: _scopeOf(decl, input, file.path),
+        scope: _scopeOf(decl, input, file.path, endLine: endLine),
         values: values,
         violations: _violationsFor(
           values: values,
@@ -273,6 +278,7 @@ class MetricEngine {
             line: loc.lineNumber,
             column: loc.columnNumber,
           ),
+          endLine: endLine,
         ),
         values: values,
         violations: _violationsFor(
@@ -286,7 +292,12 @@ class MetricEngine {
     }
   }
 
-  ScopeRef _scopeOf(Declaration decl, FunctionMetricInput input, String path) {
+  ScopeRef _scopeOf(
+    Declaration decl,
+    FunctionMetricInput input,
+    String path, {
+    required int endLine,
+  }) {
     final loc = input.lineInfo.getLocation(decl.offset);
     final source = SourceLocation(
       path: path,
@@ -299,7 +310,12 @@ class MetricEngine {
     } else {
       kind = .method;
     }
-    return ScopeRef(kind: kind, name: input.scopeName, location: source);
+    return ScopeRef(
+      kind: kind,
+      name: input.scopeName,
+      location: source,
+      endLine: endLine,
+    );
   }
 
   List<MetricViolation> _violationsFor({

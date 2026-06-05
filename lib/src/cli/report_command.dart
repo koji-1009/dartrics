@@ -104,6 +104,7 @@ MetricRecord _decodeRecord(Map<String, Object?> json) {
         line: scope['line'] as int,
         column: 1,
       ),
+      endLine: scope['endLine'] as int?,
     ),
     values: values,
     violations: violations,

@@ -79,4 +79,10 @@ dartrics:
       expect(opt.thresholdFor('cognitive-complexity', 15), 15);
     },
   );
+
+  test('parse picks up `test: false` and defaults it to true', () {
+    expect(LintOptions.parse('dartrics:\n  test: false\n').test, isFalse);
+    expect(LintOptions.parse('dartrics:\n  flutter: false\n').test, isTrue);
+    expect(LintOptions.defaults.test, isTrue);
+  });
 }

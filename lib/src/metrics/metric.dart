@@ -17,7 +17,11 @@ typedef UnitContext = ({
 /// `parseString`-only result, which is significantly cheaper than full
 /// resolution.
 class FunctionMetricInput {
-  FunctionMetricInput({required this.context, required this.declaration});
+  FunctionMetricInput({
+    required this.context,
+    required this.declaration,
+    this.isTestFile = false,
+  });
 
   final UnitContext context;
 
@@ -25,6 +29,14 @@ class FunctionMetricInput {
   /// [ConstructorDeclaration]; engines that build this input filter
   /// declaration kinds at collection time.
   final Declaration declaration;
+
+  /// True when the declaring file is a conventional dart-test file
+  /// (`*_test.dart` under `test/` / `integration_test/` — see
+  /// `TestAware.isTestPath`) and test-awareness is enabled. Lets
+  /// path-sensitive lenses (cognitive complexity's test-DSL discount)
+  /// adjust without re-deriving the path themselves. Defaults to
+  /// `false` so direct calculator calls measure at production grade.
+  final bool isTestFile;
 
   // `context.unit` is exposed via the record itself when needed; only the
   // two helpers below have call sites today.

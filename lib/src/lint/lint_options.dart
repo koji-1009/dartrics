@@ -22,6 +22,7 @@ class LintOptions {
   const LintOptions({
     this.warningThresholdById = const {},
     this.flutter = true,
+    this.test = true,
   });
 
   /// Defaults — every rule falls back to its compiled-in threshold.
@@ -34,6 +35,13 @@ class LintOptions {
   /// actually extend a known widget superclass, so non-Flutter packages
   /// are unaffected. Set to `false` to force the lens on widget code.
   final bool flutter;
+
+  /// Mirrors `dartrics: { test: true }` from `analysis_options.yaml`.
+  /// Default `true`. Engages the test-DSL discount on cognitive
+  /// complexity for conventional test files, matching the CLI engine's
+  /// `TestAware` behavior. Set to `false` to measure test files at
+  /// production grade.
+  final bool test;
 
   /// Returns the user-configured threshold for [metricId], or [fallback].
   num thresholdFor(String metricId, num fallback) {
@@ -73,6 +81,7 @@ class LintOptions {
     return LintOptions(
       warningThresholdById: _parseThresholds(dartrics['metrics']),
       flutter: dartrics['flutter'] as bool? ?? true,
+      test: dartrics['test'] as bool? ?? true,
     );
   }
 

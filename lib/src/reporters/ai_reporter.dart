@@ -8,9 +8,10 @@ import '../models/unused_declaration.dart';
 import 'reporter.dart';
 import 'yaml_scalar.dart';
 
-/// LLM-optimized reporter — emits only the violations and unused
+/// LLM-optimized reporter — emits the violations and unused
 /// declarations along with a 7-line code snippet around each location
-/// (`line ± 3`).
+/// (`line ± 3`), prefixed by a `counts:` block so agents read section
+/// totals from one place instead of re-counting entry lines.
 /// Output is YAML-ish (more token-efficient than JSON) and is finally
 /// pretty-printed through `dapper`'s YAML formatter so column alignment
 /// stays predictable for downstream agents.
@@ -22,9 +23,11 @@ class AiReporter implements Reporter {
 
   final Map<String, String> Function(String path) _sourceLoader;
 
-  /// Cap on the number of violations + unused entries written. `null`
-  /// keeps every entry; a positive integer truncates after the priority
-  /// sort and adds a `truncated:` summary block.
+  /// Per-section cap on the number of entries written — the
+  /// `violations:`, `unused:`, and `signals:` sections are each
+  /// truncated independently. `null` keeps every entry; a positive
+  /// integer truncates after the priority sort and adds a `truncated:`
+  /// summary block with the dropped count per section.
   final int? limit;
 
   /// Cache of file → lines so we don't re-read the same source repeatedly.
@@ -35,11 +38,27 @@ class AiReporter implements Reporter {
     const header = '# dartrics ai-report v1';
     final body = StringBuffer();
     _writeSnapshotStatus(body, report);
+    final violations = _collectViolations(report);
+    final sortedSignals = [...report.signals]
+      ..sort(CallGraphSignal.byConnectivity);
+    final keptViolations = _cap(violations);
+    final keptUnused = _cap(report.unused);
+    final keptSignals = _cap(sortedSignals);
+    _writeCounts(
+      body,
+      violations: keptViolations.length,
+      unused: keptUnused.length,
+      staleDismissals: report.staleDismissals.length,
+      signals: keptSignals.length,
+    );
     _writeExplanations(body, report);
-    final dropped = _writeViolations(body, report);
-    final unusedDropped = _writeUnused(body, report);
+    _writeViolations(body, keptViolations);
+    _writeUnused(body, keptUnused);
     _writeStaleDismissals(body, report);
-    final signalsDropped = _writeSignals(body, report);
+    _writeSignals(body, keptSignals);
+    final dropped = violations.length - keptViolations.length;
+    final unusedDropped = report.unused.length - keptUnused.length;
+    final signalsDropped = sortedSignals.length - keptSignals.length;
     if (dropped > 0 || unusedDropped > 0 || signalsDropped > 0) {
       body.writeln('truncated:');
       if (dropped > 0) body.writeln('  violations: $dropped');
@@ -97,22 +116,56 @@ class AiReporter implements Reporter {
     }
   }
 
-  /// Returns the number of violations dropped to honour [limit].
-  int _writeViolations(StringBuffer buf, AnalysisReport report) {
+  /// Flattens the per-record violations into sorted entries. The sort
+  /// happens here so [_cap] truncates the least actionable tail.
+  List<_ViolationEntry> _collectViolations(AnalysisReport report) {
     final entries = <_ViolationEntry>[
       for (final m in report.metrics)
         for (final v in m.violations) _ViolationEntry(record: m, violation: v),
     ];
-    if (entries.isEmpty) return 0;
     entries.sort(_compareViolations);
-    final keep = limit == null || entries.length <= limit!
-        ? entries
-        : entries.sublist(0, limit!);
+    return entries;
+  }
+
+  /// Applies [limit] to a section's entry list. Each section is capped
+  /// independently — `--limit 30` keeps up to 30 violations AND up to
+  /// 30 unused entries AND up to 30 signals.
+  List<T> _cap<T>(List<T> all) =>
+      limit == null || all.length <= limit! ? all : all.sublist(0, limit!);
+
+  /// Emits the per-section entry counts so agents read totals from one
+  /// place instead of grepping for `- file:` lines — those appear in
+  /// four different sections, so a naive grep over-counts. Skipped when
+  /// every section is empty AND no snapshot block was written (the
+  /// header-only clean report stays a single line).
+  void _writeCounts(
+    StringBuffer buf, {
+    required int violations,
+    required int unused,
+    required int staleDismissals,
+    required int signals,
+  }) {
+    final allEmpty =
+        violations == 0 && unused == 0 && staleDismissals == 0 && signals == 0;
+    if (allEmpty && buf.isEmpty) return;
+    buf
+      ..writeln('# Entries included per section. With --limit, dropped tails')
+      ..writeln(
+        '# land in a trailing truncated block (total = counts + drops).',
+      )
+      ..writeln('counts:')
+      ..writeln('  violations: $violations')
+      ..writeln('  unused: $unused')
+      ..writeln('  staleDismissals: $staleDismissals')
+      ..writeln('  signals: $signals');
+  }
+
+  void _writeViolations(StringBuffer buf, List<_ViolationEntry> kept) {
+    if (kept.isEmpty) return;
     buf.writeln('violations:');
-    for (final e in keep) {
+    for (final e in kept) {
       _writeViolation(buf, e);
     }
-    return entries.length - keep.length;
   }
 
   void _writeViolation(StringBuffer buf, _ViolationEntry e) {
@@ -215,13 +268,8 @@ class AiReporter implements Reporter {
     return v.scopeCoverage ?? 0.5;
   }
 
-  /// Returns the number of unused entries dropped to honour [limit].
-  int _writeUnused(StringBuffer buf, AnalysisReport report) {
-    if (report.unused.isEmpty) return 0;
-    final keep = limit == null || report.unused.length <= limit!
-        ? report.unused
-        : report.unused.sublist(0, limit!);
-    final dropped = report.unused.length - keep.length;
+  void _writeUnused(StringBuffer buf, List<UnusedDeclaration> kept) {
+    if (kept.isEmpty) return;
     buf
       ..writeln(
         '# Unused entries may be leftover code to delete OR unwired '
@@ -233,7 +281,7 @@ class AiReporter implements Reporter {
       )
       ..writeln('# before acting.')
       ..writeln('unused:');
-    for (final u in keep) {
+    for (final u in kept) {
       buf
         ..writeln('  - file: ${u.location.path}')
         ..writeln('    line: ${u.location.line}')
@@ -241,18 +289,14 @@ class AiReporter implements Reporter {
         ..writeln('    name: ${u.name}');
       _writeSnippet(buf, u.location.path, u.location.line);
     }
-    return dropped;
   }
 
-  /// Emits per-declaration fan-in / fan-out as a `signals:` block,
-  /// sorted so the most-connected entries come first and the `0/0`
-  /// tail is what `--limit` truncates. Returns the number dropped.
-  int _writeSignals(StringBuffer buf, AnalysisReport report) {
-    if (report.signals.isEmpty) return 0;
-    final sorted = [...report.signals]..sort(CallGraphSignal.byConnectivity);
-    final keep = limit == null || sorted.length <= limit!
-        ? sorted
-        : sorted.sublist(0, limit!);
+  /// Emits per-declaration fan-in / fan-out as a `signals:` block.
+  /// [kept] arrives sorted by [CallGraphSignal.byConnectivity] so the
+  /// most-connected entries come first and the `0/0` tail is what
+  /// `--limit` truncated.
+  void _writeSignals(StringBuffer buf, List<CallGraphSignal> kept) {
+    if (kept.isEmpty) return;
     buf
       ..writeln(
         '# Reference values from the resolved call graph — compare '
@@ -268,7 +312,7 @@ class AiReporter implements Reporter {
       )
       ..writeln('# spot values that moved on this edit.')
       ..writeln('signals:');
-    for (final s in keep) {
+    for (final s in kept) {
       buf
         ..writeln('  - file: ${s.file}')
         ..writeln('    line: ${s.scope.location.line}')
@@ -279,7 +323,6 @@ class AiReporter implements Reporter {
         ..writeln('    fanOutCallees: ${s.fanOutCallees}')
         ..writeln('    fanOutCalls: ${s.fanOutCalls}');
     }
-    return sorted.length - keep.length;
   }
 
   /// Surfaces dismiss entries that never matched a live violation, so

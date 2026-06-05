@@ -41,10 +41,12 @@ void addIoOptions(
     ..addOption(
       'limit',
       help:
-          'Cap the number of violations + unused entries shown by the '
-          'ai and md reporters (after the priority sort). Useful when '
-          'feeding the report into an AI loop with a fixed token '
-          'budget. Truncated entries are summarised in the report.',
+          'Cap the number of entries shown after the priority sort. '
+          'The ai reporter applies the cap per section (violations, '
+          'unused, and signals are each truncated independently); the '
+          'md reporter caps violations only. Useful when feeding the '
+          'report into an AI loop with a fixed token budget. Truncated '
+          'entries are summarised in the report.',
     )
     ..addFlag(
       'verbose',
@@ -96,8 +98,8 @@ class IoOptions {
   final String output;
 
   /// `--limit <n>` override. `null` ⇒ no truncation; positive integer
-  /// caps the number of violations + unused entries shown by the ai
-  /// and md reporters.
+  /// caps the number of entries shown — per section in the ai reporter
+  /// (violations / unused / signals each), violations-only in md.
   final int? limit;
 
   final List<String> rest;
@@ -120,9 +122,14 @@ void addAnalysisOptions(ArgParser parser) {
     ..addOption(
       'since',
       help:
-          'Restrict output to files changed since the given git ref '
-          '(e.g. "main", "HEAD~1", "origin/main"). Resolution still uses '
-          'the full project so cross-file analysis stays accurate.',
+          'Restrict output to code changed since the given git ref '
+          '(e.g. "main", "HEAD~1", "origin/main"). Metric violations '
+          'are filtered to the scopes the diff actually touched — '
+          'untouched functions in a changed file stay out of the '
+          'report. Unused declarations and signals are file-granular: '
+          'a change elsewhere in the file can legitimately flip them. '
+          'Resolution still uses the full project so cross-file '
+          'analysis stays accurate.',
     )
     ..addOption(
       'snapshot',

@@ -415,6 +415,54 @@ class SampleTest {
     expect(clsStrict, contains('number-of-methods'));
   });
 
+  test('test mode applies the cognitive test-DSL discount', () async {
+    final dir = await Directory.systemTemp.createTemp('test_dsl_engine_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/test').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    // The declarative group()/test() shape: every branch sits two
+    // closures deep, so without the discount it accrues to main() at
+    // inflated nesting.
+    await File('${dir.path}/test/dsl_test.dart').writeAsString('''
+void group(String name, void Function() body) { body(); }
+void test(String name, void Function() body) { body(); }
+
+void main() {
+  group('g', () {
+    test('a', () {
+      if (1 > 0) {
+        if (2 > 1) {
+          if (3 > 2) {
+            print('deep');
+          }
+        }
+      }
+    });
+  });
+}
+''');
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
+
+    // Default (test:true): registration callbacks are data handed to
+    // the DSL, not control flow of main.
+    final relaxed = MetricEngine().analyzeResolved(units);
+    final mainCog = relaxed
+        .firstWhere((r) => r.scope.name == 'main')
+        .values['cognitive-complexity'];
+    expect(mainCog, 0);
+
+    // test:false restores the spec behavior — the if-ladder accrues at
+    // closure-inflated nesting: (1+2) + (1+3) + (1+4) = 12.
+    final strict = MetricEngine(test: false).analyzeResolved(units);
+    final strictCog = strict
+        .firstWhere((r) => r.scope.name == 'main')
+        .values['cognitive-complexity'];
+    expect(strictCog, 12);
+  });
+
   group('coverage-aware violations', () {
     late Directory dir;
 
