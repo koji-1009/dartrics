@@ -84,8 +84,8 @@ What each flag does for the AI:
 | Flag | Why it matters |
 | --- | --- |
 | `--reporter ai` | Token-efficient YAML; sorted by severity → coverage → dismissed. The agent reads top-down and gets the most actionable items first. |
-| `--since origin/main` | Only emit records for files changed in the current branch. Avoids re-litigating debt the agent isn't there to fix. |
-| `--limit 30` | Hard cap so a 1000-violation legacy codebase doesn't blow the context window. The truncated count is stamped into the report. |
+| `--since origin/main` | Only emit violations for the scopes the diff actually touched — untouched functions in a changed file stay out. Unused / signals stay file-granular because a change elsewhere in the file can legitimately flip them. Avoids re-litigating debt the agent isn't there to fix. |
+| `--limit 30` | Per-section cap (violations, unused, and signals are each truncated independently) so a 1000-violation legacy codebase doesn't blow the context window. The truncated count is stamped into the report. |
 | (auto-explain, always on) | Every metric that fired gets its rationale + refactorHints attached. The agent doesn't have to know which metrics exist. |
 
 A typical AI-loop prompt:
@@ -109,6 +109,11 @@ Sample report excerpt the agent would see:
 snapshot:
   mode: cache
   changedFiles: 12 of 247
+counts:
+  violations: 30
+  unused: 0
+  staleDismissals: 0
+  signals: 30
 explain:
   - metric: cognitive-complexity
     rationale: |
@@ -152,12 +157,15 @@ truncated:
 
 On a clean run with no metric over threshold the `violations:` and `explain:` blocks are absent entirely; `signals:` keeps emitting because it is reference information, not a finding.
 
-Four cues the agent should act on:
+Five cues the agent should act on:
 
+- **`counts:`** — the per-section totals for what this report includes. Read totals here; don't count `- file:` lines — violations, unused, staleDismissals, and signals all share that entry shape, so a grep across the report over-counts.
 - **`id: a3f1c4e9b2d70218`** on the violation — stable across runs. If the same id reappears next iteration, the previous fix didn't actually drop the metric.
 - **`coverage: 0.91` + `branchCoverage: 0.78`** — well-tested. Refactor risk is low; go ahead.
 - **`signals:` for the same scope** — `fanInCallers: 7` enumerates the call sites that would have to follow a signature change; `fanOutCallees: 12` flags that the scope coordinates many other types (overlaps in spirit with `response-for-class`). Reference-only — feed it into the refactor / dismiss decision; do not treat it as a violation.
-- **`truncated: { violations: 8, signals: 41 }`** — 8 more violations and 41 more signals below the cap. Once the visible 30 violations are done, re-run without `--limit` to drain the rest.
+- **`truncated: { violations: 8, signals: 41 }`** — 8 more violations and 41 more signals below the cap. Section totals are `counts` plus `truncated`. Once the visible 30 violations are done, re-run without `--limit` to drain the rest.
+
+dartrics also pairs well with a semantic review pass over the same diff: the deterministic report seeds the reviewer's attention in seconds (complexity hotspots, convention violations — things an LLM reads past as "inherently complex"), the agent adjudicates and covers the metric blind spots (cross-scope duplication, design depth, dead parameters only tests keep alive), and `dartrics regression` verifies the result. The two detect nearly disjoint finding sets — run both when the budget allows.
 
 ## 3. Apply (the agent edits code)
 
@@ -192,6 +200,8 @@ dismissals:
 ```
 
 If the agent's reason is too short or missing, the next dartrics run keeps the violation **live** and stamps it with `dismissalRejected: reason too short (need >= 20)`. The agent sees this on the next pass and amends. There's no silent "I tried to suppress it but it didn't take" failure mode.
+
+A triage verdict that lives only in the conversation does not persist. If the agent judges a violation intentional but writes no dismiss, the verdict evaporates when the session ends and the same violation re-surfaces on every future run. Persisting each "leave it" call as a dismiss entry — comment or YAML — is what makes the loop converge; "N items intentionally left as-is" belongs in dismiss entries, not in a chat message. (Punt is the one exception: an open question for the operator is deliberately not a tracked artifact.)
 
 ## 4. Verify (the agent re-reads dartrics)
 
@@ -275,9 +285,9 @@ Inspect is **not part of the refactor / dismiss / punt decision**; it feeds that
 | Goal | Flag | Notes |
 | --- | --- | --- |
 | Pick the AI-shaped report | `--reporter ai` | Mandatory for AI loops |
-| Filter to changed files | `--since <git-ref>` | Renames surface as the new path |
+| Filter to changed code | `--since <git-ref>` | Violations are scope-granular (diff hunks ∩ scope span); unused / signals are file-granular. Renames surface as the new path |
 | Filter to changed bytes (no git) | `--snapshot cache` | Default; per-file sha256 |
-| Cap output for token budget | `--limit <n>` | Applied after priority sort |
+| Cap output for token budget | `--limit <n>` | Applied per section (violations / unused / signals) after priority sort |
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |

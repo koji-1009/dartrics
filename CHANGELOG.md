@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+* **`--reporter ai` emits a `counts:` block** (violations / unused / staleDismissals / signals) ahead of the sections. All four sections share the `  - file:` entry shape, so agents that grepped to count findings over-counted; totals now read from `counts:` plus `truncated:` for dropped tails. `--limit` is documented as what it always was — a per-section cap, not a global one.
+* **`--since <ref>` filters violations to the scopes the diff touched.** The filter was file-granular: an untouched function re-surfaced whenever a sibling in the same file changed. Violations now intersect `git diff -U0` hunk ranges with the scope span; `unused` / `signals` stay file-granular because they are call-graph-relational — a change elsewhere in the file can legitimately flip them on an untouched declaration. Pure renames (100% similarity, no hunks) no longer surface.
+* **Cognitive complexity applies a test-DSL discount.** On `*_test.dart` files under `test/` / `integration_test/`, closures passed as invocation arguments (`group()` / `test()` registration callbacks) no longer accrue to the enclosing function — declarative test mains were firing purely on the closure-nesting tax. The function's own control flow and named helpers stay scored. Gate with `dartrics: { test: false }`; applies to both the CLI engine and the analyzer-plugin rule.
+* Report schema `1.1` → `1.2`: `ScopeRef` gains an optional `endLine` (last line of the declaration, inclusive) — the span `--since` intersects. Additive; pre-1.2 reports re-emit through `dartrics report` unchanged.
+
 ## 1.0.0
 
 First stable release. The metric battery, the `--reporter ai` wire format (`# dartrics ai-report v1`), the JSON and SARIF schemas, and the embeddable Dart API (`FunctionMetric` family + `dartricsVersion`) commit to semver — non-breaking until 2.0.0. No metric, threshold, exit-code, or wire-format change from 0.8.0. The metric catalogue is `dartrics rules`; the operator reference is `doc/manual.md` and `dartrics manual`; the wire formats are in `schemas/`.
