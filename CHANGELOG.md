@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+Toolchain alignment release: tracks analyzer 13.1.0. No metric, threshold, exit-code, or schema change.
+
+* Dependency floors raised: `analyzer ^13.1.0`, `analysis_server_plugin ^0.3.16`, `analyzer_testing ^0.3.0` (dev). The deprecated `ExtensionTypeDeclaration.primaryConstructor` AST getter is replaced with its successor `namePart`; behaviour is unchanged.
+
 ## 1.1.0
 
 An AI-loop fidelity release: the `ai` report announces per-section totals, `--since` narrows to the scopes the diff touched, and cognitive complexity stops taxing declarative test registration. Report schema `1.1` → `1.2`, additive. No threshold, exit-code, or wire-format-breaking change.
