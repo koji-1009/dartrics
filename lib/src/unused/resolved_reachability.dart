@@ -657,7 +657,7 @@ bool _collectTypeLikeDeclaration(
     case ExtensionTypeDeclaration():
       _collectInterfaceLike(
         decl: decl,
-        name: decl.primaryConstructor.typeName.lexeme,
+        name: decl.namePart.typeName.lexeme,
         kind: UnusedKind.klass,
         members: decl.body.members,
         element: decl.declaredFragment?.element,
