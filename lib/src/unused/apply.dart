@@ -317,7 +317,7 @@ String? _topLevelDeclarationName(CompilationUnitMember d) {
   if (d is MixinDeclaration) return d.name.lexeme;
   if (d is EnumDeclaration) return d.namePart.typeName.lexeme;
   if (d is ExtensionTypeDeclaration) {
-    return d.primaryConstructor.typeName.lexeme;
+    return d.namePart.typeName.lexeme;
   }
   if (d is GenericTypeAlias) return d.name.lexeme;
   if (d is FunctionTypeAlias) return d.name.lexeme;
