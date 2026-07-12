@@ -43,7 +43,98 @@ Future<Config> loadConfig(String path) async {
     test: dartrics['test'] as bool? ?? true,
     snapshot: _parseSnapshot(dartrics['snapshot']),
     dismissals: _parseDismissals(dartrics['dismissals']),
+    unknownKeys: collectUnknownConfigKeys(dartrics),
   );
+}
+
+/// Keys the loader honours per config-map path. Mirrors
+/// `schemas/dartrics-config.schema.json` (`additionalProperties: false`
+/// at every level); `dartrics doctor` uses the same table for its
+/// did-you-mean hints so the loader and the diagnosis cannot drift.
+/// `dartrics.metrics.<id>` maps are keyed by user-chosen ids and are
+/// handled structurally in [collectUnknownConfigKeys] instead.
+const Map<String, Set<String>> knownConfigKeys = {
+  'dartrics': {
+    'metrics',
+    'unused',
+    'exclude',
+    'flutter',
+    'test',
+    'snapshot',
+    'dismissals',
+  },
+  'dartrics.unused': {
+    'entry-points',
+    'exclude-exported',
+    'ignore-annotations',
+    'filter',
+  },
+  'dartrics.dismissals': {
+    'sources',
+    'requireReason',
+    'minReasonLength',
+    'requireAuthor',
+    'requireTimestamp',
+    'warnStale',
+    'yamlPath',
+  },
+  'dartrics.dismissals.sources': {'comment', 'yaml'},
+  'dartrics.snapshot': {'mode', 'path'},
+};
+
+/// Fields accepted inside each `dartrics.metrics.<id>:` map.
+const Set<String> knownMetricOptionKeys = {'enabled', 'warning', 'error'};
+
+/// Walks the `dartrics:` map and returns the dotted path of every key
+/// the loader would silently ignore. Parsing stays lenient — unknown
+/// keys never fail a run — but the list rides on [Config.unknownKeys]
+/// so `dartrics doctor` can surface them.
+List<String> collectUnknownConfigKeys(YamlMap dartrics) => [
+  ..._unknownKeysIn(dartrics, 'dartrics'),
+  ..._unknownMetricOptionKeys(dartrics['metrics']),
+  ..._unknownNestedKeys(dartrics),
+];
+
+/// Keys of [map] not accepted at config path [prefix], as dotted paths.
+/// Paths absent from [knownConfigKeys] are the id-keyed
+/// `dartrics.metrics.<id>` maps, which share [knownMetricOptionKeys].
+Iterable<String> _unknownKeysIn(YamlMap map, String prefix) {
+  final known = knownConfigKeys[prefix] ?? knownMetricOptionKeys;
+  return map.keys
+      .map((key) => key.toString())
+      .where((name) => !known.contains(name))
+      .map((name) => '$prefix.$name');
+}
+
+Iterable<String> _unknownMetricOptionKeys(Object? metrics) sync* {
+  if (metrics is! YamlMap) return;
+  for (final entry in metrics.entries) {
+    final value = entry.value;
+    if (value is YamlMap) {
+      yield* _unknownKeysIn(value, 'dartrics.metrics.${entry.key}');
+    }
+  }
+}
+
+Iterable<String> _unknownNestedKeys(YamlMap dartrics) sync* {
+  for (final path in knownConfigKeys.keys) {
+    if (path == 'dartrics') continue;
+    final node = _nodeAt(dartrics, path);
+    if (node is YamlMap) {
+      yield* _unknownKeysIn(node, path);
+    }
+  }
+}
+
+/// Resolves the node at dotted [path] (relative to the `dartrics:`
+/// map, whose own segment is skipped), or `null` when any intermediate
+/// node is missing or not a map.
+Object? _nodeAt(YamlMap dartrics, String path) {
+  Object? node = dartrics;
+  for (final segment in path.split('.').skip(1)) {
+    node = node is YamlMap ? node[segment] : null;
+  }
+  return node;
 }
 
 DismissalConfig _parseDismissals(Object? node) {

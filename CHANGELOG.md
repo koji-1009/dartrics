@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* **`dartrics doctor` flags unknown keys under `dartrics:`.** The loader has always ignored keys it does not recognise; doctor now surfaces each as a warning with a did-you-mean hint, and points misplaced `analyzer:` block settings (`language:`, `errors:`, `plugins:`, `strong-mode:`) at the top-level `analyzer:` key.
+
 ## 1.2.0
 
 Toolchain alignment release: tracks analyzer 13.1.0. No metric, threshold, exit-code, or schema change.

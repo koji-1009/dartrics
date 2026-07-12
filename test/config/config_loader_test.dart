@@ -370,4 +370,83 @@ dartrics:
       );
     });
   });
+
+  group('unknown keys', () {
+    test('clean config collects no unknown keys', () async {
+      final f = File('${dir.path}/clean.yaml');
+      await f.writeAsString('''
+dartrics:
+  metrics:
+    cyclomatic-complexity:
+      warning: 10
+    cognitive-complexity: 15
+    method-length: true
+  unused:
+    exclude-exported: true
+    filter:
+      - function
+  exclude:
+    - "lib/generated/**"
+  flutter: true
+  test: true
+  snapshot:
+    mode: cache
+  dismissals:
+    sources:
+      comment: true
+      yaml: true
+    requireReason: true
+''');
+      final config = await loadConfig(f.path);
+      expect(config.unknownKeys, isEmpty);
+    });
+
+    test('collects unrecognised keys at every level as dotted paths', () async {
+      final f = File('${dir.path}/unknown.yaml');
+      await f.writeAsString('''
+dartrics:
+  language:
+    strict-casts: true
+  metrics:
+    cyclomatic-complexity:
+      warnings: 10
+  unused:
+    entrypoints:
+      - main
+  snapshot:
+    mode: cache
+    file: somewhere.json
+  dismissals:
+    sources:
+      comments: true
+    warnStale: true
+''');
+      final config = await loadConfig(f.path);
+      expect(
+        config.unknownKeys,
+        unorderedEquals([
+          'dartrics.language',
+          'dartrics.metrics.cyclomatic-complexity.warnings',
+          'dartrics.unused.entrypoints',
+          'dartrics.snapshot.file',
+          'dartrics.dismissals.sources.comments',
+        ]),
+      );
+    });
+
+    test(
+      'non-map metric shorthand and scalar snapshot collect nothing',
+      () async {
+        final f = File('${dir.path}/shorthand.yaml');
+        await f.writeAsString('''
+dartrics:
+  metrics:
+    cognitive-complexity: 15
+  snapshot: none
+''');
+        final config = await loadConfig(f.path);
+        expect(config.unknownKeys, isEmpty);
+      },
+    );
+  });
 }
