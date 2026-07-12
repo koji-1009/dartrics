@@ -3,6 +3,10 @@ include: package:lints/recommended.yaml
 analyzer:
   exclude:
     - tmp/**
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
 
 # Dogfood: dartrics on dartrics. Defaults match the rules surface
 # (CC 10, Cognitive 15, NOP 4).
@@ -12,10 +16,6 @@ dartrics:
   exclude:
     - tmp/**
   dismissals: {}
-  language:
-    strict-casts: true
-    strict-inference: true
-    strict-raw-types: true
 
 linter:
   rules:
