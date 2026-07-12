@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'helpers.dart';
@@ -213,6 +214,110 @@ int f(int x) {
     }
   });
 
+  test('regression --before HEAD against an identical working tree reports '
+      'all unchanged', () async {
+    // Exercises both sides of scope identity: the per-file library
+    // metrics (whose scope name is the file path and must survive
+    // normalization across two mount points) and a class-level CBO edge
+    // that only exists when the `package:` import resolves — which the
+    // historical worktree can't do without the seeded package config.
+    await File('${repo.path}/lib/a.dart').writeAsString('''
+class A {
+  int one() => 1;
+}
+''');
+    await File('${repo.path}/lib/b.dart').writeAsString('''
+import 'package:example/a.dart';
+
+class B {
+  int useA() => A().one();
+}
+''');
+    await _runGit(repo.path, ['add', '.']);
+    await _runGit(repo.path, ['commit', '-m', 'package import']);
+    // Simulates the working tree's `dart pub get` state; deliberately
+    // not committed, so the mounted worktree starts without it.
+    await _writePackageConfig(repo.path);
+
+    final out = '${repo.path}/diff.json';
+    final code = await runQuietly([
+      'regression',
+      '--before',
+      'HEAD',
+      '--root',
+      repo.path,
+      '--reporter',
+      'json',
+      '--output',
+      out,
+      '--config',
+      '${repo.path}/no.yaml',
+    ]);
+    expect(code, 0);
+    final body =
+        jsonDecode(File(out).readAsStringSync()) as Map<String, Object?>;
+    final summary = body['summary']! as Map<String, Object?>;
+    expect(summary['improved'], 0);
+    expect(summary['regressed'], 0);
+    expect(summary['added'], 0);
+    expect(summary['removed'], 0);
+    expect(summary['neutralDelta'], 0);
+  });
+
+  test('regression removes stale dartrics worktrees at startup and spares '
+      'foreign ones', () async {
+    final stale = await Directory.systemTemp.createTemp('dartrics_worktree_');
+    final other = await Directory.systemTemp.createTemp('user_worktree_');
+    await _runGit(repo.path, [
+      'worktree',
+      'add',
+      '--detach',
+      stale.path,
+      'HEAD',
+    ]);
+    await _runGit(repo.path, [
+      'worktree',
+      'add',
+      '--detach',
+      other.path,
+      'HEAD',
+    ]);
+    addTearDown(() async {
+      await Process.run('git', [
+        'worktree',
+        'remove',
+        '--force',
+        other.path,
+      ], workingDirectory: repo.path);
+    });
+
+    final code = await runQuietly([
+      'regression',
+      '--before',
+      'HEAD',
+      '--after',
+      'HEAD',
+      '--root',
+      repo.path,
+      '--reporter',
+      'json',
+      '--output',
+      '${repo.path}/diff.json',
+      '--config',
+      '${repo.path}/no.yaml',
+    ]);
+    expect(code, 0);
+    expect(stale.existsSync(), isFalse);
+    final list = await Process.run('git', [
+      'worktree',
+      'list',
+      '--porcelain',
+    ], workingDirectory: repo.path);
+    final registered = list.stdout as String;
+    expect(registered, isNot(contains(p.basename(stale.path))));
+    expect(registered, contains(p.basename(other.path)));
+  });
+
   test('regression --output - writes to stdout', () async {
     final r = await runCaptured([
       'regression',
@@ -249,4 +354,25 @@ Future<void> _runGit(String cwd, List<String> args) async {
   if (r.exitCode != 0) {
     throw StateError('git ${args.join(' ')} failed: ${r.stderr}');
   }
+}
+
+/// Hand-written equivalent of the `dart pub get` output for the
+/// dependency-less `example` fixture package — deterministic and
+/// offline, where spawning `pub` would be neither.
+Future<void> _writePackageConfig(String root) async {
+  final file = File('$root/.dart_tool/package_config.json');
+  await file.parent.create(recursive: true);
+  await file.writeAsString(
+    jsonEncode({
+      'configVersion': 2,
+      'packages': [
+        {
+          'name': 'example',
+          'rootUri': '../',
+          'packageUri': 'lib/',
+          'languageVersion': '3.0',
+        },
+      ],
+    }),
+  );
 }

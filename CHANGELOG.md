@@ -3,6 +3,9 @@
 ## Unreleased
 
 * **`dartrics doctor` flags unknown keys under `dartrics:`.** The loader has always ignored keys it does not recognise; doctor now surfaces each as a warning with a did-you-mean hint, and points misplaced `analyzer:` block settings (`language:`, `errors:`, `plugins:`, `strong-mode:`) at the top-level `analyzer:` key.
+* **`dartrics regression` library scopes now match across the compared states.** Library records carry the file path as their scope name, and the historical side's absolute worktree path was left in the diff key — every per-file metric (Ce, Ca, instability) reported as added + removed, and the summary counts were polluted, on every run.
+* **`dartrics regression` seeds `package_config.json` into the mounted worktree.** `git worktree add` checks out tracked files only, so the historical side resolved no `package:` imports and the resolution-dependent metrics (CBO, RFC, the Martin lenses) reported phantom diffs even on identical code. The working tree's `.dart_tool/package_config.json` is copied in, with relative path-dependency roots outside the repository rewritten to absolute URIs; if the compared refs disagree about dependencies, the seeded resolution reflects the working tree's `dart pub get` state.
+* **`dartrics regression` reclaims leftover `dartrics_worktree_*` registrations at startup.** A run that died before its cleanup (a closed output pipe, a kill) left the temp worktree registered in `.git/worktrees` forever; stale registrations with the dartrics prefix are now removed — other worktrees are never touched.
 
 ## 1.2.0
 
