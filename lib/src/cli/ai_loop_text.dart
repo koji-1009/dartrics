@@ -291,6 +291,7 @@ Inspect is **not part of the refactor / dismiss / punt decision**; it feeds that
 | Skip dismissals (audit) | `--strict-dismiss` | Exposes the raw triage list |
 | Speed up resolution | `--concurrency <n>` | Defaults to host CPU count, clamped to 16 |
 | Block on warnings | `--fatal-warnings` | Combine with `--strict-dismiss` for CI |
+| Narrow a regression diff | `dartrics regression --metric <id>` | Repeatable; defaults to all lenses |
 | Delete unused public-API declarations | `dartrics unused --apply` | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
 | Probe the call graph around a symbol | `dartrics inspect <symbol>` | `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reference-only; `ai` / `json` reporters. Feeds the refactor / dismiss / punt decision with structure the metric value alone doesn't carry. |
 

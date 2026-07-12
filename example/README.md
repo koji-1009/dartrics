@@ -1,6 +1,6 @@
 # dartrics example
 
-A 30-line program that drives a single metric calculator (`CyclomaticComplexity`) over a snippet of source code — useful when embedding dartrics into custom tooling.
+A minimal program that drives a single metric calculator (`CyclomaticComplexity`) over a snippet of source code — useful when embedding dartrics into custom tooling.
 
 For day-to-day use, prefer the CLI:
 

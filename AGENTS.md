@@ -41,7 +41,7 @@ dart pub run coverage:test_with_coverage   # 100% line coverage required
 
 ## Dogfood gate
 
-CI runs `dart run bin/dartrics.dart analyze --root . --snapshot none --reporter ai` on every push and PR; the dartrics codebase must clear its own metric battery to merge. Reproduce locally with the same command.
+CI runs `dart run bin/dartrics.dart analyze --root . --snapshot none --fatal-warnings` on every push and PR; the dartrics codebase must clear its own metric battery to merge. Reproduce locally with the same command — `--fatal-warnings` is what makes a lingering warning exit non-zero.
 
 If a lens fires on idiomatic Dart code in this repo, the first move is **lens correction** (or its skip rule), not dismiss. A lens that over-fires on the canonical idiomatic-Dart codebase will over-fire elsewhere too — adjust the lens, not the call site.
 
