@@ -44,6 +44,10 @@ McCabe 1976 counts every `switch` case arm in `d`. dartrics excludes case arms w
 
 McCabe 1976 predates null-aware operators, so its construct list doesn't mention them. dartrics counts `??` and `??=` as one decision point each: `a ?? b` branches exactly like the counted ternary `a != null ? a : b`, and `a ??= b` is `a = a ?? b`. Leaving them at zero would let the same control flow score differently depending on spelling. Code: `lib/src/metrics/function/cyclomatic_complexity.dart`.
 
+### `cognitive-complexity` — closure content appears in two records
+
+Campbell's rules fold a lambda's control flow into the enclosing method's score (method-like structures increment the nesting level; their contents keep scoring). dartrics keeps that attribution *and* emits every closure as its own metric record (scope kind `closure`), so a branchy closure scores both in the enclosing function's cognitive value and, unnested, in its standalone record. The two readings answer different questions — "how hard is this function to read top-to-bottom" vs. "how hard is this callback on its own" — and local named functions have carried the same double reading since they became separate records. Cyclomatic complexity does not duplicate: closures are excluded from the enclosing function's CC and score only on their own record. Code: `lib/src/metrics/function/cognitive_complexity.dart`, `lib/src/metrics/metric_engine.dart`.
+
 ### `number-of-parameters` — positional only
 
 Fowler 1999 flags long parameter lists. dartrics counts only positional parameters; named parameters are weight-zero. Fowler's smell targets *positional-recall load* at the call site (`foo(true, false, 3)` — what does each slot mean?). Dart's `foo(animated: false, retries: 3)` carries each name on the spot. Code: `lib/src/metrics/function/number_of_parameters.dart`.

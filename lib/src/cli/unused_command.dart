@@ -132,7 +132,7 @@ class UnusedCommand extends Command<int> {
     final activeFilter = changed ?? snapshotChanged;
     final filtered = _filterUnused(unused, activeFilter);
     final report = AnalysisReport(
-      version: '1.2',
+      version: '1.3',
       metrics: const [],
       unused: filtered,
       analyzedFiles: hashes,

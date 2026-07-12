@@ -391,6 +391,69 @@ String describeExpr(Color c) => switch (c) {
     expect(exprCc, 1);
   });
 
+  test('closures are measured as separate records', () async {
+    final dir = await Directory.systemTemp.createTemp('closure_records_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/lib').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/lib/handlers.dart').writeAsString('''
+void wire(List<int> xs) {
+  xs.forEach((x) {
+    if (x > 0 && x < 10) print(x);
+  });
+  xs.where((x) => x.isEven);
+}
+''');
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
+    final records = MetricEngine().analyzeResolved(units);
+
+    // The enclosing function's CC never saw the closure's branches —
+    // now they surface in the closure's own record instead of nowhere.
+    final wire = records.firstWhere((r) => r.scope.name == 'wire');
+    expect(wire.scope.kind, ScopeKind.function);
+    expect(wire.values['cyclomatic-complexity'], 1);
+
+    final first = records.firstWhere((r) => r.scope.name == 'wire.closure#1');
+    expect(first.scope.kind, ScopeKind.closure);
+    // 1 (base) + if + `&&` inside the first closure's body.
+    expect(first.values['cyclomatic-complexity'], 3);
+
+    final second = records.firstWhere((r) => r.scope.name == 'wire.closure#2');
+    expect(second.scope.kind, ScopeKind.closure);
+    expect(second.values['cyclomatic-complexity'], 1);
+  });
+
+  test('closure records respect test-aware skips on test files', () async {
+    final dir = await Directory.systemTemp.createTemp('closure_test_aware_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/test').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/test/sample_test.dart').writeAsString('''
+void main() {
+  run('case', () {
+    if (1 > 0) print('x');
+  });
+}
+
+void run(String name, void Function() body) => body();
+''');
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
+    final records = MetricEngine().analyzeResolved(units);
+
+    // Same skip set as named functions on test files: size lenses step
+    // aside, complexity stays measured.
+    final closure = records.firstWhere((r) => r.scope.name == 'main.closure#1');
+    expect(closure.scope.kind, ScopeKind.closure);
+    expect(closure.values.keys, isNot(contains('source-lines-of-code')));
+    expect(closure.values['cyclomatic-complexity'], 2);
+  });
+
   test('test mode relaxes size lenses on test/-resident files', () async {
     final dir = await Directory.systemTemp.createTemp('test_aware_engine_');
     addTearDown(() => dir.delete(recursive: true));
