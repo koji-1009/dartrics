@@ -92,4 +92,54 @@ void outer(List<int> xs) {
 ''', name: 'outer');
     expect(cc.compute(input), 1, reason: 'closure branches are measured apart');
   });
+
+  test('switch-expression arms count like switch-statement cases', () {
+    final input = inputFor('''
+String f(int x) {
+  return switch (x) {
+    0 => 'zero',
+    1 => 'one',
+    _ => 'many',
+  };
+}
+''', name: 'f');
+    // base 1 + 2 pattern arms; the bare `_` arm is the `default:`
+    // equivalent and is not counted.
+    expect(cc.compute(input), 3);
+  });
+
+  test('guarded and typed wildcard arms are real decisions', () {
+    final input = inputFor('''
+String f(Object x) {
+  return switch (x) {
+    _ when x == 1 => 'one',
+    int _ => 'int',
+    _ => 'other',
+  };
+}
+''', name: 'f');
+    // base 1 + guarded wildcard + typed wildcard; only the bare final
+    // `_` arm is skipped.
+    expect(cc.compute(input), 3);
+  });
+
+  test('null-coalescing chain counts one decision per `??`', () {
+    final input = inputFor('''
+int f(int? a, int? b, int c) {
+  return a ?? b ?? c;
+}
+''', name: 'f');
+    // `a ?? b ?? c` is two nested "is it null?" branches.
+    expect(cc.compute(input), 3);
+  });
+
+  test('`??=` counts as one decision point', () {
+    final input = inputFor('''
+int f(int? a) {
+  a ??= 0;
+  return a;
+}
+''', name: 'f');
+    expect(cc.compute(input), 2);
+  });
 }
