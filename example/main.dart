@@ -17,14 +17,11 @@ int classify(int x, int y) {
 }
 ''';
 
-  final unit = parseString(content: source).unit;
+  final parsed = parseString(content: source);
+  final unit = parsed.unit;
   final declaration = unit.declarations.whereType<FunctionDeclaration>().single;
   final input = FunctionMetricInput(
-    context: (
-      unit: unit,
-      source: source,
-      lineInfo: parseString(content: source).lineInfo,
-    ),
+    context: (unit: unit, source: source, lineInfo: parsed.lineInfo),
     declaration: declaration,
   );
 
