@@ -130,12 +130,25 @@ class AnalyzeCommand extends Command<int> {
   }
 
   Future<AnalysisReport> _analyze(_AnalyzeRequest req) async {
+    // Reachability needs the references *inside* generated files
+    // (e.g. `xxxProvider` in a `.g.dart` calling back into the source
+    // function it wraps), so collection runs with includeGenerated:
+    // true — same as `dartrics unused`. Everything except the unused
+    // pass (metric records, dismissals, signals, snapshot hashes, the
+    // analyzed-file count) strips generated units back out below so a
+    // `dart run build_runner build` doesn't churn metrics or the
+    // snapshot.
     final runner = AnalyzerRunner(
       roots: req.paths,
       exclude: req.config.exclude,
       concurrency: req.analysis.concurrency,
+      includeGenerated: true,
     );
-    final units = await runner.resolveAll();
+    final allUnits = await runner.resolveAll();
+    final units = [
+      for (final u in allUnits)
+        if (!AnalyzerRunner.isGeneratedDartPath(u.path)) u,
+    ];
     final dismissals = _buildDismissalIndex(
       strictDismiss: req.reading.strictDismiss,
       config: req.config.dismissals,
@@ -152,14 +165,12 @@ class AnalyzeCommand extends Command<int> {
       onDismissalRejection: _logDismissalRejection,
     );
     final records = engine.analyzeResolved(units);
-    final resolvedSources = [
+    final unused = await const UnusedDetector().detectResolved([
+      for (final u in allUnits) (path: u.path, unit: u.unit),
+    ], req.unusedConfig);
+    final signals = computeCallGraphSignals([
       for (final u in units) (path: u.path, unit: u.unit),
-    ];
-    final unused = await const UnusedDetector().detectResolved(
-      resolvedSources,
-      req.unusedConfig,
-    );
-    final signals = computeCallGraphSignals(resolvedSources);
+    ]);
 
     final hashes = hashFiles([
       for (final u in units) (path: u.path, content: u.unit.content),
