@@ -12,6 +12,7 @@ import '../models/analysis_report.dart';
 import '../models/regression_report.dart';
 import '../models/source_location.dart';
 import '../regression/git_worktree.dart';
+import '../regression/package_config_seed.dart';
 import '../regression/regression_diff.dart';
 import '../reporters/regression_reporter.dart';
 import 'io_sinks.dart';
@@ -83,11 +84,14 @@ class RegressionCommand extends Command<int> {
 
     final config = await loadConfig(configPath);
 
+    await GitWorktree.pruneStale(from: root);
+
     GitWorktree? beforeWt;
     GitWorktree? afterWt;
     try {
       beforeWt = await _addWorktree(beforeRef, root);
-      final beforePath = await _analyzeRootInWorktree(beforeWt, root);
+      final repoTop = await _repoTopOf(root);
+      final beforePath = _mountAnalysisRoot(beforeWt, root, repoTop);
       final beforeRecords = _normalizePaths(
         await _runAnalyze(beforePath, config),
         root: beforePath,
@@ -98,7 +102,7 @@ class RegressionCommand extends Command<int> {
         afterPath = root;
       } else {
         afterWt = await _addWorktree(afterRef, root);
-        afterPath = await _analyzeRootInWorktree(afterWt, root);
+        afterPath = _mountAnalysisRoot(afterWt, root, repoTop);
       }
       final afterRecords = _normalizePaths(
         await _runAnalyze(afterPath, config),
@@ -128,25 +132,42 @@ class RegressionCommand extends Command<int> {
     return GitWorktree.add(ref: ref, from: root);
   }
 
-  /// Maps the analysis [root] onto the matching directory inside the
-  /// freshly-materialised worktree [wt]. `git worktree add` always checks
-  /// out the whole repository, so when [root] is a sub-directory (e.g. a
-  /// package in a monorepo) the historical side must be scoped to that
-  /// same sub-directory — otherwise it analyzes the entire repo and
-  /// normalizes paths against the repo root, so no scope key lines up with
-  /// the working-tree side and every entry reports as added + removed.
-  Future<String> _analyzeRootInWorktree(GitWorktree wt, String root) async {
+  /// Resolves the repository top [root] belongs to. Only called after a
+  /// worktree was successfully added from [root], so `git rev-parse` is
+  /// known to succeed.
+  Future<String> _repoTopOf(String root) async {
     final res = await Process.run('git', [
       'rev-parse',
       '--show-toplevel',
     ], workingDirectory: root);
-    final top = p.normalize((res.stdout as String).trim());
+    return p.normalize((res.stdout as String).trim());
+  }
+
+  /// Maps the analysis [root] onto the matching directory inside the
+  /// freshly-materialised worktree [wt] and seeds package resolution
+  /// there. `git worktree add` always checks out the whole repository,
+  /// so when [root] is a sub-directory (e.g. a package in a monorepo)
+  /// the historical side must be scoped to that same sub-directory —
+  /// otherwise it analyzes the entire repo and normalizes paths against
+  /// the repo root, so no scope key lines up with the working-tree side
+  /// and every entry reports as added + removed. The checkout carries
+  /// tracked files only, so the untracked `package_config.json` is
+  /// seeded from [root] to keep `package:` resolution — and with it the
+  /// resolution-dependent metrics — identical on both sides.
+  String _mountAnalysisRoot(GitWorktree wt, String root, String repoTop) {
     final abs = p.normalize(p.absolute(root));
-    // `root` is the repository top → analyze the whole worktree as before.
-    if (!p.isWithin(top, abs)) return wt.path;
-    // `root` is a sub-directory → analyze the matching sub-directory of
-    // the worktree so both sides see the same files and path keys.
-    return p.normalize(p.join(wt.path, p.relative(abs, from: top)));
+    // `root` is the repository top → analyze the whole worktree; a
+    // sub-directory root → analyze the matching sub-directory of the
+    // worktree so both sides see the same files and path keys.
+    final path = p.isWithin(repoTop, abs)
+        ? p.normalize(p.join(wt.path, p.relative(abs, from: repoTop)))
+        : wt.path;
+    seedWorktreePackageConfig(
+      sourceRoot: root,
+      targetRoot: path,
+      repoTop: repoTop,
+    );
+    return path;
   }
 
   Future<List<MetricRecord>> _runAnalyze(String root, Config config) async {
@@ -162,7 +183,11 @@ class RegressionCommand extends Command<int> {
 
   /// Rewrites every record's file path to be relative to [root]. This
   /// is what makes scope identity stable between two worktrees that
-  /// live at different absolute paths.
+  /// live at different absolute paths. The scope *name* needs the same
+  /// treatment: library records carry the file's absolute path as their
+  /// name, and the name is part of the diff's scope key — left
+  /// absolute, no library scope would ever match across the two sides
+  /// and every per-file metric would report as added + removed.
   List<MetricRecord> _normalizePaths(
     List<MetricRecord> records, {
     required String root,
@@ -174,7 +199,9 @@ class RegressionCommand extends Command<int> {
           file: _relativize(r.file, canonical),
           scope: ScopeRef(
             kind: r.scope.kind,
-            name: r.scope.name,
+            name: p.isAbsolute(r.scope.name)
+                ? _relativize(r.scope.name, canonical)
+                : r.scope.name,
             location: SourceLocation(
               path: _relativize(r.scope.location.path, canonical),
               line: r.scope.location.line,
