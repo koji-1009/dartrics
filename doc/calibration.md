@@ -36,9 +36,13 @@ Default thresholds and per-lens descriptions live in `README.md` ("Provided metr
 
 These deviate from the source's literal definition; the threshold numbers are unchanged.
 
-### `cyclomatic-complexity` — sealed-aware
+### `cyclomatic-complexity` — exhaustiveness-aware
 
-McCabe 1976 counts every `switch` case arm in `d`. dartrics excludes case arms when the subject is a `sealed` class, because Dart 3.0+ enforces exhaustiveness at compile time — the "did I forget a case" reading load that case arms otherwise impose isn't there. Code: `lib/src/metrics/function/cyclomatic_complexity.dart`.
+McCabe 1976 counts every `switch` case arm in `d`. dartrics excludes case arms when the subject's static type is a `sealed` class or an `enum`, because Dart 3.0+ enforces exhaustiveness at compile time on both — the "did I forget a case" reading load that case arms otherwise impose isn't there. The discount applies to switch statements and switch expressions alike. On switch expressions, a bare `_ =>` wildcard arm (untyped, unguarded) is treated as the `default:` equivalent and is never counted; typed (`int _ =>`) or guarded (`_ when c =>`) wildcard arms still count. Code: `lib/src/metrics/function/cyclomatic_complexity.dart`.
+
+### `cyclomatic-complexity` — null-coalescing operators counted
+
+McCabe 1976 predates null-aware operators, so its construct list doesn't mention them. dartrics counts `??` and `??=` as one decision point each: `a ?? b` branches exactly like the counted ternary `a != null ? a : b`, and `a ??= b` is `a = a ?? b`. Leaving them at zero would let the same control flow score differently depending on spelling. Code: `lib/src/metrics/function/cyclomatic_complexity.dart`.
 
 ### `number-of-parameters` — positional only
 

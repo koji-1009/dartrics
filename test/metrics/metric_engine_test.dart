@@ -305,6 +305,13 @@ String describeExpr(State s) => switch (s) {
   Loading() => 'loading',
   Failure() => 'failure',
 };
+
+// Switch expression over a non-exhaustive subject: arms count.
+String describeOpenExpr(int x) => switch (x) {
+  0 => 'zero',
+  1 => 'one',
+  _ => 'many',
+};
 ''');
     final runner = AnalyzerRunner(roots: [dir.path]);
     final units = await runner.resolveAll();
@@ -326,6 +333,58 @@ String describeExpr(State s) => switch (s) {
 
     // describeExpr() uses the switch-expression form over the sealed
     // type. The visitor must apply the discount on this form too.
+    final exprCc = records
+        .firstWhere((r) => r.scope.name == 'describeExpr')
+        .values['cyclomatic-complexity'];
+    expect(exprCc, 1);
+
+    // describeOpenExpr() switches over `int` (not exhaustible): the two
+    // value arms count, the bare `_` arm is the `default:` equivalent.
+    // Expected: 1 + 2 = 3.
+    final openExprCc = records
+        .firstWhere((r) => r.scope.name == 'describeOpenExpr')
+        .values['cyclomatic-complexity'];
+    expect(openExprCc, 3);
+  });
+
+  test('CC discounts case arms when the switch subject is an enum', () async {
+    // Enum subjects are compile-time exhaustive exactly like sealed
+    // ones, so the exhaustiveness discount applies to them too — on
+    // both switch forms. Resolution is required for the subject's
+    // staticType, so exercise it through the full engine.
+    final dir = await Directory.systemTemp.createTemp('enum_cc_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/lib').create(recursive: true);
+    await File(
+      '${dir.path}/pubspec.yaml',
+    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/lib/color.dart').writeAsString('''
+enum Color { red, green, blue }
+
+String describe(Color c) {
+  switch (c) {
+    case Color.red: return 'red';
+    case Color.green: return 'green';
+    case Color.blue: return 'blue';
+  }
+}
+
+String describeExpr(Color c) => switch (c) {
+  Color.red => 'red',
+  Color.green => 'green',
+  Color.blue => 'blue',
+};
+''');
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
+    final records = MetricEngine().analyzeResolved(units);
+
+    // Both forms dispatch over the enum — no arm contributes to CC.
+    final stmtCc = records
+        .firstWhere((r) => r.scope.name == 'describe')
+        .values['cyclomatic-complexity'];
+    expect(stmtCc, 1);
+
     final exprCc = records
         .firstWhere((r) => r.scope.name == 'describeExpr')
         .values['cyclomatic-complexity'];

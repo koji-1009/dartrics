@@ -113,6 +113,9 @@ class _CognitiveVisitor extends RecursiveAstVisitor<void> {
       _structuralWithNesting();
     }
     node.expression.accept(this);
+    // if-case form: the case clause carries scoreable content — B3
+    // operator sequences and ternaries inside the `when` guard.
+    node.caseClause?.accept(this);
     _enterNesting();
     node.thenStatement.accept(this);
     _exitNesting();

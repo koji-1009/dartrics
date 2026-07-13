@@ -86,6 +86,33 @@ int loops() {
     expect(cog.compute(input), 7);
   });
 
+  test('if-case `when` guard contents are scored', () {
+    final input = inputFor('''
+int f(Object x, bool a, bool b) {
+  if (x case int i when a && b) {
+    return i;
+  }
+  return 0;
+}
+''', name: 'f');
+    // if: 1 (1+0); `&&` sequence inside the guard: 1 (B3).
+    expect(cog.compute(input), 2);
+  });
+
+  test('ternary inside an if-case guard nests under the if', () {
+    final input = inputFor('''
+int f(Object x, bool a) {
+  if (x case int i when (a ? i : -i) > 0) {
+    return i;
+  }
+  return 0;
+}
+''', name: 'f');
+    // if: 1 (1+0); guard ternary: 1 + nesting 0 (the guard is part of
+    // the if header, before the body's nesting increment) = 1.
+    expect(cog.compute(input), 2);
+  });
+
   group('test-DSL discount (isTestFile)', () {
     // Without the discount, every branch inside every test body accrues
     // to main() at +2 nesting through the group()/test() closure stack.
