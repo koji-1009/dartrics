@@ -82,6 +82,37 @@ void main() {
       expect(diagnose(config), isEmpty);
     });
 
+    test('misplaced analyzer-block key gets a targeted hint', () {
+      const config = Config(unknownKeys: ['dartrics.language']);
+      final issues = diagnose(config);
+      expect(issues, hasLength(1));
+      expect(issues.single.message, contains('"language"'));
+      expect(issues.single.message, contains('dartrics ignores it'));
+      expect(issues.single.hint, contains('`analyzer:`'));
+    });
+
+    test('unknown key close to a real key gets a did-you-mean hint', () {
+      const config = Config(
+        unknownKeys: [
+          'dartrics.metric',
+          'dartrics.unused.entrypoints',
+          'dartrics.metrics.cyclomatic-complexity.warnings',
+        ],
+      );
+      final issues = diagnose(config);
+      expect(issues, hasLength(3));
+      expect(issues[0].hint, contains('metrics'));
+      expect(issues[1].hint, contains('entry-points'));
+      expect(issues[2].hint, contains('warning'));
+    });
+
+    test('unknown key with no close match has no hint', () {
+      const config = Config(unknownKeys: ['dartrics.zzzzzzzz']);
+      final issues = diagnose(config);
+      expect(issues, hasLength(1));
+      expect(issues.single.hint, isNull);
+    });
+
     test('multiple issues accumulate', () {
       const config = Config(
         metricThresholds: {
@@ -125,6 +156,17 @@ dartrics:
   metrics:
     cylomatic-complexity:
       warning: 10
+''');
+      final code = await runQuietly(['doctor', '--config', f.path]);
+      expect(code, 1);
+    });
+
+    test('exits 1 on a misplaced analyzer language block', () async {
+      final f = File('${dir.path}/analysis_options.yaml');
+      await f.writeAsString('''
+dartrics:
+  language:
+    strict-casts: true
 ''');
       final code = await runQuietly(['doctor', '--config', f.path]);
       expect(code, 1);

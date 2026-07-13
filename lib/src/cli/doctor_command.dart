@@ -7,8 +7,8 @@ import '../metrics/metric_catalogue.dart';
 import 'io_sinks.dart';
 
 /// `dartrics doctor` — validates the `dartrics:` block in
-/// `analysis_options.yaml` for typos, ordering issues, and references
-/// to ids dartrics doesn't ship.
+/// `analysis_options.yaml` for typos, unknown keys, ordering issues,
+/// and references to ids dartrics doesn't ship.
 ///
 /// Surfaces two outcomes:
 /// - **error** (exit 78): `ConfigException` from the loader — malformed
@@ -81,6 +81,10 @@ List<DoctorIssue> diagnose(Config config) {
   final knownIds = knownMetrics.map((r) => r.id).toSet();
   final polarityById = {for (final r in knownMetrics) r.id: r.polarity};
 
+  for (final path in config.unknownKeys) {
+    issues.add(_unknownKeyIssue(path));
+  }
+
   for (final entry in config.metricThresholds.entries) {
     final id = entry.key;
     final t = entry.value;
@@ -99,6 +103,40 @@ List<DoctorIssue> diagnose(Config config) {
   }
 
   return issues;
+}
+
+/// Top-level keys of the `analyzer:` block that users misplace under
+/// `dartrics:`. A did-you-mean lookup would stay silent on these (they
+/// are not near-misses of any dartrics key), so they get a targeted
+/// hint — a misplaced `language:` silently disables strict modes, which
+/// is exactly the failure doctor exists to catch.
+const Set<String> _analyzerBlockKeys = {
+  'language',
+  'errors',
+  'plugins',
+  'strong-mode',
+};
+
+DoctorIssue _unknownKeyIssue(String path) {
+  final lastDot = path.lastIndexOf('.');
+  final parent = path.substring(0, lastDot);
+  final key = path.substring(lastDot + 1);
+  if (parent == 'dartrics' && _analyzerBlockKeys.contains(key)) {
+    return DoctorIssue(
+      message: 'unknown key "$key" under `$parent:` — dartrics ignores it',
+      hint:
+          '"$key" is an `analyzer:` block setting; '
+          'move it under the top-level `analyzer:` key.',
+    );
+  }
+  final known = parent.startsWith('dartrics.metrics.')
+      ? knownMetricOptionKeys
+      : knownConfigKeys[parent]!;
+  final suggestion = _didYouMean(key, known);
+  return DoctorIssue(
+    message: 'unknown key "$key" under `$parent:` — dartrics ignores it',
+    hint: suggestion == null ? null : 'did you mean "$suggestion"?',
+  );
 }
 
 /// For polarity=down (lower-is-better) metrics, error must be ≥ warning.

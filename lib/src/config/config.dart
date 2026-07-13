@@ -9,6 +9,7 @@ class Config {
     this.test = true,
     this.snapshot = const SnapshotConfig(),
     this.dismissals = const DismissalConfig(),
+    this.unknownKeys = const [],
   });
 
   /// Map of `metric-id` → severity thresholds.
@@ -45,6 +46,12 @@ class Config {
   /// default — both sources stay off until the user adds a
   /// `dismissals:` block to `analysis_options.yaml`.
   final DismissalConfig dismissals;
+
+  /// Dotted paths of keys found under `dartrics:` that the loader does
+  /// not recognise (e.g. `dartrics.language`). The loader never acts on
+  /// them; `dartrics doctor` surfaces them so a misplaced or misspelled
+  /// key cannot silently do nothing.
+  final List<String> unknownKeys;
 }
 
 /// Default path the YAML sidecar is read from when [DismissalConfig.yamlPath]
