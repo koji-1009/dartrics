@@ -185,6 +185,60 @@ void generatedEntry() {
     },
   );
 
+  test('analyze: a `.g.dart` reference keeps the source declaration alive '
+      'while metrics/signals/analyzedFiles stay handwritten-only', () async {
+    // `dartrics analyze` must see the same reachability edges as
+    // `dartrics unused`: a `lib/src/` helper whose only caller lives
+    // in a generated file is alive, not a false positive. Everything
+    // else in the report keeps excluding generated files.
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/gen.g.dart';
+void main() {
+  generatedEntry();
+}
+''');
+    await File('${dir.path}/lib/src/helper.dart').writeAsString('''
+void wantedByGenerated() {}
+''');
+    await File('${dir.path}/lib/src/gen.g.dart').writeAsString('''
+import 'helper.dart';
+void generatedEntry() {
+  wantedByGenerated();
+}
+''');
+    final out = File('${dir.path}/a-gen.json');
+    final code = await runQuietly([
+      'analyze',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      out.path,
+      '--snapshot',
+      'none',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(code, 0);
+    final body = jsonDecode(out.readAsStringSync()) as Map<String, Object?>;
+    final names = (body['unused']! as List<Object?>)
+        .map((e) => (e! as Map<String, Object?>)['name'])
+        .toSet();
+    expect(names, isNot(contains('wantedByGenerated')));
+    final metricFiles = ((body['metrics'] as List<Object?>?) ?? const []).map(
+      (e) => (e! as Map<String, Object?>)['file']! as String,
+    );
+    expect(metricFiles.where((f) => f.endsWith('.g.dart')), isEmpty);
+    final signalFiles = ((body['signals'] as List<Object?>?) ?? const []).map(
+      (e) => (e! as Map<String, Object?>)['file']! as String,
+    );
+    expect(signalFiles, isNotEmpty);
+    expect(signalFiles.where((f) => f.endsWith('.g.dart')), isEmpty);
+    final analyzed = ((body['analyzedFiles'] as List<Object?>?) ?? const [])
+        .map((e) => (e! as Map<String, Object?>)['path']! as String);
+    expect(analyzed.where((f) => f.endsWith('.g.dart')), isEmpty);
+  });
+
   test('unused: snapshot/analyzedFiles excludes `.g.dart`', () async {
     // Generated files participate in the reachability graph but must
     // stay out of the snapshot — a `dart run build_runner build` re-emit

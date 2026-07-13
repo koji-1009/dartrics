@@ -212,6 +212,41 @@ class Counter {
     },
   );
 
+  test(
+    'compound += is reachable through an AssignmentExpression call site',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+
+void main() {
+  var acc = Vec(1);
+  acc += Vec(2);
+  print(acc);
+}
+''');
+      await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Vec {
+  final int v;
+  const Vec(this.v);
+  Vec operator +(Vec other) => Vec(v + other.v);
+}
+''');
+      final unused = await detectIn(const UnusedConfig(excludeExported: false));
+      final methodNames = unused
+          .where((u) => u.kind == UnusedKind.method)
+          .map((u) => u.name)
+          .toList();
+      expect(methodNames, isNot(contains('+')));
+      // The operator's body is `v`'s only reader — losing the operator
+      // edge would cascade into a false positive on the field too.
+      final fieldNames = unused
+          .where((u) => u.kind == UnusedKind.field)
+          .map((u) => u.name)
+          .toList();
+      expect(fieldNames, isNot(contains('v')));
+    },
+  );
+
   test('unused method is reported at member granularity even when its '
       'class is reachable', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''
@@ -360,6 +395,45 @@ class Hidden {}
     expect(names, isNot(contains('publicMethod')));
     // `Hidden` is not in the show list, so it remains unused.
     expect(names, contains('Hidden'));
+  });
+
+  test('export show: members inherited from project-internal supertypes '
+      'are roots under excludeExported', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+export 'src/child.dart' show Child;
+''');
+    await File('${dir.path}/lib/src/base.dart').writeAsString('''
+class Base {
+  void helper() {}
+  int count = 0;
+  String get label => 'b';
+  set label(String v) {}
+  static int staticTotal = 0;
+  static void staticHelper() {}
+  void _internal() {}
+}
+mixin Extra {
+  void extraHelper() {}
+}
+''');
+    await File('${dir.path}/lib/src/child.dart').writeAsString('''
+import 'base.dart';
+
+class Child extends Base with Extra {}
+''');
+    final unused = await detectIn(const UnusedConfig());
+    final names = unused.map((u) => u.name).toList();
+    // Everything `Child` inherits — superclass and mixin members,
+    // fields, getter/setter pairs — is callable by external consumers
+    // of the exported subtype.
+    expect(names, isNot(contains('helper')));
+    expect(names, isNot(contains('count')));
+    expect(names, isNot(contains('label')));
+    expect(names, isNot(contains('extraHelper')));
+    // Static members are not inherited-accessible via `Child`, so they
+    // keep needing a caller of their own.
+    expect(names, contains('staticHelper'));
+    expect(names, contains('staticTotal'));
   });
 
   test(

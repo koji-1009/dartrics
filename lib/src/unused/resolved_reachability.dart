@@ -582,7 +582,47 @@ void _addExportedElement(
       _addIfTracked(s, byId, out);
     }
   }
+  if (canonical is InterfaceElement) {
+    // `methods` / `fields` / `getters` / `setters` above cover only the
+    // *declared* members. Consumers can also call members the exported
+    // type inherits from project-internal supertypes (superclasses,
+    // mixins, interfaces), so each supertype's public instance surface
+    // is rooted too. Off-project supertypes drop out in `_addIfTracked`
+    // because their members aren't tracked declarations.
+    for (final supertype in canonical.allSupertypes) {
+      _addInheritedInstanceMembers(supertype.element, byId, out);
+    }
+  }
 }
+
+/// Roots the public instance members [type] contributes to an exported
+/// subtype's callable surface. Static members are not inherited —
+/// `Child.staticOfBase()` doesn't resolve — and private members can't
+/// be called by external consumers, so both stay out.
+void _addInheritedInstanceMembers(
+  InterfaceElement type,
+  Map<int, _ResolvedDeclaration> byId,
+  Set<int> out,
+) {
+  for (final m in _memberSurface(type)) {
+    if (m.isStatic || !m.element.isPublic) continue;
+    _addIfTracked(m.element, byId, out);
+  }
+}
+
+/// Flattens [type]'s declared member kinds into `(element, isStatic)`
+/// pairs. `isStatic` lives on [ExecutableElement] and [FieldElement]
+/// rather than [Element], so the pairing lets
+/// [_addInheritedInstanceMembers] apply one instance-only filter
+/// across all four member lists.
+List<({Element element, bool isStatic})> _memberSurface(
+  InterfaceElement type,
+) => [
+  for (final m in type.methods) (element: m, isStatic: m.isStatic),
+  for (final f in type.fields) (element: f, isStatic: f.isStatic),
+  for (final g in type.getters) (element: g, isStatic: g.isStatic),
+  for (final s in type.setters) (element: s, isStatic: s.isStatic),
+];
 
 void _addIfTracked(
   Element element,
@@ -1195,9 +1235,14 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
   void visitAssignmentExpression(AssignmentExpression node) {
     // For `target.field = value`, `propertyName.element` is left null
     // by the resolver — the setter (and, in compound assignments, the
-    // getter) live on the assignment node itself.
+    // getter) live on the assignment node itself. `node.element` is
+    // the user-defined binary operator a compound assignment dispatches
+    // (`+` for `a += b`; null for plain `=` and built-in numerics) —
+    // without it an operator called only through compound assignment
+    // has no incoming edge.
     _record(node.writeElement);
     _record(node.readElement);
+    _record(node.element);
     super.visitAssignmentExpression(node);
   }
 
