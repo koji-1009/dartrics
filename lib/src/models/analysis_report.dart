@@ -14,8 +14,10 @@ enum Severity {
   final int rank;
 }
 
-/// What kind of program element a metric describes.
-enum ScopeKind { function, method, klass, library }
+/// What kind of program element a metric describes. `closure` marks a
+/// function literal measured apart from its enclosing declaration
+/// (scope name `<enclosing>.closure#N`); added in report schema 1.3.
+enum ScopeKind { function, method, closure, klass, library }
 
 class ScopeRef {
   const ScopeRef({

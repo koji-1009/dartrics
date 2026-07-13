@@ -35,7 +35,7 @@ void main() {
 
       final body =
           jsonDecode(outputFile.readAsStringSync()) as Map<String, Object?>;
-      expect(body['version'], '1.2');
+      expect(body['version'], '1.3');
       expect(body['metrics'], isEmpty);
       expect(body['unused'], isEmpty);
     });

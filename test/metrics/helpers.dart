@@ -26,6 +26,34 @@ FunctionMetricInput inputFor(
   );
 }
 
+/// Parses [source] and returns a [FunctionMetricInput] for the [index]-th
+/// (0-based, pre-order) closure — function literals that are not the body
+/// of a named declaration, mirroring the engine's collection rule.
+FunctionMetricInput closureInputFor(
+  String source, {
+  int index = 0,
+  bool isTestFile = false,
+}) {
+  final result = parseString(content: source);
+  final visitor = _ClosureFinder();
+  result.unit.accept(visitor);
+  return FunctionMetricInput(
+    context: (unit: result.unit, source: source, lineInfo: result.lineInfo),
+    declaration: visitor.closures[index],
+    isTestFile: isTestFile,
+  );
+}
+
+class _ClosureFinder extends RecursiveAstVisitor<void> {
+  final closures = <FunctionExpression>[];
+
+  @override
+  void visitFunctionExpression(FunctionExpression node) {
+    if (node.parent is! FunctionDeclaration) closures.add(node);
+    super.visitFunctionExpression(node);
+  }
+}
+
 class _Finder extends RecursiveAstVisitor<void> {
   _Finder(this.name);
   final String? name;

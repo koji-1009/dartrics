@@ -293,7 +293,7 @@ class MetricEngine {
   }
 
   ScopeRef _scopeOf(
-    Declaration decl,
+    AstNode decl,
     FunctionMetricInput input,
     String path, {
     required int endLine,
@@ -307,6 +307,8 @@ class MetricEngine {
     final ScopeKind kind;
     if (decl is FunctionDeclaration) {
       kind = .function;
+    } else if (decl is FunctionExpression) {
+      kind = .closure;
     } else {
       kind = .method;
     }
@@ -535,7 +537,7 @@ class _ResolvedFile {
 }
 
 class _FunctionCollector extends RecursiveAstVisitor<void> {
-  final declarations = <Declaration>[];
+  final declarations = <AstNode>[];
 
   @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
@@ -557,6 +559,19 @@ class _FunctionCollector extends RecursiveAstVisitor<void> {
       declarations.add(node);
     }
     super.visitConstructorDeclaration(node);
+  }
+
+  @override
+  void visitFunctionExpression(FunctionExpression node) {
+    // A literal that is the body of a named declaration is already
+    // covered by the wrapping FunctionDeclaration record; every other
+    // literal is a closure and gets its own record, consistent with how
+    // local named functions are measured apart from their enclosing
+    // function.
+    if (node.parent is! FunctionDeclaration) {
+      declarations.add(node);
+    }
+    super.visitFunctionExpression(node);
   }
 }
 

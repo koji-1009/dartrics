@@ -39,8 +39,9 @@ abstract final class FlutterAware {
   /// Returns the set of metric ids that should be skipped for [decl] in
   /// Flutter-aware mode. Empty for non-widget code, for widget
   /// `build()` (which is measured normally), and for declarations
-  /// inside a widget that aren't the constructor.
-  static Set<String> skipsFor(Declaration decl) {
+  /// inside a widget that aren't the constructor. Accepts any
+  /// function-shaped node the engine collects (closures included).
+  static Set<String> skipsFor(AstNode decl) {
     if (decl is ConstructorDeclaration) {
       if (_enclosingClassIsWidget(decl)) return constructorSkips;
     }

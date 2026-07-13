@@ -13,6 +13,8 @@
 * **The sealed-switch CC discount is now exhaustiveness-wide.** Enum-typed subjects get the same case-arm discount as sealed-class subjects, on both switch forms — the compiler enforces exhaustiveness identically for both. See `doc/calibration.md` ("exhaustiveness-aware").
 * **Cyclomatic complexity counts `??` and `??=` as decision points.** Each is one branch — `a ?? b` is `a != null ? a : b` in disguise; the equivalent spellings previously scored differently. See `doc/calibration.md` ("null-coalescing operators counted").
 * **Cognitive complexity scores if-case guards.** `if (x case P when a && b)` skipped the case clause entirely, so B3 operator sequences and ternaries inside the `when` guard went unscored.
+* **Closures are measured as separate function records.** Function literals that are not the body of a named declaration — callback arguments, variable and field initializers — now produce their own metric records; previously their control flow was invisible to cyclomatic complexity, which skips closure bodies by design (0.8.0). Scope kind is `closure`; scope name is `<enclosing scope>.closure#N` with `N` the 1-based source-order ordinal within the enclosing declaration. The ordinal is positional: inserting an earlier closure shifts later siblings' names, so violation ids and dismissals keyed on a closure scope need re-anchoring after such an edit, exactly as after a rename. Test-aware size-lens skips apply to closure records the same way they apply to named functions.
+* Report schema `1.2` → `1.3`: `ScopeRef.type` gains `closure`. Additive; pre-1.3 reports re-emit through `dartrics report` unchanged.
 
 ## 1.2.0
 
