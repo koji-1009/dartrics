@@ -2,7 +2,7 @@
 
 dartrics' lens battery is anchored to published sources. This page is the audit trail for that anchoring: what's selected and why, and where the implementation departs from the source's literal definition.
 
-Threshold *numbers* (e.g. CC warn 10, CBO warn 14) follow the cited sources unchanged. What can differ is *what is counted* — those deviations are listed below with their justification.
+Threshold *numbers* (e.g. CC warn 10) follow the cited sources unchanged. What can differ is *what is counted* — those deviations are listed below with their justification.
 
 ## Selection principles
 
@@ -25,8 +25,8 @@ Threshold *numbers* (e.g. CC warn 10, CBO warn 14) follow the cited sources unch
 | `number-of-methods` | Lorenz & Kidd 1994; Chidamber & Kemerer 1994 |
 | `weighted-methods-per-class` | Chidamber & Kemerer 1994 |
 | `lcom4` | Hitz & Montazeri 1995 |
-| `cbo` | Chidamber & Kemerer 1994 |
-| `rfc` | Chidamber & Kemerer 1994 |
+| `coupling-between-objects` | Chidamber & Kemerer 1994 |
+| `response-for-class` | Chidamber & Kemerer 1994 |
 | `class-length` | Beck 1996; Fowler 1999; Lippert & Roock 2006 |
 | `efferent-coupling` / `afferent-coupling` / `instability` | Martin 1994 |
 

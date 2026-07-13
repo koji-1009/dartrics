@@ -156,7 +156,7 @@ Heavier metrics (LCOM4, CBO, RFC, library coupling) and the public-API unused de
 | Calculator interface | `FunctionMetric`, `FunctionMetricInput`, `MetricPolarity` |
 | Version string | `dartricsVersion` |
 
-Anything not in this table is CLI-only and unsupported as a Dart import; reach for `dartrics analyze --reporter json` instead. `example/main.dart` shows a 30-line standalone embedding against `CyclomaticComplexity`.
+Anything not in this table is CLI-only and unsupported as a Dart import; reach for `dartrics analyze --reporter json` instead. `example/main.dart` shows a minimal standalone embedding against `CyclomaticComplexity`.
 
 ## Limitations
 
