@@ -55,7 +55,7 @@ class LintOptions {
   static LintOptions load(RuleContext context) {
     final root = context.package?.root;
     if (root == null) return defaults;
-    final file = root.getChildAssumingFile('analysis_options.yaml');
+    final file = root.getFile('analysis_options.yaml');
     if (!file.exists) return defaults;
     final String content;
     try {

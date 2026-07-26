@@ -15,6 +15,7 @@
 * **Cognitive complexity scores if-case guards.** `if (x case P when a && b)` skipped the case clause entirely, so B3 operator sequences and ternaries inside the `when` guard went unscored.
 * **Closures are measured as separate function records.** Function literals that are not the body of a named declaration — callback arguments, variable and field initializers — now produce their own metric records; previously their control flow was invisible to cyclomatic complexity, which skips closure bodies by design (0.8.0). Scope kind is `closure`; scope name is `<enclosing scope>.closure#N` with `N` the 1-based source-order ordinal within the enclosing declaration. The ordinal is positional: inserting an earlier closure shifts later siblings' names, so violation ids and dismissals keyed on a closure scope need re-anchoring after such an edit, exactly as after a rename. Test-aware size-lens skips apply to closure records the same way they apply to named functions.
 * Report schema `1.2` → `1.3`: `ScopeRef.type` gains `closure`. Additive; pre-1.3 reports re-emit through `dartrics report` unchanged.
+* Dependency floors raised: Dart SDK `^3.11.0`, `analyzer ^14.1.0`, `analysis_server_plugin ^0.3.20`, `analyzer_testing ^0.3.4` (dev). The declared SDK floor was `^3.10.0` while analyzer's own floor had already moved to `^3.11.0`, so 3.10 never resolved. The deprecated `Folder.getChildAssumingFile` API is replaced with its successor `getFile`; behaviour is unchanged.
 
 ## 1.2.0
 
