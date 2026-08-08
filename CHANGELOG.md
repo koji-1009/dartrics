@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+
+`dartrics --version` and the exported `dartricsVersion` constant identified 1.3.0 as `1.2.0`. No metric, threshold, exit-code, or schema change.
+
+* `dartricsVersion` matches `pubspec.yaml` again. Tooling that gates on the reported version string — not on the resolved pub constraint — read 1.3.0 as 1.2.0 and needs no change beyond upgrading.
+
 ## 1.3.0
 
 Cyclomatic and cognitive complexity cover modern Dart 3 syntax, closures become their own records, and unused-detector / `regression` false positives are fixed. Scores and findings can change on unchanged code; dismissals left without a live finding surface in `staleDismissals:`. Report schema `1.2` → `1.3`, additive; tracks analyzer 14.
