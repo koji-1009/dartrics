@@ -204,9 +204,8 @@ dartrics:
   });
 
   test('warnStale: false suppresses the staleDismissals block', () async {
-    await File(
-      '${dir.path}/lib/foo.dart',
-    ).writeAsString('int simple() => 1;\n');
+    await File('${dir.path}/lib/foo.dart')
+        .writeAsString('int simple() => 1;\n');
     await File('${dir.path}/dartrics-dismissals.yaml').writeAsString('''
 version: 1
 dismissals:
@@ -237,9 +236,8 @@ dartrics:
       // analyzedPaths set. The warning logic must skip it so AI loops
       // don't get false-positive cleanup proposals on files outside
       // the current diff scope.
-      await File(
-        '${dir.path}/lib/foo.dart',
-      ).writeAsString('int simple() => 1;\n');
+      await File('${dir.path}/lib/foo.dart')
+          .writeAsString('int simple() => 1;\n');
       await File('${dir.path}/dartrics-dismissals.yaml').writeAsString('''
 version: 1
 dismissals:
@@ -264,14 +262,12 @@ dartrics:
     },
   );
 
-  test(
-    'stray `// dartrics:dismiss` comment surfaces stderr WARN when commentSource is off',
-    () async {
-      // The dismiss block itself is missing — both sources default to
-      // disabled at the config layer. Without the WARN the comment
-      // would be a silent no-op, exactly the failure mode the dismiss
-      // channel is built to prevent.
-      await File('${dir.path}/lib/foo.dart').writeAsString('''
+  test('stray `// dartrics:dismiss` comment surfaces stderr WARN when commentSource is off', () async {
+    // The dismiss block itself is missing — both sources default to
+    // disabled at the config layer. Without the WARN the comment
+    // would be a silent no-op, exactly the failure mode the dismiss
+    // channel is built to prevent.
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
 // dartrics:dismiss cyclomatic-complexity reason="state machine: splits hide intent"
 int branchy(int x) {
   if (x > 0) return 1;
@@ -280,36 +276,35 @@ int branchy(int x) {
   return 99;
 }
 ''');
-      final config = await writeConfig('''
+    final config = await writeConfig('''
 dartrics:
   metrics:
     cyclomatic-complexity:
       warning: 1
 ''');
-      final out = File('${dir.path}/out.json');
-      final captured = await runCaptured([
-        'analyze',
-        dir.path,
-        '--reporter',
-        'json',
-        '--output',
-        out.path,
-        '--root',
-        dir.path,
-        '--config',
-        config.path,
-      ]);
-      expect(captured.exitCode, 0);
-      expect(captured.stderr, contains('dartrics:dismiss'));
-      expect(captured.stderr, contains('commentSource is disabled'));
-      expect(captured.stderr, contains('sources: [comment]'));
-      // The comment really is being ignored — the violation should
-      // still fire as a regular non-dismissed entry.
-      final body = jsonDecode(out.readAsStringSync()) as Map<String, dynamic>;
-      final v = _findViolation(body, 'branchy', 'cyclomatic-complexity');
-      expect(v.containsKey('dismissed'), isFalse);
-    },
-  );
+    final out = File('${dir.path}/out.json');
+    final captured = await runCaptured([
+      'analyze',
+      dir.path,
+      '--reporter',
+      'json',
+      '--output',
+      out.path,
+      '--root',
+      dir.path,
+      '--config',
+      config.path,
+    ]);
+    expect(captured.exitCode, 0);
+    expect(captured.stderr, contains('dartrics:dismiss'));
+    expect(captured.stderr, contains('commentSource is disabled'));
+    expect(captured.stderr, contains('sources: [comment]'));
+    // The comment really is being ignored — the violation should
+    // still fire as a regular non-dismissed entry.
+    final body = jsonDecode(out.readAsStringSync()) as Map<String, dynamic>;
+    final v = _findViolation(body, 'branchy', 'cyclomatic-complexity');
+    expect(v.containsKey('dismissed'), isFalse);
+  });
 
   test('commentSource enabled: stray-comment WARN does not fire', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''

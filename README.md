@@ -163,7 +163,7 @@ Anything not in this table is CLI-only and unsupported as a Dart import; reach f
 - **The analyzer plugin covers only the three function-level rules** (CC, Cognitive, Number of parameters). LCOM4 / CBO / RFC / library coupling and the unused detector are CLI-only because they need a project-wide index that the analyzer-plugin API can't maintain efficiently per-file.
 - **Built-in metric set is curated.** See [`doc/calibration.md`](doc/calibration.md) for the selection principles.
 - **Per-file Martin granularity.** `efferent-coupling` / `afferent-coupling` / `instability` ship as change-impact rankings rather than Pain/Uselessness verdicts (polarity `neutral`, no default warning). See [`doc/calibration.md`](doc/calibration.md).
-- **Not a fit if** you need per-line metric thresholds in the IDE for the full metric suite, you don't engage with the dismiss channel at all (a pure-fail-fast linter is a better fit), or you're on Dart < 3.11 / analyzer < 14.
+- **Not a fit if** you need per-line metric thresholds in the IDE for the full metric suite, you don't engage with the dismiss channel at all (a pure-fail-fast linter is a better fit), or you're on Dart < 3.13 / analyzer < 14.
 
 ## Development
 

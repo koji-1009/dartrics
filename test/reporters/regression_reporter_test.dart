@@ -137,27 +137,24 @@ void main() {
     },
   );
 
-  test(
-    'md reporter renders Cosmetic signals section without warning when below threshold',
-    () async {
-      final report = build(
-        cosmetic: const CosmeticSignals(
-          tinyHelpersAdded: 2,
-          slocDelta: 8,
-          ccReduction: 1,
-          smallBodyThreshold: 3,
-        ),
-      );
-      final body = await render(report, 'md');
-      expect(body, contains('Cosmetic signals'));
-      expect(body, isNot(contains('Cosmetic-split warning')));
-      expect(body, contains('tinyHelpersAdded: 2'));
-      // Below-threshold sections still print the narrow-heuristic
-      // disclaimer so human readers don't infer a passing grade either.
-      expect(body, contains('Narrow heuristic'));
-      expect(body, contains('cosmeticSplitDetected: false'));
-    },
-  );
+  test('md reporter renders Cosmetic signals section without warning when below threshold', () async {
+    final report = build(
+      cosmetic: const CosmeticSignals(
+        tinyHelpersAdded: 2,
+        slocDelta: 8,
+        ccReduction: 1,
+        smallBodyThreshold: 3,
+      ),
+    );
+    final body = await render(report, 'md');
+    expect(body, contains('Cosmetic signals'));
+    expect(body, isNot(contains('Cosmetic-split warning')));
+    expect(body, contains('tinyHelpersAdded: 2'));
+    // Below-threshold sections still print the narrow-heuristic
+    // disclaimer so human readers don't infer a passing grade either.
+    expect(body, contains('Narrow heuristic'));
+    expect(body, contains('cosmeticSplitDetected: false'));
+  });
 
   test(
     'console reporter prefixes "cosmetic signals" when below threshold',

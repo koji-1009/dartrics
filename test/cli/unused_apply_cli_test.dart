@@ -11,9 +11,8 @@ void main() {
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('unused_apply_');
       await Directory('${dir.path}/lib/src').create(recursive: true);
-      await File(
-        '${dir.path}/pubspec.yaml',
-      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/pubspec.yaml')
+          .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
       // The detector treats anything in `lib/` outside `lib/src/` as
       // an exported reachability root, so fixtures live under
       // `lib/src/` to land in the unused report.
@@ -56,9 +55,8 @@ void deleteMe() {
           '--force',
         ]);
         expect(code, 0);
-        final after = await File(
-          '${dir.path}/lib/src/sample.dart',
-        ).readAsString();
+        final after = await File('${dir.path}/lib/src/sample.dart')
+            .readAsString();
         expect(after.contains('void deleteMe()'), isFalse);
         expect(after.contains('void keepMe()'), isTrue);
       },
@@ -108,9 +106,8 @@ void deleteMe() {}
       ]);
       // 64 = ExitCode.usage (refusal).
       expect(code, 64);
-      final after = await File(
-        '${dir.path}/lib/src/sample.dart',
-      ).readAsString();
+      final after = await File('${dir.path}/lib/src/sample.dart')
+          .readAsString();
       expect(after.contains('void deleteMe()'), isTrue, reason: 'untouched');
     });
 
@@ -142,9 +139,8 @@ class Unused {
           '--force',
         ]);
         expect(code, 0);
-        final after = await File(
-          '${dir.path}/lib/src/sample.dart',
-        ).readAsString();
+        final after = await File('${dir.path}/lib/src/sample.dart')
+            .readAsString();
         // The class was deleted (top-level supported).
         expect(after.contains('class Unused'), isFalse);
       },
@@ -170,9 +166,8 @@ const FOO = 42;
         '--force',
       ]);
       expect(code, 0);
-      final after = await File(
-        '${dir.path}/lib/src/sample.dart',
-      ).readAsString();
+      final after = await File('${dir.path}/lib/src/sample.dart')
+          .readAsString();
       expect(after.contains('FOO'), isFalse);
     });
 
@@ -209,9 +204,8 @@ void keepMe() {
           '--force',
         ]);
         expect(code, 0);
-        final after = await File(
-          '${dir.path}/lib/src/sample.dart',
-        ).readAsString();
+        final after = await File('${dir.path}/lib/src/sample.dart')
+            .readAsString();
         expect(after.contains('void unusedMember'), isFalse);
         expect(after.contains('void usedMember'), isTrue);
         expect(

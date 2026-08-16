@@ -101,19 +101,16 @@ class UnusedThing {}
     expect(names, isNot(contains('Widget')));
   });
 
-  test(
-    'private (underscore-prefixed) names are not reported (analyzer covers them)',
-    () async {
-      final unused = await const UnusedDetector().detect([
-        _src('a.dart', '''
+  test('private (underscore-prefixed) names are not reported (analyzer covers them)', () async {
+    final unused = await const UnusedDetector().detect([
+      _src('a.dart', '''
 void _privateNeverCalled() {}
 void main() {}
 '''),
-      ], const UnusedConfig());
-      final names = unused.map((u) => u.name).toList();
-      expect(names, isNot(contains('_privateNeverCalled')));
-    },
-  );
+    ], const UnusedConfig());
+    final names = unused.map((u) => u.name).toList();
+    expect(names, isNot(contains('_privateNeverCalled')));
+  });
 
   test(
     'every top-level declaration kind is collected and classified',

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+
+Toolchain alignment release: tracks Dart 3.13. No metric, threshold, exit-code, or schema change.
+
+* Dependency floor raised: Dart SDK `^3.13.0`. Nothing below 3.13 resolves any more; the `analyzer ^14.0.0` floor is unchanged.
+* Dart 3.13 primary constructors are covered by a class-scope regression test: `number-of-methods`, `weighted-methods-per-class`, `lcom4`, `coupling-between-objects`, and `response-for-class` read `class C(final Dep a, final Dep b) { ... }` exactly as they read the long form it replaces, so rewriting to the new syntax does not move a score. `class-length` still reflects the shorter header, which is what that lens measures.
+
 ## 1.3.1
 
 `dartrics --version` and the exported `dartricsVersion` constant identified 1.3.0 as `1.2.0`. No metric, threshold, exit-code, or schema change.

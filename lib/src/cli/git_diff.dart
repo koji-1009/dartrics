@@ -4,12 +4,11 @@ import 'package:path/path.dart' as p;
 
 /// Indirection point for shelling out to `git`. Tests substitute a
 /// stub runner; the production path uses [Process.run].
-typedef GitProcessRunner =
-    Future<ProcessResult> Function(
-      String executable,
-      List<String> arguments, {
-      String? workingDirectory,
-    });
+typedef GitProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+});
 
 Future<ProcessResult> _defaultRunner(
   String executable,

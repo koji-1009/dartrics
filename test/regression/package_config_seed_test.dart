@@ -109,9 +109,8 @@ void main() {
         repoTop: sourceRoot,
       );
       expect(
-        File(
-          p.join(targetRoot, '.dart_tool', 'package_config.json'),
-        ).readAsStringSync(),
+        File(p.join(targetRoot, '.dart_tool', 'package_config.json'))
+            .readAsStringSync(),
         config,
       );
     });

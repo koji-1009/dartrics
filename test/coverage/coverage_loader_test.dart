@@ -23,9 +23,8 @@ void main() {
 
   test('null cliValue + present default file → loads it', () async {
     final cov = Directory('${dir.path}/coverage')..createSync();
-    await File(
-      '${cov.path}/lcov.info',
-    ).writeAsString('SF:/x\nDA:1,1\nend_of_record\n');
+    await File('${cov.path}/lcov.info')
+        .writeAsString('SF:/x\nDA:1,1\nend_of_record\n');
     final index = await loadCoverage(cliValue: null, root: dir.path);
     expect(index, isNotNull);
     expect(index!.forFile('/x'), isNotNull);

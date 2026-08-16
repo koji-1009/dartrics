@@ -173,21 +173,18 @@ enum Color {
     expect(keys, isNot(contains('cyclomatic-complexity')));
   });
 
-  test(
-    'Flutter aware mode keeps build() measured + skips ctor `number-of-parameters`',
-    () async {
-      // Contract: Widget.build() is **not** specially skipped — a
-      // healthy declarative Container-tree produces zero control-flow
-      // signal anyway. The constructor still skips
-      // `number-of-parameters` because key + multiple callbacks is the
-      // cultural norm.
-      final dir = await Directory.systemTemp.createTemp('flutter_engine_');
-      addTearDown(() => dir.delete(recursive: true));
-      await Directory('${dir.path}/lib').create(recursive: true);
-      await File(
-        '${dir.path}/pubspec.yaml',
-      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
-      await File('${dir.path}/lib/widget.dart').writeAsString('''
+  test('Flutter aware mode keeps build() measured + skips ctor `number-of-parameters`', () async {
+    // Contract: Widget.build() is **not** specially skipped — a
+    // healthy declarative Container-tree produces zero control-flow
+    // signal anyway. The constructor still skips
+    // `number-of-parameters` because key + multiple callbacks is the
+    // cultural norm.
+    final dir = await Directory.systemTemp.createTemp('flutter_engine_');
+    addTearDown(() => dir.delete(recursive: true));
+    await Directory('${dir.path}/lib').create(recursive: true);
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/lib/widget.dart').writeAsString('''
 class StatelessWidget {}
 class Container { Container({this.child}); final Container? child; }
 
@@ -210,59 +207,58 @@ class Hello extends StatelessWidget {
   }
 }
 ''');
-      final runner = AnalyzerRunner(roots: [dir.path]);
-      final units = await runner.resolveAll();
+    final runner = AnalyzerRunner(roots: [dir.path]);
+    final units = await runner.resolveAll();
 
-      final records = MetricEngine().analyzeResolved(units);
+    final records = MetricEngine().analyzeResolved(units);
 
-      // build() is measured for every default-on metric, regardless of
-      // flutter mode — control-flow nesting on a declarative Widget
-      // tree is naturally 0, so the metric doesn't false-positive on
-      // healthy code. (method-length is default-off because of its
-      // high correlation with SLOC; opt-in only.)
-      final buildKeys = records
-          .firstWhere((r) => r.scope.name == 'Hello.build')
-          .values
-          .keys
-          .toSet();
-      expect(buildKeys, contains('source-lines-of-code'));
-      expect(buildKeys, contains('cyclomatic-complexity'));
+    // build() is measured for every default-on metric, regardless of
+    // flutter mode — control-flow nesting on a declarative Widget
+    // tree is naturally 0, so the metric doesn't false-positive on
+    // healthy code. (method-length is default-off because of its
+    // high correlation with SLOC; opt-in only.)
+    final buildKeys = records
+        .firstWhere((r) => r.scope.name == 'Hello.build')
+        .values
+        .keys
+        .toSet();
+    expect(buildKeys, contains('source-lines-of-code'));
+    expect(buildKeys, contains('cyclomatic-complexity'));
 
-      // The constructor still skips number-of-parameters under the
-      // Flutter-aware default (flutter: true).
-      final ctorKeys = records
-          .firstWhere(
-            (r) =>
-                r.scope.name == 'Hello' &&
-                r.values.containsKey('cyclomatic-complexity'),
-          )
-          .values
-          .keys
-          .toSet();
-      expect(ctorKeys, isNot(contains('number-of-parameters')));
+    // The constructor still skips number-of-parameters under the
+    // Flutter-aware default (flutter: true).
+    final ctorKeys = records
+        .firstWhere(
+          (r) =>
+              r.scope.name == 'Hello' &&
+              r.values.containsKey('cyclomatic-complexity'),
+        )
+        .values
+        .keys
+        .toSet();
+    expect(ctorKeys, isNot(contains('number-of-parameters')));
 
-      // Pinning flutter:false un-skips the constructor too.
-      final strict = MetricEngine(flutter: false).analyzeResolved(units);
-      final strictCtor = strict
-          .firstWhere(
-            (r) =>
-                r.scope.name == 'Hello' &&
-                r.values.containsKey('number-of-parameters'),
-          )
-          .values
-          .keys
-          .toSet();
-      expect(strictCtor, contains('number-of-parameters'));
+    // Pinning flutter:false un-skips the constructor too.
+    final strict = MetricEngine(flutter: false).analyzeResolved(units);
+    final strictCtor = strict
+        .firstWhere(
+          (r) =>
+              r.scope.name == 'Hello' &&
+              r.values.containsKey('number-of-parameters'),
+        )
+        .values
+        .keys
+        .toSet();
+    expect(strictCtor, contains('number-of-parameters'));
 
-      // Helper methods are measured normally on both paths.
-      final helperKeys = records
-          .firstWhere((r) => r.scope.name == 'Hello._helper')
-          .values
-          .keys
-          .toSet();
-      expect(helperKeys, contains('cyclomatic-complexity'));
-    },
-  );
+    // Helper methods are measured normally on both paths.
+    final helperKeys = records
+        .firstWhere((r) => r.scope.name == 'Hello._helper')
+        .values
+        .keys
+        .toSet();
+    expect(helperKeys, contains('cyclomatic-complexity'));
+  });
 
   test('CC discounts case arms when the switch subject is sealed', () async {
     // A switch over a sealed type is exhaustive at compile time, so
@@ -273,9 +269,8 @@ class Hello extends StatelessWidget {
     final dir = await Directory.systemTemp.createTemp('sealed_cc_');
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/lib').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${dir.path}/lib/state.dart').writeAsString('''
 sealed class State {}
 class Idle extends State {}
@@ -355,9 +350,8 @@ String describeOpenExpr(int x) => switch (x) {
     final dir = await Directory.systemTemp.createTemp('enum_cc_');
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/lib').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${dir.path}/lib/color.dart').writeAsString('''
 enum Color { red, green, blue }
 
@@ -395,9 +389,8 @@ String describeExpr(Color c) => switch (c) {
     final dir = await Directory.systemTemp.createTemp('closure_records_');
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/lib').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${dir.path}/lib/handlers.dart').writeAsString('''
 void wire(List<int> xs) {
   xs.forEach((x) {
@@ -430,9 +423,8 @@ void wire(List<int> xs) {
     final dir = await Directory.systemTemp.createTemp('closure_test_aware_');
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/test').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${dir.path}/test/sample_test.dart').writeAsString('''
 void main() {
   run('case', () {
@@ -458,9 +450,8 @@ void run(String name, void Function() body) => body();
     final dir = await Directory.systemTemp.createTemp('test_aware_engine_');
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/test').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     // A test method that is intentionally tall: AAA blocks legitimately
     // exceed `method-length`'s production-grade thresholds.
     await File('${dir.path}/test/sample_test.dart').writeAsString('''
@@ -541,9 +532,8 @@ class SampleTest {
     final dir = await Directory.systemTemp.createTemp('test_dsl_engine_');
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/test').create(recursive: true);
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     // The declarative group()/test() shape: every branch sits two
     // closures deep, so without the discount it accrues to main() at
     // inflated nesting.
@@ -591,9 +581,8 @@ void main() {
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('engine_cov_');
       await Directory('${dir.path}/lib').create();
-      await File(
-        '${dir.path}/pubspec.yaml',
-      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/pubspec.yaml')
+          .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
       await File('${dir.path}/lib/foo.dart').writeAsString('''
 int branchy(int x) {
   if (x > 0) return 1;
@@ -747,9 +736,8 @@ end_of_record
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('engine_dismiss_');
       await Directory('${dir.path}/lib').create();
-      await File(
-        '${dir.path}/pubspec.yaml',
-      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/pubspec.yaml')
+          .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
       filePath = '${dir.path}/lib/foo.dart';
       await File(filePath).writeAsString('''
 int branchy(int x) {
