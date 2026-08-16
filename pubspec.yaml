@@ -14,7 +14,7 @@ topics:
   - quality
 
 environment:
-  sdk: ^3.11.0
+  sdk: ^3.13.0
 
 executables:
   dartrics:
