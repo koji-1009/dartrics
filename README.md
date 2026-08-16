@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/dartrics.svg)](https://pub.dev/packages/dartrics)
 [![GitHub license](https://img.shields.io/github/license/koji-1009/dartrics)](https://github.com/koji-1009/dartrics/blob/main/LICENSE)
-[![CI](https://github.com/koji-1009/dartrics/actions/workflows/analyze.yaml/badge.svg)](https://github.com/koji-1009/dartrics/actions/workflows/analyze.yaml)
+[![CI](https://github.com/koji-1009/dartrics/actions/workflows/analyze.yml/badge.svg)](https://github.com/koji-1009/dartrics/actions/workflows/analyze.yml)
 [![codecov](https://codecov.io/gh/koji-1009/dartrics/branch/main/graph/badge.svg)](https://codecov.io/gh/koji-1009/dartrics)
 
 Dart code-quality metrics and unused public-API detection, designed as the AI-loop counterpart of `dart analyze`.
