@@ -190,9 +190,8 @@ class RegressionDiff {
   }
 
   int _changeComparator(MetricChange a, MetricChange b) {
-    final byDir = _directionOrder(
-      a.direction,
-    ).compareTo(_directionOrder(b.direction));
+    final byDir = _directionOrder(a.direction)
+        .compareTo(_directionOrder(b.direction));
     if (byDir != 0) return byDir;
     final byFile = a.file.compareTo(b.file);
     if (byFile != 0) return byFile;

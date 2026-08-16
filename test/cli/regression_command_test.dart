@@ -12,9 +12,8 @@ void main() {
   setUp(() async {
     repo = await _initRepo('regression_test_');
     await Directory('${repo.path}/lib').create();
-    await File(
-      '${repo.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${repo.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${repo.path}/lib/foo.dart').writeAsString('''
 int f(int x) {
   if (x > 0) return 1;
@@ -131,9 +130,9 @@ int g(int x) {
       '${repo.path}/no.yaml',
     ]);
     expect(code, 0);
-    final body =
-        jsonDecode(File('${repo.path}/diff.json').readAsStringSync())
-            as Map<String, Object?>;
+    final body = jsonDecode(
+      File('${repo.path}/diff.json').readAsStringSync(),
+    ) as Map<String, Object?>;
     final changes = (body['changes']! as List<Object?>)
         .cast<Map<String, Object?>>();
     for (final c in changes) {

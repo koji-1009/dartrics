@@ -43,9 +43,8 @@ void main() {
 
   test('generated dart files are skipped by default', () async {
     await File('${dir.path}/lib/model.g.dart').writeAsString('// generated');
-    await File(
-      '${dir.path}/lib/model.freezed.dart',
-    ).writeAsString('// generated');
+    await File('${dir.path}/lib/model.freezed.dart')
+        .writeAsString('// generated');
     await File('${dir.path}/lib/router.gr.dart').writeAsString('// generated');
     await File('${dir.path}/lib/proto.pb.dart').writeAsString('// generated');
     final runner = AnalyzerRunner(roots: ['${dir.path}/lib']);
@@ -101,9 +100,8 @@ void main() {
       // Resolves both files with the sequential branch — primarily a
       // coverage exercise; the assertion is that resolveAll returns
       // every collectable file in deterministic order.
-      await File(
-        '${dir.path}/pubspec.yaml',
-      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/pubspec.yaml')
+          .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
       final runner = AnalyzerRunner(roots: ['${dir.path}/lib'], concurrency: 1);
       final units = await runner.resolveAll();
       final paths = units.map((u) => u.path).toList();
@@ -112,9 +110,8 @@ void main() {
     });
 
     test('parallel resolveAll preserves alphabetical ordering', () async {
-      await File(
-        '${dir.path}/pubspec.yaml',
-      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/pubspec.yaml')
+          .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
       final runner = AnalyzerRunner(roots: ['${dir.path}/lib'], concurrency: 4);
       final units = await runner.resolveAll();
       expect(
@@ -136,12 +133,10 @@ void main() {
       () async {
         // Outer package: dir/lib/{a,b}.dart with dir/pubspec.yaml plus an
         // analysis_options.yaml that excludes `sub/**` from analyzer.
-        await File(
-          '${dir.path}/pubspec.yaml',
-        ).writeAsString('name: outer\nenvironment:\n  sdk: ^3.10.0\n');
-        await File(
-          '${dir.path}/analysis_options.yaml',
-        ).writeAsString('analyzer:\n  exclude:\n    - sub/**\n');
+        await File('${dir.path}/pubspec.yaml')
+            .writeAsString('name: outer\nenvironment:\n  sdk: ^3.10.0\n');
+        await File('${dir.path}/analysis_options.yaml')
+            .writeAsString('analyzer:\n  exclude:\n    - sub/**\n');
         // Sub-package with its own pubspec under the excluded path.
         // `AnalysisContextCollection` honours the outer
         // `analyzer.exclude:` so it never builds a context for `sub/`,
@@ -151,9 +146,8 @@ void main() {
         // before the catch in `resolve`, the whole run aborted on the
         // first stray sub-package fixture in the tree.
         await Directory('${dir.path}/sub/lib').create(recursive: true);
-        await File(
-          '${dir.path}/sub/pubspec.yaml',
-        ).writeAsString('name: inner\nenvironment:\n  sdk: ^3.10.0\n');
+        await File('${dir.path}/sub/pubspec.yaml')
+            .writeAsString('name: inner\nenvironment:\n  sdk: ^3.10.0\n');
         await File('${dir.path}/sub/lib/c.dart').writeAsString('class C {}\n');
         final runner = AnalyzerRunner(roots: [dir.path]);
         final units = await runner.resolveAll();

@@ -11,9 +11,8 @@ void main() {
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('coverage_cli_');
     await Directory('${dir.path}/lib').create();
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${dir.path}/lib/foo.dart').writeAsString('''
 int branchy(int x) {
   if (x > 0) return 1;

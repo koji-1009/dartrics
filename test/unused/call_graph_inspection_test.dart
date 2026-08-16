@@ -136,13 +136,11 @@ class B {
     },
   );
 
-  test(
-    'upstream walk sorts by fanInCallers so the most-connected caller comes first',
-    () async {
-      // Two callers of `target` at depth 1; `hub` is itself called
-      // from a couple of additional sites, so `hub.fanInCallers > leaf.fanInCallers`.
-      // The upstream walk should surface `hub` ahead of `leaf`.
-      await File('${dir.path}/lib/foo.dart').writeAsString('''
+  test('upstream walk sorts by fanInCallers so the most-connected caller comes first', () async {
+    // Two callers of `target` at depth 1; `hub` is itself called
+    // from a couple of additional sites, so `hub.fanInCallers > leaf.fanInCallers`.
+    // The upstream walk should surface `hub` ahead of `leaf`.
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
 void main() {
   callHub();
   callHubAgain();
@@ -158,16 +156,15 @@ void leaf() => target();
 
 void target() {}
 ''');
-      final result = inspectCallGraph(
-        await resolveAll(),
-        query: 'target',
-        depth: 1,
-        direction: InspectionDirection.up,
-      );
-      final upstream = result.matches.single.upstream;
-      expect(upstream.map((n) => n.signal.scope.name), ['hub', 'leaf']);
-    },
-  );
+    final result = inspectCallGraph(
+      await resolveAll(),
+      query: 'target',
+      depth: 1,
+      direction: InspectionDirection.up,
+    );
+    final upstream = result.matches.single.upstream;
+    expect(upstream.map((n) => n.signal.scope.name), ['hub', 'leaf']);
+  });
 
   test(
     'downstream walk sorts by fanOutCallees so the widest callee comes first',

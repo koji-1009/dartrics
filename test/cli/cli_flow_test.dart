@@ -419,20 +419,16 @@ int f() { return 1; }
     final repo = await _initGitRepo('cli_flow_since_');
     addTearDown(() => repo.delete(recursive: true));
     await Directory('${repo.path}/lib').create();
-    await File(
-      '${repo.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
-    await File(
-      '${repo.path}/lib/keep.dart',
-    ).writeAsString('void keep() => print("hi");\n');
-    await File(
-      '${repo.path}/lib/touched.dart',
-    ).writeAsString('void touched() => print("v1");\n');
+    await File('${repo.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${repo.path}/lib/keep.dart')
+        .writeAsString('void keep() => print("hi");\n');
+    await File('${repo.path}/lib/touched.dart')
+        .writeAsString('void touched() => print("v1");\n');
     await _runGit(repo.path, ['add', '.']);
     await _runGit(repo.path, ['commit', '-m', 'init']);
-    await File(
-      '${repo.path}/lib/touched.dart',
-    ).writeAsString('void touched(int x) {\n  if (x > 0) print(x);\n}\n');
+    await File('${repo.path}/lib/touched.dart')
+        .writeAsString('void touched(int x) {\n  if (x > 0) print(x);\n}\n');
     await _runGit(repo.path, ['add', '.']);
     await _runGit(repo.path, ['commit', '-m', 'modify']);
 
@@ -468,9 +464,8 @@ int f() { return 1; }
     final repo = await _initGitRepo('cli_flow_since_scope_');
     addTearDown(() => repo.delete(recursive: true));
     await Directory('${repo.path}/lib').create();
-    await File(
-      '${repo.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${repo.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${repo.path}/lib/two.dart').writeAsString('''
 void alpha() {
   print('alpha');
@@ -524,9 +519,8 @@ void beta() {
   test('analyze --since exits 65 when ref is bogus', () async {
     final repo = await _initGitRepo('cli_flow_since_bad_');
     addTearDown(() => repo.delete(recursive: true));
-    await File(
-      '${repo.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${repo.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await Directory('${repo.path}/lib').create();
     await File('${repo.path}/lib/x.dart').writeAsString('void x() {}\n');
     await _runGit(repo.path, ['add', '.']);
@@ -553,21 +547,17 @@ void beta() {
     final repo = await _initGitRepo('cli_flow_unused_since_');
     addTearDown(() => repo.delete(recursive: true));
     await Directory('${repo.path}/lib/src').create(recursive: true);
-    await File(
-      '${repo.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${repo.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${repo.path}/lib/main.dart').writeAsString('void main() {}\n');
-    await File(
-      '${repo.path}/lib/src/touched.dart',
-    ).writeAsString('void a() {}\n');
-    await File(
-      '${repo.path}/lib/src/untouched.dart',
-    ).writeAsString('class B {}\n');
+    await File('${repo.path}/lib/src/touched.dart')
+        .writeAsString('void a() {}\n');
+    await File('${repo.path}/lib/src/untouched.dart')
+        .writeAsString('class B {}\n');
     await _runGit(repo.path, ['add', '.']);
     await _runGit(repo.path, ['commit', '-m', 'init']);
-    await File(
-      '${repo.path}/lib/src/touched.dart',
-    ).writeAsString('void a() {} class NewlyUnused {}\n');
+    await File('${repo.path}/lib/src/touched.dart')
+        .writeAsString('void a() {} class NewlyUnused {}\n');
     await _runGit(repo.path, ['add', '.']);
     await _runGit(repo.path, ['commit', '-m', 'add unused']);
 
@@ -601,9 +591,8 @@ void beta() {
     final dir = await Directory.systemTemp.createTemp('cli_flow_unused_nogit_');
     addTearDown(() => dir.delete(recursive: true));
     await Directory('${dir.path}/lib').create();
-    await File(
-      '${dir.path}/pubspec.yaml',
-    ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+    await File('${dir.path}/pubspec.yaml')
+        .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
     await File('${dir.path}/lib/x.dart').writeAsString('void x() {}\n');
     final code = await Directory(dir.path).runIn(() async {
       return runQuietly([

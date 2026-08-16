@@ -116,9 +116,8 @@ void main() {
       // valid but wrong shape
       await File('${tmp.path}/wrong.json').writeAsString('"string"');
       expect(Snapshot.read('${tmp.path}/wrong.json').entries, isEmpty);
-      await File(
-        '${tmp.path}/missing-list.json',
-      ).writeAsString('{"version":"1"}');
+      await File('${tmp.path}/missing-list.json')
+          .writeAsString('{"version":"1"}');
       expect(Snapshot.read('${tmp.path}/missing-list.json').entries, isEmpty);
       // entry with non-string fields gets skipped
       await File('${tmp.path}/skipped-entry.json').writeAsString(
@@ -147,9 +146,8 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('snap_e2e_');
       addTearDown(() => dir.delete(recursive: true));
       await Directory('${dir.path}/lib').create(recursive: true);
-      await File(
-        '${dir.path}/pubspec.yaml',
-      ).writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/pubspec.yaml')
+          .writeAsString('name: example\nenvironment:\n  sdk: ^3.10.0\n');
       await File('${dir.path}/lib/a.dart').writeAsString('void a() {}\n');
 
       final out = '${dir.path}/run.json';

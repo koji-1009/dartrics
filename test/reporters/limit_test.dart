@@ -50,9 +50,8 @@ void main() {
       addTearDown(() => dir.delete(recursive: true));
       final out = File('${dir.path}/r.yaml');
       final sink = out.openWrite();
-      AiReporter(
-        sourceLoader: (path) => {path: 'line\n' * 10},
-      ).report(_buildReport(n: 5), sink);
+      AiReporter(sourceLoader: (path) => {path: 'line\n' * 10})
+          .report(_buildReport(n: 5), sink);
       await sink.close();
       final body = await out.readAsString();
       // 5 entries → 5 `- file:` bullets.
