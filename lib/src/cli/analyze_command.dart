@@ -286,7 +286,7 @@ class AnalyzeCommand extends Command<int> {
       }
     }
 
-    if (analysis.fatalWarnings && report.hasSeverityAtLeast(Severity.warning)) {
+    if (analysis.fatalWarnings && report.hasFatalFindings(Severity.warning)) {
       return 1;
     }
     return ExitCode.success.code;

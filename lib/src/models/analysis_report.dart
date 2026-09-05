@@ -176,14 +176,6 @@ class MetricRecord {
   final Map<String, num> values;
   final List<MetricViolation> violations;
 
-  Severity? get worstSeverity {
-    Severity? worst;
-    for (final v in violations) {
-      if (worst == null || v.severity.rank > worst.rank) worst = v.severity;
-    }
-    return worst;
-  }
-
   Map<String, Object?> toJson() => {
     'file': file,
     'scope': scope.toJson(),
@@ -295,13 +287,30 @@ class AnalysisReport {
   int get analyzedFileCount => _analyzedFileCount;
   void attachAnalyzedFileCount(int n) => _analyzedFileCount = n;
 
+  /// True when any **live** violation reaches [s]. Dismissed violations
+  /// are skipped: a dismissal is a tracked, reviewed decision, and the
+  /// entry stays in the report for audit rather than to keep a gate
+  /// red. `--strict-dismiss` empties the dismissal index instead, which
+  /// is what makes it the audit mode the manual pairs with
+  /// `--fatal-warnings`.
   bool hasSeverityAtLeast(Severity s) {
     for (final m in metrics) {
-      final w = m.worstSeverity;
-      if (w != null && w.rank >= s.rank) return true;
+      for (final v in m.violations) {
+        if (v.dismissed) continue;
+        if (v.severity.rank >= s.rank) return true;
+      }
     }
     return false;
   }
+
+  /// True when a `--fatal-warnings` run should exit non-zero: a live
+  /// violation at or above [s], or any unused declaration.
+  ///
+  /// Both report sections count. Gating on violations alone let a run
+  /// that listed dead code still exit 0, so `analyze` and `unused`
+  /// disagreed about what the same flag meant.
+  bool hasFatalFindings(Severity s) =>
+      hasSeverityAtLeast(s) || unused.isNotEmpty;
 
   Map<String, Object?> toJson() => {
     'version': version,
