@@ -427,6 +427,55 @@ const List<String> unusedFilterKindNames = [
   'extension',
 ];
 
+/// One parsed [UnusedConfig.roots] entry.
+typedef UnusedRootSpec = ({String pathSuffix, String scope});
+
+/// Translates the raw `roots` strings from [UnusedConfig] into
+/// `<path suffix>::<scope>` pairs.
+///
+/// Throws [FormatException] for an entry missing the `::` separator or
+/// with an empty half, so the caller (CLI / config loader) surfaces a
+/// usage error rather than carrying a root that can never match — the
+/// same contract [parseUnusedFilter] follows.
+List<UnusedRootSpec> parseUnusedRoots(List<String> roots) {
+  final out = <UnusedRootSpec>[];
+  for (final raw in roots) {
+    final entry = raw.trim();
+    if (entry.isEmpty) continue;
+    final sep = entry.indexOf('::');
+    final pathSuffix = sep < 0 ? '' : entry.substring(0, sep).trim();
+    final scope = sep < 0 ? '' : entry.substring(sep + 2).trim();
+    if (pathSuffix.isEmpty || scope.isEmpty) {
+      throw FormatException(
+        'unused.roots: "$raw" must be '
+        '"<path>::<scope>" (e.g. '
+        '"test/flutter_test_config.dart::testExecutable")',
+      );
+    }
+    out.add((pathSuffix: pathSuffix.replaceAll(r'\', '/'), scope: scope));
+  }
+  return out;
+}
+
+/// True when [path] / [scope] matches any entry in [specs]. The path
+/// half matches on a `/`-boundary suffix so a root can be written
+/// project-relative while the analysed paths are absolute.
+bool _matchesConfiguredRoot(
+  String path,
+  String scope,
+  List<UnusedRootSpec> specs,
+) {
+  if (specs.isEmpty) return false;
+  final unix = path.replaceAll(r'\', '/');
+  for (final spec in specs) {
+    if (spec.scope != scope) continue;
+    if (unix == spec.pathSuffix || unix.endsWith('/${spec.pathSuffix}')) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
   final visited = <int>{};
   final queue = <int>[...roots];
@@ -455,11 +504,14 @@ Set<int> _resolveRoots({
         ? _collectExportedRoots(sources, byId)
         : const <int>{},
     excludeExported: config.excludeExported,
+    configuredRoots: parseUnusedRoots(config.roots),
   );
   final roots = <int>{};
   final annotationKeptTypeIds = <int>{};
   for (final d in declarations) {
-    if (_isRoot(d, rc)) roots.add(d.elementId);
+    if (_isRoot(d, rc) || _matchesConfiguredRootFor(d, byId, rc)) {
+      roots.add(d.elementId);
+    }
     if (_propagatesAnnotationKeepAlive(d, rc)) {
       annotationKeptTypeIds.add(d.elementId);
     }
@@ -500,6 +552,23 @@ bool _matchesEntryName(_ResolvedDeclaration d, _RootContext rc) =>
 bool _matchesKeepAliveAnnotation(_ResolvedDeclaration d, _RootContext rc) =>
     rc.keepAliveAnnotations.any(d.record.annotations.contains);
 
+/// Configured-root match. Kept out of [_isRoot] because it needs
+/// [byId] to build the same qualified `Type.member` scope name the
+/// `signals:` block emits — the shape a user reads off a report and
+/// pastes into `unused.roots`.
+bool _matchesConfiguredRootFor(
+  _ResolvedDeclaration d,
+  Map<int, _ResolvedDeclaration> byId,
+  _RootContext rc,
+) {
+  if (rc.configuredRoots.isEmpty) return false;
+  return _matchesConfiguredRoot(
+    d.record.location.path,
+    _scopeRefFor(d, byId).name,
+    rc.configuredRoots,
+  );
+}
+
 bool _matchesLibPublicTopLevel(_ResolvedDeclaration d, _RootContext rc) =>
     rc.excludeExported && d.isInLibPublic && !d.isInstanceMember;
 
@@ -531,12 +600,14 @@ class _RootContext {
     required this.keepAliveAnnotations,
     required this.exportedRoots,
     required this.excludeExported,
+    required this.configuredRoots,
   });
 
   final Set<String> entryNames;
   final Set<String> keepAliveAnnotations;
   final Set<int> exportedRoots;
   final bool excludeExported;
+  final List<UnusedRootSpec> configuredRoots;
 }
 
 /// Walks every public library (under `lib/` outside `lib/src/`) and

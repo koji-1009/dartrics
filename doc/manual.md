@@ -204,6 +204,31 @@ The lens reads it but you genuinely don't know whether the structure is load-bea
 
 Punt has no in-tree syntax — no comment directive, no YAML key, no field in the JSON report. It is deliberately a natural-language channel between you and the operator, not a tracked artifact. `dartrics` is a tool _for both AI and human_, and the lens values that anchor your decision don't carry equivalent meaning to the operator the way they do to you; surfacing a `cognitive-complexity: 22` number doesn't transfer the situation. Translate what you saw into the project's own vocabulary, name the load-bearing hypothesis you cannot confirm, and ask in the same channel the harness uses to reach the human (chat, PR comment, whatever fits). When the answer comes back, route it into refactor or dismiss on the next pass.
 
+## Keeping a declaration reachable
+
+`dartrics unused` is a source-level reachability verdict: a declaration is reported when no expression anywhere in the analysed tree resolves to it. Some declarations are genuinely invoked, just not from source a static pass can follow — a framework picks them up by filename, a generator wires them by string, a platform calls them across an FFI boundary. Those are configuration, not dismissals: you add a **root**, and the declaration plus everything only it reaches stays alive.
+
+Four keys under `dartrics: { unused: … }`, in increasing order of precision:
+
+```yaml
+dartrics:
+  unused:
+    exclude-exported: true            # default — everything under lib/ outside lib/src/ is a root
+    entry-points: [main, "@pragma:vm:entry-point", test]
+    ignore-annotations: [visibleForTesting, protected, JsonSerializable]
+    roots:
+      - "test/flutter_test_config.dart::testExecutable"
+```
+
+* **`exclude-exported`** (default `true`) roots the package's public API — anything under `lib/` outside `lib/src/`, plus the members an exported type exposes. Set to `false` for strict mode, where even an exported declaration needs a caller.
+* **`entry-points`** roots any **top-level** declaration carrying one of these simple names, in any file. `@pragma:`-prefixed entries match the pragma instead of the name. Broad by design: `main` should be a root wherever it appears.
+* **`ignore-annotations`** roots any declaration carrying one of these annotations, and — on a type — every member of it, since a codegen / reflection marker means the real callers live in generated or runtime code. Every shipped codegen preset (freezed, json_serializable, drift, riverpod, …) is always honoured on top of this list.
+* **`roots`** pins one declaration in one file, in `<path suffix>::<scope>` form. The path matches as a `/`-boundary suffix of the analysed path, so it is written project-relative; the scope is the same dotted name the `signals:` block and `dartrics inspect` print — `topLevelFn` for a top-level declaration, `Type.member` for a class member. Use it when `entry-points` would be too broad, or when the entry point is a member rather than a top-level declaration.
+
+`roots` ships with `test/flutter_test_config.dart::testExecutable` pre-seeded: `flutter_test` loads that file by filename and calls `testExecutable` from a bootstrap it generates at run time, so nothing in the source tree references it. Packages without the file are unaffected. Supplying your own `roots:` list replaces the default one — re-list the preset entry if you still want it, the same way `entry-points` behaves.
+
+An entry that is not in `<path>::<scope>` form is a usage error (exit 64), not a silently-ignored line.
+
 ## Default relaxations — Flutter and test files
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:

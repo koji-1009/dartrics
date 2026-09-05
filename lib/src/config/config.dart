@@ -1,3 +1,5 @@
+import '../unused/keep_alive_presets.dart';
+
 /// User-configurable thresholds and detection settings parsed from
 /// `analysis_options.yaml`'s `dartrics:` section.
 class Config {
@@ -165,12 +167,29 @@ class UnusedConfig {
       'protected',
       'JsonSerializable',
     ],
+    this.roots = conventionRootPresets,
     this.filter = const [],
   });
 
+  /// Simple names that root any *top-level* declaration carrying them,
+  /// in any file. `@pragma:`-prefixed entries are handled by the
+  /// pragma check instead of by name. Use [roots] when the entry point
+  /// needs to be pinned to one file or names a class member.
   final List<String> entryPoints;
   final bool excludeExported;
   final List<String> ignoreAnnotations;
+
+  /// File-scoped reachability roots in `<path suffix>::<scope>` form
+  /// (e.g. `test/flutter_test_config.dart::testExecutable`). For
+  /// declarations a framework invokes by naming convention, where no
+  /// call expression exists in the source for reachability to follow.
+  ///
+  /// The path is matched as a suffix of the analysed file path; the
+  /// scope is the same dotted name the `signals:` block and
+  /// `dartrics inspect` use — a bare `topLevelFn` or a qualified
+  /// `Type.member`. Defaults to [conventionRootPresets]; supplying the
+  /// key replaces that list wholesale, as with [entryPoints].
+  final List<String> roots;
 
   /// Narrows the kinds emitted by the resolved-AST detector to this
   /// allow-list. Empty means "every kind". Honours

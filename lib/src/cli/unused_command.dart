@@ -82,6 +82,7 @@ class UnusedCommand extends Command<int> {
     );
     try {
       parseUnusedFilter(unusedConfig.filter);
+      parseUnusedRoots(unusedConfig.roots);
     } on FormatException catch (e) {
       DartricsIO.stderrSink.writeln('dartrics unused: ${e.message}');
       return ExitCode.usage.code;

@@ -69,6 +69,7 @@ class AnalyzeCommand extends Command<int> {
     );
     try {
       parseUnusedFilter(unusedConfig.filter);
+      parseUnusedRoots(unusedConfig.roots);
     } on FormatException catch (e) {
       DartricsIO.stderrSink.writeln('dartrics analyze: ${e.message}');
       return ExitCode.usage.code;

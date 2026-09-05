@@ -901,4 +901,105 @@ void read() => _Impl().act();
     final unused = await detectIn(const UnusedConfig());
     expect(unused.map((u) => u.name), ['neverOverridden']);
   });
+
+  test('a configured root keeps a top-level declaration alive', () async {
+    await File('${dir.path}/lib/hooks.dart').writeAsString('''
+void wiredByName() {}
+
+void reallyDead() {}
+''');
+    final unused = await detectIn(
+      const UnusedConfig(
+        excludeExported: false,
+        roots: ['lib/hooks.dart::wiredByName'],
+      ),
+    );
+    expect(unused.map((u) => u.name), ['reallyDead']);
+  });
+
+  test(
+    'a configured root addresses a class member by qualified scope',
+    () async {
+      await File('${dir.path}/lib/hooks.dart').writeAsString('''
+class Registry {
+  void wiredByName() {}
+  void reallyDead() {}
+}
+''');
+      final unused = await detectIn(
+        const UnusedConfig(
+          excludeExported: false,
+          roots: ['lib/hooks.dart::Registry.wiredByName'],
+        ),
+      );
+      expect(
+        unused.map((u) => u.name),
+        containsAll(['Registry', 'reallyDead']),
+      );
+      expect(unused.map((u) => u.name), isNot(contains('wiredByName')));
+    },
+  );
+
+  test(
+    'a configured root does not match the same scope in another file',
+    () async {
+      await File('${dir.path}/lib/hooks.dart').writeAsString('void hook() {}');
+      await File('${dir.path}/lib/other.dart').writeAsString('void hook() {}');
+      final unused = await detectIn(
+        const UnusedConfig(
+          excludeExported: false,
+          roots: ['lib/hooks.dart::hook'],
+        ),
+      );
+      expect(unused, hasLength(1));
+      expect(unused.single.location.path, endsWith('other.dart'));
+    },
+  );
+
+  test(
+    'the shipped preset roots a flutter_test_config testExecutable',
+    () async {
+      await Directory('${dir.path}/lib/test').create(recursive: true);
+      await File('${dir.path}/lib/test/flutter_test_config.dart')
+          .writeAsString('void testExecutable() {}');
+      final unused = await detectIn(const UnusedConfig(excludeExported: false));
+      expect(unused, isEmpty);
+    },
+  );
+
+  group('parseUnusedRoots', () {
+    test('splits an entry into path suffix and scope', () {
+      expect(parseUnusedRoots(['test/x.dart::fn']), [
+        (pathSuffix: 'test/x.dart', scope: 'fn'),
+      ]);
+    });
+
+    test('normalises Windows separators and trims whitespace', () {
+      expect(parseUnusedRoots([r'  test\x.dart :: Foo.bar  ']), [
+        (pathSuffix: 'test/x.dart', scope: 'Foo.bar'),
+      ]);
+    });
+
+    test('skips blank entries', () {
+      expect(parseUnusedRoots(['', '   ']), isEmpty);
+    });
+
+    test('rejects an entry without the separator', () {
+      expect(
+        () => parseUnusedRoots(['testExecutable']),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('must be "<path>::<scope>"'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects an entry with an empty half', () {
+      expect(() => parseUnusedRoots(['::fn']), throwsFormatException);
+      expect(() => parseUnusedRoots(['a.dart::']), throwsFormatException);
+    });
+  });
 }
