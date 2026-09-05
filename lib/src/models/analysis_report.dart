@@ -330,7 +330,8 @@ class StaleDismissal {
     this.reason,
   });
 
-  /// Project-relative file path the dismissal targeted.
+  /// Absolute file path the dismissal targeted — the same form
+  /// `MetricRecord.file` and the rest of the report use.
   final String file;
 
   /// Scope name (`Foo.bar`) the dismissal targeted.

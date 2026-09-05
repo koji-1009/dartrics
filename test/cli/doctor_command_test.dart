@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dartrics/src/cli/doctor_command.dart';
 import 'package:dartrics/src/config/config.dart';
+import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:test/test.dart';
 
 import 'helpers.dart';
@@ -123,6 +124,42 @@ void main() {
       final issues = diagnose(config);
       expect(issues, hasLength(2));
     });
+
+    test('a sidecar dismissal naming an unknown metric is flagged', () {
+      const config = Config();
+      final issues = diagnose(
+        config,
+        dismissals: const [
+          Dismissal(
+            file: '/abs/lib/foo.dart',
+            scope: 'fn',
+            metricId: 'made-up',
+            reason: 'a perfectly fine and lengthy reason',
+            source: DismissalSource.yaml,
+          ),
+        ],
+      );
+      expect(issues, hasLength(1));
+      expect(issues.single.message, contains('/abs/lib/foo.dart::fn'));
+      expect(issues.single.message, contains('unknown metric id "made-up"'));
+    });
+
+    test('a sidecar dismissal naming a real metric is clean', () {
+      const config = Config();
+      final issues = diagnose(
+        config,
+        dismissals: const [
+          Dismissal(
+            file: '/abs/lib/foo.dart',
+            scope: 'fn',
+            metricId: 'cyclomatic-complexity',
+            reason: 'a perfectly fine and lengthy reason',
+            source: DismissalSource.yaml,
+          ),
+        ],
+      );
+      expect(issues, isEmpty);
+    });
   });
 
   group('doctor CLI', () {
@@ -184,6 +221,54 @@ dartrics:
         'doctor',
         '--config',
         '${dir.path}/missing.yaml',
+      ]);
+      expect(code, 0);
+    });
+
+    test('exits 1 when the sidecar dismisses a non-metric id', () async {
+      final f = File('${dir.path}/analysis_options.yaml');
+      await f.writeAsString('dartrics:\n  dismissals: {}\n');
+      await File('${dir.path}/dartrics-dismissals.yaml').writeAsString(
+        'version: 1\n'
+        'dismissals:\n'
+        '  - file: lib/thing.dart\n'
+        '    scope: Base.reallyDead\n'
+        '    metric: unused\n'
+        '    reason: "Wired by naming convention, never called from source"\n',
+      );
+      final code = await runQuietly([
+        'doctor',
+        '--config',
+        f.path,
+        '--root',
+        dir.path,
+      ]);
+      expect(code, 1);
+    });
+
+    test('leaves the sidecar unread when the yaml source is off', () async {
+      final f = File('${dir.path}/analysis_options.yaml');
+      await f.writeAsString(
+        'dartrics:\n'
+        '  dismissals:\n'
+        '    sources:\n'
+        '      comment: true\n'
+        '      yaml: false\n',
+      );
+      await File('${dir.path}/dartrics-dismissals.yaml').writeAsString(
+        'version: 1\n'
+        'dismissals:\n'
+        '  - file: lib/thing.dart\n'
+        '    scope: Base.reallyDead\n'
+        '    metric: unused\n'
+        '    reason: "Wired by naming convention, never called from source"\n',
+      );
+      final code = await runQuietly([
+        'doctor',
+        '--config',
+        f.path,
+        '--root',
+        dir.path,
       ]);
       expect(code, 0);
     });

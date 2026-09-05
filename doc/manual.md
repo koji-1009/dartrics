@@ -196,7 +196,11 @@ dismissals:
 
 The validator will reject reasons shorter than `minReasonLength` (default 20 chars) and stamp the violation with `dismissalRejected: <why>`. Your dismiss is **not silent**: if it didn't take, the next pass will tell you why.
 
+A sidecar `file:` may be written relative to the analysis root (`--root`, default `.`) or absolute; either way it is resolved to an absolute path before matching, so the two forms behave identically.
+
 Stale entries — dismissals that no longer match any live violation (scope renamed, function deleted, metric dropped below threshold) — appear in the report's `staleDismissals:` block, with a stderr WARNING per entry. Treat that as a cleanup candidate: the dismiss is doing nothing now, and leaving it in the file accumulates dead config. Files outside the analyzed set (filtered out by `--since` or snapshot) are not flagged as stale.
+
+**`metric:` must name a metric.** The dismiss channel is keyed on `(file, scope, metric-id)`, so only the ids `dartrics rules` lists can be dismissed. An entry naming anything else is dropped with a `dismissal rejected … unknown metric id` line on stderr, and `dartrics doctor` exits 1 on it. In particular `unused` is **not** dismissable — it is a reachability verdict, not a thresholded metric. Keep a declaration alive through the reachability config instead; see [Keeping a declaration reachable](#keeping-a-declaration-reachable).
 
 ### Punt when…
 

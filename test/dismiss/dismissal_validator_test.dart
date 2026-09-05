@@ -122,4 +122,35 @@ void main() {
     );
     expect(res, isA<DismissalAccepted>());
   });
+
+  group('checkDismissalMetricId', () {
+    const known = {'cyclomatic-complexity', 'method-length'};
+
+    Dismissal withId(String id) => Dismissal(
+      file: 'lib/foo.dart',
+      scope: 'fn',
+      metricId: id,
+      reason: 'a perfectly fine and lengthy reason',
+      source: DismissalSource.yaml,
+    );
+
+    test('accepts an id in the catalogue', () {
+      expect(checkDismissalMetricId(withId('method-length'), known), isNull);
+    });
+
+    test('rejects an id outside the catalogue', () {
+      final res = checkDismissalMetricId(withId('made-up'), known);
+      expect(res, isNotNull);
+      expect(res!.reason, contains('unknown metric id "made-up"'));
+      expect(res.reason, contains('dartrics rules'));
+    });
+
+    test('rejects `unused` with a pointer at the roots config', () {
+      final res = checkDismissalMetricId(withId(unusedVerdictId), known);
+      expect(res, isNotNull);
+      expect(res!.reason, contains('reachability verdict'));
+      expect(res.reason, contains('roots'));
+      expect(res.reason, contains('entry-points'));
+    });
+  });
 }
