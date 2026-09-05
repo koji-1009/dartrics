@@ -17,6 +17,7 @@ Unused-detector false positives, two silent no-ops in the dismiss channel, and a
 * `--fatal-warnings` no longer blocks on a **dismissed** violation. A dismissed entry stays in the report for audit, but it is an accepted, reasoned decision and was still forcing exit 1, which made `--strict-dismiss` (the documented audit pairing) change nothing about the gate. Runs that were red only because of dismissals turn green; add `--strict-dismiss` to keep blocking on everything.
 * `analyze --fatal-warnings` now blocks on **unused declarations** too. It read only the violation list, so a run that printed dead code still exited 0 while `unused --fatal-warnings` exited 1 on the same finding — the same flag meant two things. Runs with unused findings turn red; keep a framework-invoked declaration with `unused: { roots: [...] }`, or delete it.
 * `unused --fatal-warnings` gates on the filtered report rather than the pre-filter list. Under `--since` or a snapshot diff it was blocking on findings that never appeared in its own output.
+* `MetricViolation.id` is computed from the `--root`-relative path instead of the absolute one. The same violation now carries the same id across checkouts (developer machine vs. CI), and `RegressionRow.id` finally matches the `MetricViolation.id` it documents itself as cross-referencing — the regression side already relativised its paths, so the two hashed different strings and could never agree. Ids change once with this release; loops that track an id across runs re-anchor on the next pass.
 
 ## 1.4.0
 

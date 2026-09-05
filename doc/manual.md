@@ -286,6 +286,8 @@ For an end-to-end walkthrough with prompt examples, see [`doc/ai-loop.md`](ai-lo
 
 The same `id` (16 hex chars) reappearing across runs means the previous fix didn't drop the metric. Refactor harder, or formalise as dismiss with a load-bearing reason — there is no third option of "ignore it again."
 
+The `id` is `sha256("<project-relative file>|<scope>|<metric-id>")` truncated to 16 hex chars. The path is taken relative to `--root`, so the same violation carries the same id on your machine and on CI, and `RegressionRow.id` cross-references the `MetricViolation.id` for the same triple.
+
 ## Reporters — pick by audience
 
 All four reporters render the same `AnalysisReport`. Pick by *who reads the output*, not by who runs the command — there is no "primary" reporter and the others are not derived from it.

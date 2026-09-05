@@ -4,6 +4,7 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as p;
 
 import '../analyzer_runner.dart';
 import '../config/config.dart';
@@ -36,6 +37,7 @@ class MetricEngine {
     DismissalIndex? dismissals,
     this.dismissalConfig = const DismissalConfig(),
     this.onDismissalRejection,
+    this.root,
   }) : functionMetrics = functionMetrics ?? defaultFunctionMetrics,
        classMetrics = classMetrics ?? defaultClassMetrics,
        libraryMetrics = libraryMetrics ?? defaultLibraryMetrics,
@@ -69,6 +71,11 @@ class MetricEngine {
   /// Validation knobs for matched dismissals. Mirrors the config and
   /// is consulted only when [dismissals] actually returns a hit.
   final DismissalConfig dismissalConfig;
+
+  /// Analysis root that `MetricViolation.id` is computed relative to.
+  /// `null` leaves the analysed path as-is, which makes the id depend
+  /// on the checkout location — CLI callers always pass `--root`.
+  final String? root;
 
   /// Optional sink for `requireReason` / `requireAuthor` / etc.
   /// rejections. The CLI wires this to a stderr writer so AI loops
@@ -402,6 +409,7 @@ class MetricEngine {
       file: path,
       scope: scopeName,
       metricId: metricId,
+      root: root,
     );
     final hit = dismissals.lookup(
       file: path,
@@ -516,13 +524,39 @@ class _Justification {
 ///
 /// Pipe-delimited (not colon) so absolute Windows paths (`C:/foo`) do
 /// not introduce ambiguity.
+///
+/// [file] is reduced to a project-relative, `/`-separated path first —
+/// see [violationIdPath]. Hashing the absolute path made the id a
+/// function of where the repository happened to be checked out, so the
+/// same violation carried different ids on a developer machine and on
+/// CI, and `RegressionRow.id` (computed from an already-relativised
+/// path) could never match the `MetricViolation.id` it documents itself
+/// as cross-referencing.
 String computeViolationId({
   required String file,
   required String scope,
   required String metricId,
+  String? root,
 }) {
-  final digest = sha256.convert(utf8.encode('$file|$scope|$metricId'));
+  final key = violationIdPath(file, root: root);
+  final digest = sha256.convert(utf8.encode('$key|$scope|$metricId'));
   return digest.toString().substring(0, 16);
+}
+
+/// Reduces [file] to the form [computeViolationId] hashes: separators
+/// normalised to `/`, and made relative to [root] when it sits inside
+/// it. A path outside [root] (or a null [root], which is how
+/// `RegressionRow` calls in with an already-relative path) is kept as
+/// written apart from the separator normalisation.
+String violationIdPath(String file, {String? root}) {
+  final unix = file.replaceAll(r'\', '/');
+  if (root == null) return unix;
+  final base = p.normalize(p.absolute(root)).replaceAll(r'\', '/');
+  final canonical = p.posix.normalize(
+    p.isAbsolute(file) ? unix : p.posix.join(base, unix),
+  );
+  if (!p.posix.isWithin(base, canonical)) return unix;
+  return p.posix.relative(canonical, from: base);
 }
 
 class _ResolvedFile {

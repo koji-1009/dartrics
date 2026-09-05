@@ -165,6 +165,7 @@ class AnalyzeCommand extends Command<int> {
       dismissals: dismissals,
       dismissalConfig: req.config.dismissals,
       onDismissalRejection: _logDismissalRejection,
+      root: req.analysis.root,
     );
     final records = engine.analyzeResolved(units);
     final unused = await const UnusedDetector().detectResolved([
