@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+Unused-detector false positives and two silent no-ops in the dismiss channel. Findings can disappear on unchanged code; no metric, threshold, exit-code, or report-schema change.
+
+* Unused detector: invoking a callable object (`obj()` where the class declares `call`) now creates an edge to that `call` method. Previously the method — and every declaration only it read — was reported as unreachable. `response-for-class` still excludes callable-object invocations from its invoked-method set, as documented.
+* Unused detector: an override group travels as one unit. A base declaration overridden by every subclass is no longer reported when the call sites are typed as the subclass; deleting it on that verdict broke the subclass's `@override` annotations (`override_on_non_overriding_member`), and `--apply` did delete it.
+* New `dartrics: { unused: { roots: ["<path>::<scope>"] } }` pins a reachability root to one file, for declarations a framework invokes by naming convention. `test/flutter_test_config.dart::testExecutable` ships pre-seeded. A malformed entry is a usage error (exit 64) rather than a silently-ignored line. See "Keeping a declaration reachable" in `doc/manual.md`.
+* Dismissals: a sidecar `file:` written relative to the analysis root — the form `doc/manual.md` documents — matched nothing, for every metric, and was not reported as stale either. Relative paths are now resolved against `--root` before matching. Absolute entries are unaffected.
+* Dismissals: an entry naming an id outside the metric catalogue was accepted and silently did nothing. It is now rejected on stderr and dropped, and `dartrics doctor` exits 1 on a sidecar entry that names one. In particular `unused` is not a dismissable id — it is a reachability verdict; the rejection points at `unused: { roots / entry-points / ignore-annotations }` instead. `dartrics doctor` gains `--root` to resolve the sidecar path.
+* `schemas/dartrics-config.schema.json` gained the `unused.roots` and `unused.filter` keys. `filter` was already honoured by the loader but absent from the schema, so a config using it failed schema validation while dartrics accepted it.
+* Documentation: `doc/manual.md` documents the `unused` reachability config (`exclude-exported`, `entry-points`, `ignore-annotations`, `roots`), which had no coverage outside the JSON schema; the `unused --apply` flag-map row said top-level declarations only, but `--apply` also deletes class members.
+
 ## 1.4.0
 
 Toolchain alignment release: tracks Dart 3.13. No metric, threshold, exit-code, or schema change.
