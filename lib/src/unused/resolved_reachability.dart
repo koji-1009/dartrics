@@ -435,7 +435,7 @@ Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
     if (!visited.add(id)) continue;
     final next = byId[id];
     if (next == null) continue;
-    for (final outId in next.outgoingCounts.keys) {
+    for (final outId in next.successors) {
       if (!visited.contains(outId)) queue.add(outId);
     }
   }
@@ -964,6 +964,7 @@ void _emitMethod(
       isInstanceMember: true,
       isOverride: isOverride,
       isObjectDunder: isObjectDunder,
+      overriddenIds: _overriddenIds(canonical),
       enclosingTypeElementId: enclosingTypeId,
     ),
   );
@@ -1003,6 +1004,7 @@ void _emitFields(
         isInstanceMember: true,
         isOverride: isOverride,
         isObjectDunder: false,
+        overriddenIds: _overriddenIds(canonical),
         enclosingTypeElementId: enclosingTypeId,
       ),
     );
@@ -1125,6 +1127,42 @@ void _emitTypedef({
   );
 }
 
+/// Element ids of the members [element] overrides in its supertypes.
+///
+/// Dispatch resolves to the override, so a base declaration whose every
+/// call site is statically typed as a subclass collects no inbound edge
+/// and reads as unreachable. Deleting it on that verdict is not safe —
+/// the subclass's `@override` annotations stop resolving
+/// (`override_on_non_overriding_member`) — so the override group travels
+/// as one unit: reaching any member of it reaches the base it overrides.
+///
+/// Both name-compatible member kinds are pulled in because a getter can
+/// be overridden by a field and vice versa; the `nonSynthetic` walk in
+/// [_addOverriddenMember] collapses the synthetic accessor back onto the
+/// field that owns it.
+Set<int> _overriddenIds(Element element) {
+  final enclosing = element.enclosingElement;
+  if (enclosing is! InterfaceElement) return const {};
+  final name = element.name;
+  if (name == null || name.isEmpty) return const {};
+  final ownId = element.baseElement.nonSynthetic.id;
+  final out = <int>{};
+  for (final supertype in enclosing.allSupertypes) {
+    final type = supertype.element;
+    _addOverriddenMember(type.getMethod(name), ownId, out);
+    _addOverriddenMember(type.getGetter(name), ownId, out);
+    _addOverriddenMember(type.getSetter(name), ownId, out);
+    _addOverriddenMember(type.getField(name), ownId, out);
+  }
+  return out;
+}
+
+void _addOverriddenMember(Element? member, int ownId, Set<int> out) {
+  if (member == null) return;
+  final id = member.baseElement.nonSynthetic.id;
+  if (id != ownId) out.add(id);
+}
+
 bool _isVmEntryPointPragma(Annotation ann) {
   if (ann.name.name != 'pragma') return false;
   final args = ann.arguments?.arguments ?? const [];
@@ -1223,6 +1261,17 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
     node.target?.accept(this);
     node.typeArguments?.accept(this);
     node.argumentList.accept(this);
+  }
+
+  @override
+  void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
+    // `obj()` on a callable object dispatches to the class's `call`
+    // method, and no identifier in the subtree names it — the default
+    // descent walks `node.function`, which resolves to the *object*.
+    // Without this hook `call` (and everything only it reads) has no
+    // inbound edge and reads as unreachable.
+    _record(node.element);
+    super.visitFunctionExpressionInvocation(node);
   }
 
   @override
@@ -1355,6 +1404,7 @@ class _ResolvedDeclaration {
     required this.isInstanceMember,
     required this.isOverride,
     required this.isObjectDunder,
+    this.overriddenIds = const {},
     this.enclosingTypeElementId,
   });
 
@@ -1371,6 +1421,19 @@ class _ResolvedDeclaration {
   final bool isInstanceMember;
   final bool isOverride;
   final bool isObjectDunder;
+
+  /// Element ids of the members this declaration overrides in its
+  /// supertypes. Walked by [_bfs] alongside [outgoingCounts] so an
+  /// override group travels as one unit — see [_overriddenIds]. Kept
+  /// off [outgoingCounts] because an override is not a *call* into its
+  /// base; folding it in would inflate the fan-out signals.
+  final Set<int> overriddenIds;
+
+  /// Every id one hop away for reachability purposes: the references
+  /// this declaration makes, plus the base members it overrides. The
+  /// two are stored apart because only the former is a call edge —
+  /// the signals layer reads [outgoingCounts] alone.
+  Iterable<int> get successors => outgoingCounts.keys.followedBy(overriddenIds);
 
   /// Element id of the enclosing class / mixin / extension / enum, or
   /// `null` for top-level declarations. Used to propagate roots: when

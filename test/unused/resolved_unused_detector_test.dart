@@ -809,4 +809,96 @@ void unusedHelper() {}
       expect(names, contains('unusedMember'));
     },
   );
+
+  test('invoking a callable object roots its `call` method and '
+      'everything only that method reads', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString("""
+class _Config {
+  _Config(this.label);
+  final String label;
+}
+
+class _TestCase {
+  _TestCase(this.config);
+  final _Config config;
+
+  void call() {
+    print(config.label);
+  }
+}
+
+void run() {
+  _TestCase(_Config('a'))();
+}
+""");
+    final unused = await detectIn(const UnusedConfig());
+    expect(unused, isEmpty);
+  });
+
+  test(
+    'a callable-object `call` with no invocation is still reported',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+class _Never {
+  void call() {}
+}
+
+void run() => _Never();
+''');
+      final unused = await detectIn(const UnusedConfig());
+      expect(unused.map((u) => u.name), contains('call'));
+    },
+  );
+
+  test('a base member overridden by every subclass is kept alive by the '
+      'override group', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString("""
+abstract class _Base {
+  String get item => throw UnimplementedError();
+  void act() => throw UnimplementedError();
+  set label(String v) => throw UnimplementedError();
+  String get boxed => throw UnimplementedError();
+}
+
+class _Impl extends _Base {
+  @override
+  String get item => 'x';
+
+  @override
+  void act() {}
+
+  @override
+  set label(String v) {}
+
+  @override
+  final String boxed = 'b';
+}
+
+String read() {
+  final i = _Impl()..act();
+  i.label = 'y';
+  return i.item + i.boxed;
+}
+""");
+    final unused = await detectIn(const UnusedConfig());
+    expect(unused, isEmpty);
+  });
+
+  test('the override group keeps only the overridden members alive', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+abstract class _Base {
+  void act() => throw UnimplementedError();
+  void neverOverridden() {}
+}
+
+class _Impl extends _Base {
+  @override
+  void act() {}
+}
+
+void read() => _Impl().act();
+''');
+    final unused = await detectIn(const UnusedConfig());
+    expect(unused.map((u) => u.name), ['neverOverridden']);
+  });
 }
