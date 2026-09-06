@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 Unused-detector false positives, two silent no-ops in the dismiss channel, and a `--fatal-warnings` gate that disagreed with the report it was reading. Findings can disappear on unchanged code, exit codes flip in both directions, and every `MetricViolation.id` changes once. Also raises the analyzer toolchain floor and corrects an analyzer-plugin install snippet that never worked. No metric, threshold, or report-schema change.
 
