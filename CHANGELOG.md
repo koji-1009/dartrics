@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Dependency floors raised: `analyzer ^14.3.0`, `analyzer_testing ^0.4.1` (dev), `analysis_server_plugin ^0.3.22`. `analyzer_testing` 0.4.0 renamed its experiment-configuration APIs; dartrics uses only `AnalysisRuleTest`, so no test changed.
+
 ## 1.4.0
 
 Toolchain alignment release: tracks Dart 3.13. No metric, threshold, exit-code, or schema change.
