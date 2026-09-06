@@ -64,3 +64,33 @@ DismissalRejected? _checkYamlMetadata(Dismissal d, DismissalConfig cfg) {
   }
   return null;
 }
+
+/// Rejects a dismissal whose `metric` names something outside the
+/// metric catalogue.
+///
+/// The dismiss channel is keyed on `(file, scope, metricId)`, so an id
+/// that no metric emits can never match a violation. Accepting it
+/// records a suppression that does nothing and reports nothing — the
+/// silent no-op the channel exists to prevent. [knownIds] comes from
+/// `collectRuleDescriptions()`; the caller owns that dependency so this
+/// layer stays free of the metrics layer.
+DismissalRejected? checkDismissalMetricId(Dismissal d, Set<String> knownIds) {
+  if (knownIds.contains(d.metricId)) return null;
+  return DismissalRejected(d, unknownMetricIdReason(d.metricId));
+}
+
+/// The reachability verdict's id. It reads like a metric id but isn't
+/// one — `dartrics rules` doesn't list it and no violation carries it —
+/// and the fix is a different config key, so it gets a targeted message
+/// instead of the generic "not in the catalogue" one.
+const String unusedVerdictId = 'unused';
+
+/// Rejection text for [checkDismissalMetricId].
+String unknownMetricIdReason(String id) => id == unusedVerdictId
+    ? 'unknown metric id "$id" — `unused` is a reachability verdict, '
+          'not a thresholded metric, and is not dismissable. Keep the '
+          'declaration alive with `unused: { roots: ["<path>::<scope>"] }`, '
+          '`unused: { entry-points: [...] }`, or a keep-alive annotation '
+          'listed in `unused: { ignore-annotations: [...] }` instead.'
+    : 'unknown metric id "$id" — not in the catalogue '
+          '(run `dartrics rules` for the full list)';

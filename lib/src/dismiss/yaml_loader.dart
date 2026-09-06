@@ -1,9 +1,20 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import '../config/config.dart';
 import '../config/config_loader.dart';
 import 'dismissal.dart';
+
+/// Resolves the sidecar path for [config] against the analysis [root].
+/// Lives here rather than on a command so every reader of the sidecar
+/// (`analyze`, `doctor`) resolves it the same way.
+String resolveDismissalsYamlPath(DismissalConfig config, String root) {
+  final base = config.yamlPath ?? defaultDismissalsYamlPath;
+  if (p.isAbsolute(base)) return base;
+  return p.join(root, base);
+}
 
 /// Loads dismissal entries from a YAML sidecar at [path].
 ///
@@ -12,25 +23,32 @@ import 'dismissal.dart';
 /// might not have authored the sidecar yet. Structural problems
 /// (`version`, `dismissals` list, missing required fields, malformed
 /// `at:`) raise [ConfigException] which the CLI maps to `EX_CONFIG`.
-List<Dismissal> loadYamlDismissals(String path) {
+///
+/// Each entry's `file:` is resolved against [root] and normalised to an
+/// absolute path. Absolute paths are the canonical form everywhere
+/// downstream — [AnalyzerRunner] emits them, so `MetricRecord.file` and
+/// the [DismissalIndex] key are absolute too. Without this step a
+/// repo-relative `file:` (the form the manual documents) matches
+/// nothing and is not even reported as stale.
+List<Dismissal> loadYamlDismissals(String path, {required String root}) {
   final file = File(path);
   if (!file.existsSync()) return const [];
   final source = file.readAsStringSync();
-  final YamlMap root;
+  final YamlMap doc;
   try {
     final parsed = loadYaml(source);
     if (parsed is! YamlMap) {
       throw ConfigException('$path: top-level YAML must be a map');
     }
-    root = parsed;
+    doc = parsed;
   } on YamlException catch (e) {
     throw ConfigException('failed to parse $path: $e');
   }
-  final version = root['version'];
+  final version = doc['version'];
   if (version != 1) {
     throw ConfigException('$path: unsupported version "$version" (expected 1)');
   }
-  final list = root['dismissals'];
+  final list = doc['dismissals'];
   if (list == null) return const [];
   if (list is! YamlList) {
     throw ConfigException('$path: `dismissals` must be a list');
@@ -43,7 +61,7 @@ List<Dismissal> loadYamlDismissals(String path) {
         '$path: dismissals[$i] must be a map (got ${entry.runtimeType})',
       );
     }
-    out.add(_parseEntry(entry, path: path, index: i));
+    out.add(_parseEntry(entry, path: path, index: i, root: root));
   }
   return out;
 }
@@ -52,11 +70,15 @@ Dismissal _parseEntry(
   YamlMap entry, {
   required String path,
   required int index,
+  required String root,
 }) {
   final reason = entry['reason'];
   final by = entry['by'];
   return Dismissal(
-    file: _requireString(entry, 'file', path: path, index: index),
+    file: _absoluteAgainst(
+      _requireString(entry, 'file', path: path, index: index),
+      root,
+    ),
     scope: _requireString(entry, 'scope', path: path, index: index),
     metricId: _requireString(entry, 'metric', path: path, index: index),
     reason: reason is String ? reason : '',
@@ -64,6 +86,14 @@ Dismissal _parseEntry(
     by: by is String ? by : null,
     at: _parseAt(entry['at'], path: path, index: index),
   );
+}
+
+/// Normalises a sidecar `file:` value to the absolute, normalised form
+/// the rest of the pipeline uses. [root] itself may be relative (the
+/// CLI defaults `--root` to `.`), so it goes through `p.absolute` too.
+String _absoluteAgainst(String file, String root) {
+  if (p.isAbsolute(file)) return p.normalize(file);
+  return p.normalize(p.absolute(p.join(root, file)));
 }
 
 String _requireString(

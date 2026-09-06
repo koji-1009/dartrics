@@ -140,6 +140,38 @@ class UnusedThing {}
     expect(code, 1);
   });
 
+  test('unused --fatal-warnings gates on the findings it printed', () async {
+    // A snapshot diff filters the report down to changed files. The
+    // gate used to read the pre-filter list, so a finding that never
+    // appeared in the output still blocked the run.
+    final out = File('${dir.path}/u3.json');
+    final args = [
+      'unused',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      out.path,
+      '--fatal-warnings',
+      '--root',
+      dir.path,
+      '--snapshot',
+      'cache',
+      '--config',
+      '${dir.path}/no.yaml',
+    ];
+    // First run: nothing snapshotted yet, so every file counts as
+    // changed and the unused finding is reported.
+    expect(await runQuietly(args), 1);
+    final firstReport = jsonDecode(out.readAsStringSync()) as Map;
+    expect(firstReport['unused'], isNotEmpty);
+    // Second run: no file changed, the report carries no findings, so
+    // the exit code must agree with it.
+    expect(await runQuietly(args), 0);
+    final secondReport = jsonDecode(out.readAsStringSync()) as Map;
+    expect(secondReport['unused'] ?? const <Object?>[], isEmpty);
+  });
+
   test(
     'unused: a `.g.dart` reference keeps the source declaration alive',
     () async {
@@ -295,6 +327,70 @@ int f() { return 1; }
       expect(code, 1);
     },
   );
+
+  test(
+    'analyze --fatal-warnings does not block on a dismissed violation',
+    () async {
+      // Its own tree: the shared fixture carries an unused declaration,
+      // which now blocks on its own and would mask the dismissal.
+      final clean = await Directory.systemTemp.createTemp('cli_dismissed_');
+      addTearDown(() => clean.delete(recursive: true));
+      await Directory('${clean.path}/lib').create(recursive: true);
+      final config = File('${clean.path}/dismissed.yaml');
+      await config.writeAsString('''
+dartrics:
+  dismissals:
+    sources:
+      comment: true
+      yaml: false
+  metrics:
+    cyclomatic-complexity:
+      warning: 0
+''');
+      await File('${clean.path}/lib/foo.dart').writeAsString('''
+// dartrics:dismiss cyclomatic-complexity reason="single return, kept flat on purpose"
+int main() { return 1; }
+''');
+      final args = [
+        'analyze',
+        '${clean.path}/lib',
+        '--reporter',
+        'json',
+        '--output',
+        '${clean.path}/a-dismissed.json',
+        '--fatal-warnings',
+        // Two runs in a row: without this the first would write a
+        // snapshot and the second would see no changed file and filter
+        // every record out before the gate ever looked at it.
+        '--snapshot',
+        'none',
+        '--config',
+        config.path,
+      ];
+      expect(await runQuietly(args), 0);
+      // `--strict-dismiss` is the audit mode: it empties the index, so
+      // the same run must go back to blocking.
+      expect(await runQuietly([...args, '--strict-dismiss']), 1);
+    },
+  );
+
+  test('analyze --fatal-warnings exits 1 on an unused declaration', () async {
+    // The fixture's `UnusedThing` is never referenced. Without any
+    // metric violation to carry the exit code, a run that printed the
+    // finding still reported success.
+    final code = await runQuietly([
+      'analyze',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      '${dir.path}/a-unused.json',
+      '--fatal-warnings',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(code, 1);
+  });
 
   test('analyze with no positional arg falls back to --root', () async {
     final code = await runQuietly([

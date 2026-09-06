@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 
 import '../metrics/metric_catalogue.dart' show defaultMetricThresholds;
+import '../unused/keep_alive_presets.dart' show conventionRootPresets;
 import 'config.dart';
 
 final _log = Logger('config_loader');
@@ -67,6 +68,7 @@ const Map<String, Set<String>> knownConfigKeys = {
     'entry-points',
     'exclude-exported',
     'ignore-annotations',
+    'roots',
     'filter',
   },
   'dartrics.dismissals': {
@@ -305,6 +307,7 @@ UnusedConfig _parseUnused(Object? node) {
       node['ignore-annotations'],
       fallback: const ['visibleForTesting', 'protected', 'JsonSerializable'],
     ),
+    roots: _parseStringList(node['roots'], fallback: conventionRootPresets),
     filter: _parseStringList(node['filter']),
   );
 }

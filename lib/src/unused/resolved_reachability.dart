@@ -427,6 +427,55 @@ const List<String> unusedFilterKindNames = [
   'extension',
 ];
 
+/// One parsed [UnusedConfig.roots] entry.
+typedef UnusedRootSpec = ({String pathSuffix, String scope});
+
+/// Translates the raw `roots` strings from [UnusedConfig] into
+/// `<path suffix>::<scope>` pairs.
+///
+/// Throws [FormatException] for an entry missing the `::` separator or
+/// with an empty half, so the caller (CLI / config loader) surfaces a
+/// usage error rather than carrying a root that can never match — the
+/// same contract [parseUnusedFilter] follows.
+List<UnusedRootSpec> parseUnusedRoots(List<String> roots) {
+  final out = <UnusedRootSpec>[];
+  for (final raw in roots) {
+    final entry = raw.trim();
+    if (entry.isEmpty) continue;
+    final sep = entry.indexOf('::');
+    final pathSuffix = sep < 0 ? '' : entry.substring(0, sep).trim();
+    final scope = sep < 0 ? '' : entry.substring(sep + 2).trim();
+    if (pathSuffix.isEmpty || scope.isEmpty) {
+      throw FormatException(
+        'unused.roots: "$raw" must be '
+        '"<path>::<scope>" (e.g. '
+        '"test/flutter_test_config.dart::testExecutable")',
+      );
+    }
+    out.add((pathSuffix: pathSuffix.replaceAll(r'\', '/'), scope: scope));
+  }
+  return out;
+}
+
+/// True when [path] / [scope] matches any entry in [specs]. The path
+/// half matches on a `/`-boundary suffix so a root can be written
+/// project-relative while the analysed paths are absolute.
+bool _matchesConfiguredRoot(
+  String path,
+  String scope,
+  List<UnusedRootSpec> specs,
+) {
+  if (specs.isEmpty) return false;
+  final unix = path.replaceAll(r'\', '/');
+  for (final spec in specs) {
+    if (spec.scope != scope) continue;
+    if (unix == spec.pathSuffix || unix.endsWith('/${spec.pathSuffix}')) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
   final visited = <int>{};
   final queue = <int>[...roots];
@@ -435,7 +484,7 @@ Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
     if (!visited.add(id)) continue;
     final next = byId[id];
     if (next == null) continue;
-    for (final outId in next.outgoingCounts.keys) {
+    for (final outId in next.successors) {
       if (!visited.contains(outId)) queue.add(outId);
     }
   }
@@ -455,11 +504,14 @@ Set<int> _resolveRoots({
         ? _collectExportedRoots(sources, byId)
         : const <int>{},
     excludeExported: config.excludeExported,
+    configuredRoots: parseUnusedRoots(config.roots),
   );
   final roots = <int>{};
   final annotationKeptTypeIds = <int>{};
   for (final d in declarations) {
-    if (_isRoot(d, rc)) roots.add(d.elementId);
+    if (_isRoot(d, rc) || _matchesConfiguredRootFor(d, byId, rc)) {
+      roots.add(d.elementId);
+    }
     if (_propagatesAnnotationKeepAlive(d, rc)) {
       annotationKeptTypeIds.add(d.elementId);
     }
@@ -500,6 +552,23 @@ bool _matchesEntryName(_ResolvedDeclaration d, _RootContext rc) =>
 bool _matchesKeepAliveAnnotation(_ResolvedDeclaration d, _RootContext rc) =>
     rc.keepAliveAnnotations.any(d.record.annotations.contains);
 
+/// Configured-root match. Kept out of [_isRoot] because it needs
+/// [byId] to build the same qualified `Type.member` scope name the
+/// `signals:` block emits — the shape a user reads off a report and
+/// pastes into `unused.roots`.
+bool _matchesConfiguredRootFor(
+  _ResolvedDeclaration d,
+  Map<int, _ResolvedDeclaration> byId,
+  _RootContext rc,
+) {
+  if (rc.configuredRoots.isEmpty) return false;
+  return _matchesConfiguredRoot(
+    d.record.location.path,
+    _scopeRefFor(d, byId).name,
+    rc.configuredRoots,
+  );
+}
+
 bool _matchesLibPublicTopLevel(_ResolvedDeclaration d, _RootContext rc) =>
     rc.excludeExported && d.isInLibPublic && !d.isInstanceMember;
 
@@ -531,12 +600,14 @@ class _RootContext {
     required this.keepAliveAnnotations,
     required this.exportedRoots,
     required this.excludeExported,
+    required this.configuredRoots,
   });
 
   final Set<String> entryNames;
   final Set<String> keepAliveAnnotations;
   final Set<int> exportedRoots;
   final bool excludeExported;
+  final List<UnusedRootSpec> configuredRoots;
 }
 
 /// Walks every public library (under `lib/` outside `lib/src/`) and
@@ -964,6 +1035,7 @@ void _emitMethod(
       isInstanceMember: true,
       isOverride: isOverride,
       isObjectDunder: isObjectDunder,
+      overriddenIds: _overriddenIds(canonical),
       enclosingTypeElementId: enclosingTypeId,
     ),
   );
@@ -1003,6 +1075,7 @@ void _emitFields(
         isInstanceMember: true,
         isOverride: isOverride,
         isObjectDunder: false,
+        overriddenIds: _overriddenIds(canonical),
         enclosingTypeElementId: enclosingTypeId,
       ),
     );
@@ -1125,6 +1198,42 @@ void _emitTypedef({
   );
 }
 
+/// Element ids of the members [element] overrides in its supertypes.
+///
+/// Dispatch resolves to the override, so a base declaration whose every
+/// call site is statically typed as a subclass collects no inbound edge
+/// and reads as unreachable. Deleting it on that verdict is not safe —
+/// the subclass's `@override` annotations stop resolving
+/// (`override_on_non_overriding_member`) — so the override group travels
+/// as one unit: reaching any member of it reaches the base it overrides.
+///
+/// Both name-compatible member kinds are pulled in because a getter can
+/// be overridden by a field and vice versa; the `nonSynthetic` walk in
+/// [_addOverriddenMember] collapses the synthetic accessor back onto the
+/// field that owns it.
+Set<int> _overriddenIds(Element element) {
+  final enclosing = element.enclosingElement;
+  if (enclosing is! InterfaceElement) return const {};
+  final name = element.name;
+  if (name == null || name.isEmpty) return const {};
+  final ownId = element.baseElement.nonSynthetic.id;
+  final out = <int>{};
+  for (final supertype in enclosing.allSupertypes) {
+    final type = supertype.element;
+    _addOverriddenMember(type.getMethod(name), ownId, out);
+    _addOverriddenMember(type.getGetter(name), ownId, out);
+    _addOverriddenMember(type.getSetter(name), ownId, out);
+    _addOverriddenMember(type.getField(name), ownId, out);
+  }
+  return out;
+}
+
+void _addOverriddenMember(Element? member, int ownId, Set<int> out) {
+  if (member == null) return;
+  final id = member.baseElement.nonSynthetic.id;
+  if (id != ownId) out.add(id);
+}
+
 bool _isVmEntryPointPragma(Annotation ann) {
   if (ann.name.name != 'pragma') return false;
   final args = ann.arguments?.arguments ?? const [];
@@ -1223,6 +1332,17 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
     node.target?.accept(this);
     node.typeArguments?.accept(this);
     node.argumentList.accept(this);
+  }
+
+  @override
+  void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
+    // `obj()` on a callable object dispatches to the class's `call`
+    // method, and no identifier in the subtree names it — the default
+    // descent walks `node.function`, which resolves to the *object*.
+    // Without this hook `call` (and everything only it reads) has no
+    // inbound edge and reads as unreachable.
+    _record(node.element);
+    super.visitFunctionExpressionInvocation(node);
   }
 
   @override
@@ -1355,6 +1475,7 @@ class _ResolvedDeclaration {
     required this.isInstanceMember,
     required this.isOverride,
     required this.isObjectDunder,
+    this.overriddenIds = const {},
     this.enclosingTypeElementId,
   });
 
@@ -1371,6 +1492,19 @@ class _ResolvedDeclaration {
   final bool isInstanceMember;
   final bool isOverride;
   final bool isObjectDunder;
+
+  /// Element ids of the members this declaration overrides in its
+  /// supertypes. Walked by [_bfs] alongside [outgoingCounts] so an
+  /// override group travels as one unit — see [_overriddenIds]. Kept
+  /// off [outgoingCounts] because an override is not a *call* into its
+  /// base; folding it in would inflate the fan-out signals.
+  final Set<int> overriddenIds;
+
+  /// Every id one hop away for reachability purposes: the references
+  /// this declaration makes, plus the base members it overrides. The
+  /// two are stored apart because only the former is a call edge —
+  /// the signals layer reads [outgoingCounts] alone.
+  Iterable<int> get successors => outgoingCounts.keys.followedBy(overriddenIds);
 
   /// Element id of the enclosing class / mixin / extension / enum, or
   /// `null` for top-level declarations. Used to propagate roots: when

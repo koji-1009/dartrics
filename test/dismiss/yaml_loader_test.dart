@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dartrics/src/config/config_loader.dart';
 import 'package:dartrics/src/dismiss/dismissal.dart';
 import 'package:dartrics/src/dismiss/yaml_loader.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 void main() {
@@ -23,7 +24,10 @@ void main() {
   }
 
   test('returns empty list when sidecar is absent', () {
-    expect(loadYamlDismissals('${dir.path}/missing.yaml'), isEmpty);
+    expect(
+      loadYamlDismissals('${dir.path}/missing.yaml', root: dir.path),
+      isEmpty,
+    );
   });
 
   test('parses a fully-specified entry with by + at', () async {
@@ -37,10 +41,10 @@ dismissals:
     by: claude-opus-4-7
     at: "2026-05-06T19:14:00Z"
 ''');
-    final dismissals = loadYamlDismissals(f.path);
+    final dismissals = loadYamlDismissals(f.path, root: dir.path);
     expect(dismissals, hasLength(1));
     final d = dismissals.single;
-    expect(d.file, 'lib/parser.dart');
+    expect(d.file, p.normalize(p.join(dir.path, 'lib/parser.dart')));
     expect(d.scope, 'parse');
     expect(d.metricId, 'cyclomatic-complexity');
     expect(d.reason, 'Recursive descent parser');
@@ -57,7 +61,7 @@ dismissals:
     scope: fn
     metric: method-length
 ''');
-    final d = loadYamlDismissals(f.path).single;
+    final d = loadYamlDismissals(f.path, root: dir.path).single;
     expect(d.reason, '');
     expect(d.by, isNull);
     expect(d.at, isNull);
@@ -69,7 +73,7 @@ version: 2
 dismissals: []
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -83,7 +87,7 @@ dismissals: []
   test('rejects non-map root', () async {
     final f = await write('"just a string"\n');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -100,7 +104,7 @@ version: 1
 dismissals: nope
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -113,7 +117,7 @@ dismissals: nope
 
   test('returns empty when dismissals key is omitted', () async {
     final f = await write('version: 1\n');
-    expect(loadYamlDismissals(f.path), isEmpty);
+    expect(loadYamlDismissals(f.path, root: dir.path), isEmpty);
   });
 
   test('rejects malformed entries', () async {
@@ -123,7 +127,7 @@ dismissals:
   - "not a map"
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -142,7 +146,7 @@ dismissals:
     metric: cc
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -161,7 +165,7 @@ dismissals:
     metric: cc
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -180,7 +184,7 @@ dismissals:
     scope: fn
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -201,7 +205,7 @@ dismissals:
     at: "not-a-time"
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -222,7 +226,7 @@ dismissals:
     at: 12345
 ''');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
@@ -233,10 +237,48 @@ dismissals:
     );
   });
 
+  test('resolves a relative file against the analysis root', () async {
+    final f = await write('''
+version: 1
+dismissals:
+  - file: lib/a.dart
+    scope: fn
+    metric: method-length
+''');
+    final d = loadYamlDismissals(f.path, root: dir.path).single;
+    expect(p.isAbsolute(d.file), isTrue);
+    expect(d.file, p.normalize(p.join(dir.path, 'lib', 'a.dart')));
+  });
+
+  test('resolves a relative root against the cwd', () async {
+    final f = await write('''
+version: 1
+dismissals:
+  - file: lib/a.dart
+    scope: fn
+    metric: method-length
+''');
+    final d = loadYamlDismissals(f.path, root: '.').single;
+    expect(d.file, p.normalize(p.absolute('lib', 'a.dart')));
+  });
+
+  test('keeps an absolute file entry as-is', () async {
+    final absolute = p.join(dir.path, 'lib', 'b.dart');
+    final f = await write('''
+version: 1
+dismissals:
+  - file: "$absolute"
+    scope: fn
+    metric: method-length
+''');
+    final d = loadYamlDismissals(f.path, root: dir.path).single;
+    expect(d.file, p.normalize(absolute));
+  });
+
   test('rejects malformed YAML', () async {
     final f = await write('version: 1\ndismissals:\n  - {broken\n');
     expect(
-      () => loadYamlDismissals(f.path),
+      () => loadYamlDismissals(f.path, root: dir.path),
       throwsA(
         isA<ConfigException>().having(
           (e) => e.message,
