@@ -4,9 +4,7 @@ analyzer:
   exclude:
     - tmp/**
   language:
-    strict-casts: true
     strict-inference: true
-    strict-raw-types: true
 
 # Dogfood: dartrics on dartrics. Defaults match the rules surface
 # (CC 10, Cognitive 15, NOP 4).
@@ -27,6 +25,8 @@ linter:
     close_sinks: true
     directives_ordering: true
     no_adjacent_strings_in_list: true
+    no_dynamic_casts: true
+    no_raw_types: true
     only_throw_errors: true
     prefer_const_constructors_in_immutables: true
     prefer_const_constructors: true
