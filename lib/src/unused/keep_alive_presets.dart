@@ -66,3 +66,17 @@ const Map<String, List<String>> keepAlivePresets = {
 final Set<String> allKeepAliveAnnotations = {
   for (final names in keepAlivePresets.values) ...names,
 };
+
+/// Convention-based roots shipped as the default for
+/// [UnusedConfig.roots], in the `<path suffix>::<scope>` form
+/// [parseUnusedRoots] accepts.
+///
+/// `flutter_test` picks `test/flutter_test_config.dart` up by filename
+/// and calls its top-level `testExecutable` from a bootstrap it
+/// generates at run time (see `flutter_tools`'
+/// `test/flutter_platform.dart`), so no call expression to it exists
+/// anywhere in the source tree. Packages without that file are
+/// unaffected — the entry simply matches nothing.
+const List<String> conventionRootPresets = [
+  'test/flutter_test_config.dart::testExecutable',
+];

@@ -82,6 +82,7 @@ class UnusedCommand extends Command<int> {
     );
     try {
       parseUnusedFilter(unusedConfig.filter);
+      parseUnusedRoots(unusedConfig.roots);
     } on FormatException catch (e) {
       DartricsIO.stderrSink.writeln('dartrics unused: ${e.message}');
       return ExitCode.usage.code;
@@ -146,7 +147,11 @@ class UnusedCommand extends Command<int> {
     final applyExit = await _maybeApply(analysis, filtered);
     if (applyExit != null) return applyExit;
 
-    if (analysis.fatalWarnings && unused.isNotEmpty) return 1;
+    // Gate on what the report actually printed: with `--since` or a
+    // snapshot diff active, `unused` still holds the findings that were
+    // filtered out of the report, and blocking on those makes the exit
+    // code disagree with the output the operator is reading.
+    if (analysis.fatalWarnings && filtered.isNotEmpty) return 1;
     return ExitCode.success.code;
   }
 

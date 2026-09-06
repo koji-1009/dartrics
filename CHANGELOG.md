@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+Unused-detector false positives, two silent no-ops in the dismiss channel, and a `--fatal-warnings` gate that disagreed with the report it was reading. Findings can disappear on unchanged code and exit codes flip in both directions. No metric, threshold, or report-schema change.
+
+* Unused detector: invoking a callable object (`obj()` where the class declares `call`) now creates an edge to that `call` method. Previously the method — and every declaration only it read — was reported as unreachable. `response-for-class` still excludes callable-object invocations from its invoked-method set, as documented.
+* Unused detector: an override group travels as one unit. A base declaration overridden by every subclass is no longer reported when the call sites are typed as the subclass; deleting it on that verdict broke the subclass's `@override` annotations (`override_on_non_overriding_member`), and `--apply` did delete it.
+* New `dartrics: { unused: { roots: ["<path>::<scope>"] } }` pins a reachability root to one file, for declarations a framework invokes by naming convention. `test/flutter_test_config.dart::testExecutable` ships pre-seeded. A malformed entry is a usage error (exit 64) rather than a silently-ignored line. See "Keeping a declaration reachable" in `doc/manual.md`.
+* Dismissals: a sidecar `file:` written relative to the analysis root — the form `doc/manual.md` documents — matched nothing, for every metric, and was not reported as stale either. Relative paths are now resolved against `--root` before matching. Absolute entries are unaffected.
+* Dismissals: an entry naming an id outside the metric catalogue was accepted and silently did nothing. It is now rejected on stderr and dropped, and `dartrics doctor` exits 1 on a sidecar entry that names one. In particular `unused` is not a dismissable id — it is a reachability verdict; the rejection points at `unused: { roots / entry-points / ignore-annotations }` instead. `dartrics doctor` gains `--root` to resolve the sidecar path.
+* `schemas/dartrics-config.schema.json` gained the `unused.roots` and `unused.filter` keys. `filter` was already honoured by the loader but absent from the schema, so a config using it failed schema validation while dartrics accepted it.
+* Documentation: `doc/manual.md` documents the `unused` reachability config (`exclude-exported`, `entry-points`, `ignore-annotations`, `roots`), which had no coverage outside the JSON schema; the `unused --apply` flag-map row said top-level declarations only, but `--apply` also deletes class members.
+
+**Exit-code changes.** `--fatal-warnings` now gates on the findings the report actually shows. CI runs can flip in both directions — re-read the run before adjusting a pipeline.
+
+* `--fatal-warnings` no longer blocks on a **dismissed** violation. A dismissed entry stays in the report for audit, but it is an accepted, reasoned decision and was still forcing exit 1, which made `--strict-dismiss` (the documented audit pairing) change nothing about the gate. Runs that were red only because of dismissals turn green; add `--strict-dismiss` to keep blocking on everything.
+* `analyze --fatal-warnings` now blocks on **unused declarations** too. It read only the violation list, so a run that printed dead code still exited 0 while `unused --fatal-warnings` exited 1 on the same finding — the same flag meant two things. Runs with unused findings turn red; keep a framework-invoked declaration with `unused: { roots: [...] }`, or delete it.
+* `unused --fatal-warnings` gates on the filtered report rather than the pre-filter list. Under `--since` or a snapshot diff it was blocking on findings that never appeared in its own output.
+* `MetricViolation.id` is computed from the `--root`-relative path instead of the absolute one. The same violation now carries the same id across checkouts (developer machine vs. CI), and `RegressionRow.id` finally matches the `MetricViolation.id` it documents itself as cross-referencing — the regression side already relativised its paths, so the two hashed different strings and could never agree. Ids change once with this release; loops that track an id across runs re-anchor on the next pass.
+
 ## 1.4.0
 
 Toolchain alignment release: tracks Dart 3.13. No metric, threshold, exit-code, or schema change.

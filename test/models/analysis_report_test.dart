@@ -97,6 +97,51 @@ void main() {
     expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
   });
 
+  test('hasSeverityAtLeast skips dismissed violations', () {
+    final report = AnalysisReport(
+      version: '1.0',
+      metrics: const [
+        MetricRecord(
+          file: 'a.dart',
+          scope: ScopeRef(
+            kind: ScopeKind.function,
+            name: 'f',
+            location: SourceLocation(path: 'a.dart', line: 1, column: 1),
+          ),
+          values: {'cyclomatic-complexity': 30},
+          violations: [
+            MetricViolation(
+              metricId: 'cyclomatic-complexity',
+              severity: Severity.error,
+              threshold: 20,
+              dismissed: true,
+              dismissReason: 'load-bearing state machine, splits hide intent',
+            ),
+          ],
+        ),
+      ],
+      unused: const [],
+    );
+    expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
+    expect(report.hasFatalFindings(Severity.warning), isFalse);
+  });
+
+  test('hasFatalFindings blocks on an unused-only report', () {
+    final report = AnalysisReport(
+      version: '1.0',
+      metrics: const [],
+      unused: const [
+        UnusedDeclaration(
+          kind: UnusedKind.function,
+          name: 'orphan',
+          location: SourceLocation(path: 'a.dart', line: 2, column: 1),
+        ),
+      ],
+    );
+    expect(report.hasSeverityAtLeast(Severity.warning), isFalse);
+    expect(report.hasFatalFindings(Severity.warning), isTrue);
+  });
+
   test('toJson emits explanations when present and omits when empty', () {
     final withExplanations = AnalysisReport(
       version: '1.1',

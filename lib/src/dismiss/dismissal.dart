@@ -26,10 +26,13 @@ class Dismissal {
     this.at,
   });
 
-  /// Project-root-relative path of the file the dismissal targets. For
-  /// comment dismissals this is whatever path the engine analysed the
-  /// declaration under; for YAML dismissals this is the literal `file:`
-  /// value.
+  /// Absolute, normalised path of the file the dismissal targets. For
+  /// comment dismissals this is the path the engine analysed the
+  /// declaration under; for YAML dismissals the sidecar's `file:` value
+  /// is resolved against the analysis root by [loadYamlDismissals].
+  /// Absolute is the canonical form across the pipeline — `AnalyzerRunner`
+  /// emits absolute paths, so `MetricRecord.file` is absolute and the
+  /// [DismissalIndex] key must be too.
   final String file;
 
   /// Scope name (`Foo.bar` or `topLevelFn`) that must match

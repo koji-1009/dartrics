@@ -108,6 +108,24 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "default": ["visibleForTesting", "protected", "JsonSerializable"]
+        },
+        "roots": {
+          "description": "File-scoped reachability roots in `<path suffix>::<scope>` form, for declarations a framework invokes by naming convention. The path matches as a `/`-boundary suffix of the analysed file path; the scope is the dotted name the `signals:` block uses (`topLevelFn` or `Type.member`). Supplying this key replaces the default list.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^:]+::.+$"
+          },
+          "default": ["test/flutter_test_config.dart::testExecutable"]
+        },
+        "filter": {
+          "description": "Narrows the reported declaration kinds. Empty means every kind.",
+          "type": "array",
+          "items": {
+            "enum": ["function", "method", "class", "field", "typedef", "enum", "extension"]
+          },
+          "default": []
         }
       }
     },
