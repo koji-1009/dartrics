@@ -67,5 +67,73 @@ void main() {
       );
       expect(winPath, isNot(colonScope));
     });
+
+    test('the id does not depend on where the repo is checked out', () {
+      final dev = computeViolationId(
+        file: '/Users/dev/proj/lib/foo.dart',
+        scope: 'Foo.bar',
+        metricId: 'cyclomatic-complexity',
+        root: '/Users/dev/proj',
+      );
+      final ci = computeViolationId(
+        file: '/home/runner/work/proj/proj/lib/foo.dart',
+        scope: 'Foo.bar',
+        metricId: 'cyclomatic-complexity',
+        root: '/home/runner/work/proj/proj',
+      );
+      expect(dev, ci);
+    });
+
+    test('a rooted absolute path matches the relative form RegressionRow '
+        'hashes', () {
+      final fromAnalyze = computeViolationId(
+        file: '/Users/dev/proj/lib/foo.dart',
+        scope: 'Foo.bar',
+        metricId: 'cyclomatic-complexity',
+        root: '/Users/dev/proj',
+      );
+      final fromRegression = computeViolationId(
+        file: 'lib/foo.dart',
+        scope: 'Foo.bar',
+        metricId: 'cyclomatic-complexity',
+      );
+      expect(fromAnalyze, fromRegression);
+    });
+  });
+
+  group('violationIdPath', () {
+    test('relativises a path inside the root', () {
+      expect(
+        violationIdPath(
+          '/Users/dev/proj/lib/foo.dart',
+          root: '/Users/dev/proj',
+        ),
+        'lib/foo.dart',
+      );
+    });
+
+    test('normalises separators when no root is given', () {
+      expect(violationIdPath(r'lib\foo.dart'), 'lib/foo.dart');
+    });
+
+    test('resolves a relative file against the root', () {
+      expect(
+        violationIdPath('lib/foo.dart', root: '/Users/dev/proj'),
+        'lib/foo.dart',
+      );
+    });
+
+    test('leaves a path outside the root alone', () {
+      expect(
+        violationIdPath('/elsewhere/lib/foo.dart', root: '/Users/dev/proj'),
+        '/elsewhere/lib/foo.dart',
+      );
+    });
+
+    test('a relative root is resolved against the cwd', () {
+      // `--root .` is the CLI default, so the common case goes through
+      // `p.absolute` before the containment check.
+      expect(violationIdPath('lib/foo.dart', root: '.'), 'lib/foo.dart');
+    });
   });
 }

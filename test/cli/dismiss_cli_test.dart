@@ -428,6 +428,59 @@ dartrics:
     ]);
     expect(code, ExitCode.config.code);
   });
+
+  test(
+    'a dismissal naming a non-metric id is rejected, not silently kept',
+    () async {
+      await File('${dir.path}/lib/foo.dart').writeAsString('''
+// dartrics:dismiss unused reason="Invoked by the framework, never from source"
+int branchy(int x) {
+  if (x > 0) return 1;
+  if (x < 0) return -1;
+  if (x == 0) return 0;
+  return 99;
+}
+''');
+      await File('${dir.path}/dartrics-dismissals.yaml').writeAsString(
+        'version: 1\n'
+        'dismissals:\n'
+        '  - file: lib/foo.dart\n'
+        '    scope: branchy\n'
+        '    metric: made-up-metric\n'
+        '    reason: "Invoked by the framework, never from source"\n',
+      );
+      final config = await writeConfig('''
+dartrics:
+  dismissals: {}
+  metrics:
+    cyclomatic-complexity:
+      warning: 1
+''');
+      final out = File('${dir.path}/out.json');
+      final captured = await runCaptured([
+        'analyze',
+        dir.path,
+        '--reporter',
+        'json',
+        '--output',
+        out.path,
+        '--root',
+        dir.path,
+        '--config',
+        config.path,
+      ]);
+      expect(captured.exitCode, 0);
+      expect(captured.stderr, contains('unknown metric id "unused"'));
+      expect(captured.stderr, contains('reachability verdict'));
+      expect(captured.stderr, contains('unknown metric id "made-up-metric"'));
+      final body = jsonDecode(out.readAsStringSync()) as Map<String, dynamic>;
+      // Rejected entries are dropped rather than carried, so they must not
+      // reappear as stale — that would report the same entry twice.
+      expect(body.containsKey('staleDismissals'), isFalse);
+      final v = _findViolation(body, 'branchy', 'cyclomatic-complexity');
+      expect(v.containsKey('dismissed'), isFalse);
+    },
+  );
 }
 
 Map<String, dynamic> _findViolation(

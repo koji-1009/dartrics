@@ -3,6 +3,9 @@ import 'package:io/io.dart';
 
 import '../config/config.dart';
 import '../config/config_loader.dart';
+import '../dismiss/dismissal.dart';
+import '../dismiss/dismissal_validator.dart';
+import '../dismiss/yaml_loader.dart';
 import '../metrics/metric_catalogue.dart';
 import 'io_sinks.dart';
 
@@ -23,11 +26,19 @@ import 'io_sinks.dart';
 /// silent under-reporting on a CI run.
 class DoctorCommand extends Command<int> {
   DoctorCommand() {
-    argParser.addOption(
-      'config',
-      help: 'Path to analysis_options.yaml.',
-      defaultsTo: 'analysis_options.yaml',
-    );
+    argParser
+      ..addOption(
+        'config',
+        help: 'Path to analysis_options.yaml.',
+        defaultsTo: 'analysis_options.yaml',
+      )
+      ..addOption(
+        'root',
+        help:
+            'Analysis root the dismissals sidecar path is resolved '
+            'against. Matches `--root` on analyze.',
+        defaultsTo: '.',
+      );
   }
 
   @override
@@ -40,14 +51,17 @@ class DoctorCommand extends Command<int> {
   @override
   Future<int> run() async {
     final path = argResults!['config'] as String;
+    final root = argResults!['root'] as String;
     final Config config;
+    final List<Dismissal> sidecar;
     try {
       config = await loadConfig(path);
+      sidecar = _loadSidecar(config.dismissals, root);
     } on ConfigException catch (e) {
       DartricsIO.stderrSink.writeln('dartrics doctor: ${e.message}');
       return ExitCode.config.code;
     }
-    final issues = diagnose(config);
+    final issues = diagnose(config, dismissals: sidecar);
     for (final issue in issues) {
       DartricsIO.stdoutSink.writeln('  [WARN] ${issue.message}');
       if (issue.hint != null) {
@@ -65,6 +79,23 @@ class DoctorCommand extends Command<int> {
   }
 }
 
+/// Reads the YAML sidecar so doctor can validate its `metric:` ids.
+///
+/// Returns `const []` when the YAML channel is off — the file may
+/// exist but is not being consulted, and doctor reports what the
+/// configured run would do, not what is on disk. A missing file is
+/// already an empty list from [loadYamlDismissals]. Comment dismissals
+/// are deliberately out of scope: reading them means resolving every
+/// Dart file, which would turn doctor from a config linter into an
+/// analysis run. `analyze` rejects those ids instead.
+List<Dismissal> _loadSidecar(DismissalConfig config, String root) {
+  if (!config.yamlSource) return const [];
+  return loadYamlDismissals(
+    resolveDismissalsYamlPath(config, root),
+    root: root,
+  );
+}
+
 /// One flagged item in the doctor report.
 class DoctorIssue {
   const DoctorIssue({required this.message, this.hint});
@@ -75,7 +106,10 @@ class DoctorIssue {
 
 /// Pure-data diagnosis of a parsed [Config]. Returns the issues
 /// without performing IO so callers can reuse the same rules.
-List<DoctorIssue> diagnose(Config config) {
+List<DoctorIssue> diagnose(
+  Config config, {
+  List<Dismissal> dismissals = const [],
+}) {
   final issues = <DoctorIssue>[];
   final knownMetrics = collectRuleDescriptions();
   final knownIds = knownMetrics.map((r) => r.id).toSet();
@@ -83,6 +117,16 @@ List<DoctorIssue> diagnose(Config config) {
 
   for (final path in config.unknownKeys) {
     issues.add(_unknownKeyIssue(path));
+  }
+
+  for (final d in dismissals) {
+    final rejection = checkDismissalMetricId(d, knownIds);
+    if (rejection == null) continue;
+    issues.add(
+      DoctorIssue(
+        message: 'dismissal at ${d.file}::${d.scope} — ${rejection.reason}',
+      ),
+    );
   }
 
   for (final entry in config.metricThresholds.entries) {

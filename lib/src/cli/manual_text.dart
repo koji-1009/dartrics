@@ -214,13 +214,42 @@ dismissals:
 
 The validator will reject reasons shorter than `minReasonLength` (default 20 chars) and stamp the violation with `dismissalRejected: <why>`. Your dismiss is **not silent**: if it didn't take, the next pass will tell you why.
 
+A sidecar `file:` may be written relative to the analysis root (`--root`, default `.`) or absolute; either way it is resolved to an absolute path before matching, so the two forms behave identically.
+
 Stale entries — dismissals that no longer match any live violation (scope renamed, function deleted, metric dropped below threshold) — appear in the report's `staleDismissals:` block, with a stderr WARNING per entry. Treat that as a cleanup candidate: the dismiss is doing nothing now, and leaving it in the file accumulates dead config. Files outside the analyzed set (filtered out by `--since` or snapshot) are not flagged as stale.
+
+**`metric:` must name a metric.** The dismiss channel is keyed on `(file, scope, metric-id)`, so only the ids `dartrics rules` lists can be dismissed. An entry naming anything else is dropped with a `dismissal rejected … unknown metric id` line on stderr, and `dartrics doctor` exits 1 on it. In particular `unused` is **not** dismissable — it is a reachability verdict, not a thresholded metric. Keep a declaration alive through the reachability config instead; see [Keeping a declaration reachable](#keeping-a-declaration-reachable).
 
 ### Punt when…
 
 The lens reads it but you genuinely don't know whether the structure is load-bearing without project context the harness hasn't given you (domain rules, performance constraints, historical bug fixes baked into a function shape).
 
 Punt has no in-tree syntax — no comment directive, no YAML key, no field in the JSON report. It is deliberately a natural-language channel between you and the operator, not a tracked artifact. `dartrics` is a tool _for both AI and human_, and the lens values that anchor your decision don't carry equivalent meaning to the operator the way they do to you; surfacing a `cognitive-complexity: 22` number doesn't transfer the situation. Translate what you saw into the project's own vocabulary, name the load-bearing hypothesis you cannot confirm, and ask in the same channel the harness uses to reach the human (chat, PR comment, whatever fits). When the answer comes back, route it into refactor or dismiss on the next pass.
+
+## Keeping a declaration reachable
+
+`dartrics unused` is a source-level reachability verdict: a declaration is reported when no expression anywhere in the analysed tree resolves to it. Some declarations are genuinely invoked, just not from source a static pass can follow — a framework picks them up by filename, a generator wires them by string, a platform calls them across an FFI boundary. Those are configuration, not dismissals: you add a **root**, and the declaration plus everything only it reaches stays alive.
+
+Four keys under `dartrics: { unused: … }`, in increasing order of precision:
+
+```yaml
+dartrics:
+  unused:
+    exclude-exported: true            # default — everything under lib/ outside lib/src/ is a root
+    entry-points: [main, "@pragma:vm:entry-point", test]
+    ignore-annotations: [visibleForTesting, protected, JsonSerializable]
+    roots:
+      - "test/flutter_test_config.dart::testExecutable"
+```
+
+* **`exclude-exported`** (default `true`) roots the package's public API — anything under `lib/` outside `lib/src/`, plus the members an exported type exposes. Set to `false` for strict mode, where even an exported declaration needs a caller.
+* **`entry-points`** roots any **top-level** declaration carrying one of these simple names, in any file. `@pragma:`-prefixed entries match the pragma instead of the name. Broad by design: `main` should be a root wherever it appears.
+* **`ignore-annotations`** roots any declaration carrying one of these annotations, and — on a type — every member of it, since a codegen / reflection marker means the real callers live in generated or runtime code. Every shipped codegen preset (freezed, json_serializable, drift, riverpod, …) is always honoured on top of this list.
+* **`roots`** pins one declaration in one file, in `<path suffix>::<scope>` form. The path matches as a `/`-boundary suffix of the analysed path, so it is written project-relative; the scope is the same dotted name the `signals:` block and `dartrics inspect` print — `topLevelFn` for a top-level declaration, `Type.member` for a class member. Use it when `entry-points` would be too broad, or when the entry point is a member rather than a top-level declaration.
+
+`roots` ships with `test/flutter_test_config.dart::testExecutable` pre-seeded: `flutter_test` loads that file by filename and calls `testExecutable` from a bootstrap it generates at run time, so nothing in the source tree references it. Packages without the file are unaffected. Supplying your own `roots:` list replaces the default one — re-list the preset entry if you still want it, the same way `entry-points` behaves.
+
+An entry that is not in `<path>::<scope>` form is a usage error (exit 64), not a silently-ignored line.
 
 ## Default relaxations — Flutter and test files
 
@@ -271,9 +300,11 @@ For an end-to-end walkthrough with prompt examples, see [`doc/ai-loop.md`](ai-lo
 | 3. Decide    | refactor / dismiss / punt per violation                                                                                                                                                          | See [The accept / refactor / dismiss decision](#the-accept--refactor--dismiss-decision)                                                                            |
 | 4. Apply     | edit code, add `// dartrics:dismiss <metric> reason="…"`, or — if you punted — raise the question to the operator in natural language (no in-tree syntax for punt; see [Punt when…](#punt-when)) | `--strict-dismiss` is an audit flag, not a refactor outcome                                                                                                        |
 | 5. Verify    | `dartrics regression --before HEAD~1 --after HEAD --reporter ai`                                                                                                                                 | Look for `direction: improved`. `cosmeticSplitDetected: true` means revert; `false` is a narrow signal, not a passing grade. If you re-run `analyze` to verify a fix on the same file, pass `--snapshot none` — the cache rewrites itself every run, so two consecutive runs always report `changedFiles: 0` |
-| 6. Pre-merge | `dartrics analyze --strict-dismiss --fatal-warnings`                                                                                                                                             | Ignores dismissals; exits non-zero on any remaining warning                                                                                                        |
+| 6. Pre-merge | `dartrics analyze --strict-dismiss --fatal-warnings`                                                                                                                                             | Ignores dismissals; exits non-zero on any warning or unused declaration. Drop `--strict-dismiss` to let accepted dismissals pass the gate                            |
 
 The same `id` (16 hex chars) reappearing across runs means the previous fix didn't drop the metric. Refactor harder, or formalise as dismiss with a load-bearing reason — there is no third option of "ignore it again."
+
+The `id` is `sha256("<project-relative file>|<scope>|<metric-id>")` truncated to 16 hex chars. The path is taken relative to `--root`, so the same violation carries the same id on your machine and on CI, and `RegressionRow.id` cross-references the `MetricViolation.id` for the same triple.
 
 ## Reporters — pick by audience
 
@@ -300,11 +331,11 @@ If you have read `--reporter ai` and the destination is now a human or a CI sink
 | Cap output for token budget           | `--limit <n>`                  | Applied per section (violations / unused / signals) after priority sort                                                                                                                                                                           |
 | Skip dismissals (audit)               | `--strict-dismiss`             | Exposes the raw triage list                                                                                                                                                                                                                       |
 | Speed up resolution                   | `--concurrency <n>`            | Defaults to host CPU count, clamped to 16                                                                                                                                                                                                         |
-| Block on warnings                     | `--fatal-warnings`             | Combine with `--strict-dismiss` for CI                                                                                                                                                                                                            |
+| Block on findings                     | `--fatal-warnings`             | Exits 1 on a live violation at or above warning, or on any unused declaration. Dismissed violations are skipped; `--strict-dismiss` empties the dismissal index, so pairing the two blocks on everything                                            |
 | Inject metric catalogue once          | `dartrics rules --reporter ai` | Feed once into a system prompt                                                                                                                                                                                                                    |
 | Verify a refactor                     | `dartrics regression`          | Runs `git worktree` for the historical side. `--metric <id>` (repeatable) restricts the diff to the named lenses                                                                                                                                  |
 | Audit your config                     | `dartrics doctor`              | Flags unknown config keys (with did-you-mean hints), unknown metric ids, and threshold mis-ordering. Read-only                                                                                                                                                                                    |
-| Delete unused public-API declarations | `dartrics unused --apply`      | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
+| Delete unused public-API declarations | `dartrics unused --apply`      | In-place deletion of the reported declarations — top-level functions / classes / typedefs / extensions **and** class members (methods, getters, setters, fields). Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
 | Walk the call graph around a symbol   | `dartrics inspect <symbol>`    | Reference-only probe (no thresholds, no severity). `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reporters: `ai` (default), `json`. See [Signals — reference information, not verdicts](#signals--reference-information-not-verdicts) |
 
 ## Exit codes
@@ -312,7 +343,7 @@ If you have read `--reporter ai` and the destination is now a human or a CI sink
 | Code | Meaning                                        | What you do                                                                                                                                           |
 | ---- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0    | Clean                                          | Continue.                                                                                                                                             |
-| 1    | Violations + `--fatal-warnings`                | Either refactor or dismiss with reason.                                                                                                               |
+| 1    | Findings + `--fatal-warnings`                  | A live violation at or above warning, **or** any unused declaration. Dismissed violations do not count — that is what the dismiss is for. Either refactor, dismiss with a reason, or root the declaration.                                                               |
 | 64   | Bad CLI args                                   | Re-read your command.                                                                                                                                 |
 | 65   | Bad input (e.g. `--since` ref doesn't resolve) | Surface to the user; don't guess a different ref.                                                                                                     |
 | 70   | Internal error                                 | Surface to the user with the stderr message; this is a bug in `dartrics`.                                                                             |

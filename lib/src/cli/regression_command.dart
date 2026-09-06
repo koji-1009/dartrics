@@ -177,6 +177,7 @@ class RegressionCommand extends Command<int> {
       thresholds: config.metricThresholds,
       flutter: config.flutter,
       test: config.test,
+      root: root,
     );
     return engine.analyzeResolved(units);
   }

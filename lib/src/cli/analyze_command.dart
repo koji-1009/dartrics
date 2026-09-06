@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
-import 'package:path/path.dart' as p;
 
 import '../analyzer_runner.dart';
 import '../config/config.dart';
@@ -13,7 +12,9 @@ import '../coverage/lcov_reader.dart';
 import '../dismiss/comment_parser.dart';
 import '../dismiss/dismissal.dart';
 import '../dismiss/dismissal_index.dart';
+import '../dismiss/dismissal_validator.dart';
 import '../dismiss/yaml_loader.dart';
+import '../metrics/metric_catalogue.dart';
 import '../metrics/metric_engine.dart';
 import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
@@ -69,6 +70,7 @@ class AnalyzeCommand extends Command<int> {
     );
     try {
       parseUnusedFilter(unusedConfig.filter);
+      parseUnusedRoots(unusedConfig.roots);
     } on FormatException catch (e) {
       DartricsIO.stderrSink.writeln('dartrics analyze: ${e.message}');
       return ExitCode.usage.code;
@@ -163,6 +165,7 @@ class AnalyzeCommand extends Command<int> {
       dismissals: dismissals,
       dismissalConfig: req.config.dismissals,
       onDismissalRejection: _logDismissalRejection,
+      root: req.analysis.root,
     );
     final records = engine.analyzeResolved(units);
     final unused = await const UnusedDetector().detectResolved([
@@ -284,7 +287,7 @@ class AnalyzeCommand extends Command<int> {
       }
     }
 
-    if (analysis.fatalWarnings && report.hasSeverityAtLeast(Severity.warning)) {
+    if (analysis.fatalWarnings && report.hasFatalFindings(Severity.warning)) {
       return 1;
     }
     return ExitCode.success.code;
@@ -300,6 +303,12 @@ class AnalyzeCommand extends Command<int> {
   /// for stray `// dartrics:dismiss` comments and a stderr WARN is
   /// emitted if any are found — silently no-op'ing those comments is
   /// the failure mode the dismissal channel is built to prevent.
+  ///
+  /// Entries naming an id outside the metric catalogue are dropped
+  /// before the index is built, each with a stderr rejection. They are
+  /// dropped rather than kept because an id no violation carries can
+  /// never be looked up, so keeping them would report the same entry
+  /// twice — once as rejected, once as stale.
   DismissalIndex _buildDismissalIndex({
     required bool strictDismiss,
     required DismissalConfig config,
@@ -323,9 +332,34 @@ class AnalyzeCommand extends Command<int> {
       }
     }
     final yaml = config.yamlSource
-        ? loadYamlDismissals(_resolveYamlPath(config, root))
+        ? loadYamlDismissals(
+            resolveDismissalsYamlPath(config, root),
+            root: root,
+          )
         : const <Dismissal>[];
-    return DismissalIndex.build(comments: comments, yaml: yaml);
+    final knownIds = {for (final r in collectRuleDescriptions()) r.id};
+    return DismissalIndex.build(
+      comments: _withKnownMetricId(comments, knownIds),
+      yaml: _withKnownMetricId(yaml, knownIds),
+    );
+  }
+
+  /// Drops the entries whose `metric` is not a catalogue id, logging
+  /// each rejection through the same sink a too-short reason uses.
+  List<Dismissal> _withKnownMetricId(
+    List<Dismissal> entries,
+    Set<String> knownIds,
+  ) {
+    final kept = <Dismissal>[];
+    for (final d in entries) {
+      final rejection = checkDismissalMetricId(d, knownIds);
+      if (rejection == null) {
+        kept.add(d);
+        continue;
+      }
+      _logDismissalRejection(d, rejection.reason);
+    }
+    return kept;
   }
 
   /// Cheap source-level scan for `// dartrics:dismiss …` comments. Runs
@@ -355,12 +389,6 @@ class AnalyzeCommand extends Command<int> {
       '`dartrics: { dismissals: { sources: [comment] } }` in '
       'analysis_options.yaml.',
     );
-  }
-
-  String _resolveYamlPath(DismissalConfig config, String root) {
-    final base = config.yamlPath ?? defaultDismissalsYamlPath;
-    if (p.isAbsolute(base)) return base;
-    return p.join(root, base);
   }
 
   void _logDismissalRejection(Dismissal d, String reason) {
