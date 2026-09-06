@@ -281,4 +281,4 @@ Inspect is **not part of the refactor / dismiss / punt decision**; it feeds that
 
 - **Cross-PR memory** — dartrics doesn't track "this dismiss was rejected once; don't propose it again." Stay session-local for now.
 - **Prompt templates per agent** — Claude Code, Cursor, Codex each have their own conventions. The shell-out pattern above works in all of them.
-- **Watch mode** — the analyzer plugin (`plugins: dartrics` in `analysis_options.yaml`) covers IDE feedback. The CLI is run-on-demand by design.
+- **Watch mode** — the analyzer plugin (`plugins: { dartrics: ^1.0.0 }` in `analysis_options.yaml`) covers IDE feedback. The CLI is run-on-demand by design.

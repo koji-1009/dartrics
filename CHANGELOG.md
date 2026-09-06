@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* Documentation: the analyzer-plugin install snippet in `README.md` was `plugins:` / `  dartrics:` with no value, which the analysis server rejects as `invalid_section_format` — the plugin never loaded for anyone who copied it. It now reads `dartrics: ^1.0.0`, and says that the constraint is required and that no `pubspec.yaml` dependency is needed.
 * Dependency floors raised: `analyzer ^14.3.0`, `analyzer_testing ^0.4.1` (dev), `analysis_server_plugin ^0.3.22`. `analyzer_testing` 0.4.0 renamed its experiment-configuration APIs; dartrics uses only `AnalysisRuleTest`, so no test changed.
 
 Unused-detector false positives, two silent no-ops in the dismiss channel, and a `--fatal-warnings` gate that disagreed with the report it was reading. Findings can disappear on unchanged code and exit codes flip in both directions. No metric, threshold, or report-schema change.
