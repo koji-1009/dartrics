@@ -122,8 +122,10 @@ The `dartrics:` section is read by both the CLI and the analyzer plugin. The `# 
 ```yaml
 # analysis_options.yaml in your project
 plugins:
-  dartrics:
+  dartrics: ^1.0.0
 ```
+
+The version constraint is required — a bare `dartrics:` with no value is rejected as `invalid_section_format` and the plugin never loads. `dartrics` does not need to be in your `pubspec.yaml`; the analysis server resolves the plugin package from this constraint on its own.
 
 After saving, restart the analysis server. Three rules ship by default:
 

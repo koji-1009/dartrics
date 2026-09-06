@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Documentation: the analyzer-plugin install snippet in `README.md` was `plugins:` / `  dartrics:` with no value, which the analysis server rejects as `invalid_section_format` — the plugin never loaded for anyone who copied it. It now reads `dartrics: ^1.0.0`, and says that the constraint is required and that no `pubspec.yaml` dependency is needed.
+
 ## 1.4.0
 
 Toolchain alignment release: tracks Dart 3.13. No metric, threshold, exit-code, or schema change.
