@@ -77,6 +77,50 @@ class UnusedThing {}
     },
   );
 
+  test('unused --filter keeps the configured roots', () async {
+    // `--filter` rebuilds the unused config to swap in the CLI kinds.
+    // It used to drop `roots` on the way, so a class reached only from a
+    // configured root turned into a finding as soon as `--filter` was
+    // passed.
+    await File('${dir.path}/lib/app.dart').writeAsString('''
+void boot() {
+  Wired();
+}
+
+class Wired {}
+''');
+    final config = File('${dir.path}/roots.yaml');
+    await config.writeAsString('''
+dartrics:
+  unused:
+    entry-points: []
+    exclude-exported: false
+    roots: ["lib/app.dart::boot"]
+''');
+    final outFile = File('${dir.path}/u-filter-roots.json');
+    final code = await runQuietly([
+      'unused',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      outFile.path,
+      '--filter',
+      'class',
+      '--snapshot',
+      'none',
+      '--config',
+      config.path,
+    ]);
+    expect(code, 0);
+    final body = jsonDecode(outFile.readAsStringSync()) as Map<String, Object?>;
+    final names = (body['unused']! as List<Object?>)
+        .map((e) => (e! as Map<String, Object?>)['name'])
+        .toSet();
+    expect(names, contains('UnusedThing'));
+    expect(names, isNot(contains('Wired')));
+  });
+
   test(
     'unused --filter rejects unknown kind names with usage exit code',
     () async {

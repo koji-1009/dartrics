@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0
+
+* Unused detector: `--filter` on `unused` / `analyze` dropped the configured `unused.roots`, so a declaration reached only from a configured root — and everything only it reached — was reported as soon as the report was narrowed. `--filter` now narrows what is reported, never what is reachable.
+
 ## 1.5.0
 
 Unused-detector false positives, two silent no-ops in the dismiss channel, and a `--fatal-warnings` gate that disagreed with the report it was reading. Findings can disappear on unchanged code, exit codes flip in both directions, and every `MetricViolation.id` changes once. Also raises the analyzer toolchain floor and corrects an analyzer-plugin install snippet that never worked. No metric, threshold, or report-schema change.
