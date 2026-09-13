@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "version": {
-      "description": "Reporter schema version. Bumped to `1.1` in 0.7.0 to cover `explanations` and `staleDismissals`; to `1.2` for `ScopeRef.endLine`; to `1.3` for the `closure` scope type — all non-breaking additions.",
+      "description": "Reporter schema version. Bumped to `1.1` in 0.7.0 to cover `explanations` and `staleDismissals`; to `1.2` for `ScopeRef.endLine`; to `1.3` for the `closure` scope type; to `1.4` for `UnusedDeclaration.writeOnly` — all non-breaking additions.",
       "type": "string"
     },
     "analyzedFiles": {
@@ -190,7 +190,11 @@
         },
         "name": { "type": "string" },
         "file": { "type": "string" },
-        "line": { "type": "integer", "minimum": 1 }
+        "line": { "type": "integer", "minimum": 1 },
+        "writeOnly": {
+          "description": "Present (and `true`) on a `field` a constructor assigns through `this.<name>` but nothing reads. Removing it also means removing that parameter and the argument at every call site. Added in `1.4`.",
+          "const": true
+        }
       }
     },
     "ExplainEntry": {

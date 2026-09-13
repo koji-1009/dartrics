@@ -46,9 +46,11 @@ class SarifReporter implements Reporter {
         'ruleId': 'unused-declaration',
         'level': 'warning',
         'message': {
-          'text':
-              'Public ${unusedKindJsonName(u.kind)} `${u.name}` is never reached '
-              'from any entry point.',
+          'text': u.writeOnly
+              ? 'Public field `${u.name}` is assigned by a constructor but '
+                    'never read.'
+              : 'Public ${unusedKindJsonName(u.kind)} `${u.name}` is never '
+                    'reached from any entry point.',
         },
         'locations': [
           {

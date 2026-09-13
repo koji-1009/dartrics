@@ -34,6 +34,23 @@ void main() {
     },
   );
 
+  test('words a write-only field result as assigned but never read', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final out = File('${tmp.path}/r.sarif');
+    final sink = out.openWrite();
+    SarifReporter().report(buildWriteOnlyReport(), sink);
+    await sink.close();
+    final doc = jsonDecode(out.readAsStringSync()) as Map<String, Object?>;
+    final result =
+        (((doc['runs']! as List).single as Map)['results'] as List).single
+            as Map;
+    expect(
+      (result['message'] as Map)['text'],
+      'Public field `label` is assigned by a constructor but never read.',
+    );
+  });
+
   test(
     'tool.driver.rules carries rationale + refactor hints for fired metrics',
     () async {

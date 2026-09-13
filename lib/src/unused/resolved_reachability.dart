@@ -78,6 +78,7 @@ List<UnusedDeclaration> detectUnusedResolved(
         kind: d.record.kind,
         name: d.record.name,
         location: d.record.location,
+        writeOnly: d.isConstructorFormal,
       ),
     );
   }
@@ -888,10 +889,30 @@ void _collectInterfaceLike({
       isObjectDunder: false,
     ),
   );
+  final formalFieldIds = _constructorFormalFieldIds(members);
   for (final m in members) {
-    _collectMember(m, ctx: ctx, out: out, enclosingTypeId: element.id);
+    _collectMember(
+      m,
+      ctx: ctx,
+      out: out,
+      enclosingTypeId: element.id,
+      formalFieldIds: formalFieldIds,
+    );
   }
 }
+
+/// Ids of the fields some constructor among [members] assigns through
+/// an initializing formal (`this.<name>`). Such a parameter names the
+/// field only as a token, so it carries no edge: a field nothing else
+/// reads stays unreachable, and this set is what marks it write-only.
+Set<int> _constructorFormalFieldIds(NodeList<ClassMember> members) => {
+  for (final m in members)
+    if (m is ConstructorDeclaration)
+      for (final parameter in m.parameters.parameters)
+        if (parameter.declaredFragment?.element
+            case FieldFormalParameterElement(:final field?))
+          field.baseElement.nonSynthetic.id,
+};
 
 /// Outgoing edges for a class-like declaration:
 /// - the type-level surface (annotations, supertypes, generics) — via
@@ -1008,8 +1029,15 @@ void _collectEnum(
       ),
     );
   }
+  final formalFieldIds = _constructorFormalFieldIds(decl.body.members);
   for (final m in decl.body.members) {
-    _collectMember(m, ctx: ctx, out: out, enclosingTypeId: element.id);
+    _collectMember(
+      m,
+      ctx: ctx,
+      out: out,
+      enclosingTypeId: element.id,
+      formalFieldIds: formalFieldIds,
+    );
   }
 }
 
@@ -1018,12 +1046,19 @@ void _collectMember(
   required _CollectionContext ctx,
   required List<_ResolvedDeclaration> out,
   required int enclosingTypeId,
+  Set<int> formalFieldIds = const {},
 }) {
   switch (member) {
     case MethodDeclaration():
       _emitMethod(member, ctx: ctx, out: out, enclosingTypeId: enclosingTypeId);
     case FieldDeclaration():
-      _emitFields(member, ctx: ctx, out: out, enclosingTypeId: enclosingTypeId);
+      _emitFields(
+        member,
+        ctx: ctx,
+        out: out,
+        enclosingTypeId: enclosingTypeId,
+        formalFieldIds: formalFieldIds,
+      );
     case _:
       // ConstructorDeclaration / PrimaryConstructorBody — constructors
       // fold into the class's reachability, since a class being
@@ -1078,6 +1113,7 @@ void _emitFields(
   required _CollectionContext ctx,
   required List<_ResolvedDeclaration> out,
   required int enclosingTypeId,
+  required Set<int> formalFieldIds,
 }) {
   final isOverride = decl.metadata.any((a) => a.name.name == 'override');
   final annotations = decl.metadata.map((a) => a.name.name).toList();
@@ -1109,6 +1145,7 @@ void _emitFields(
         isObjectDunder: false,
         overriddenIds: _overriddenIds(canonical),
         enclosingTypeElementId: enclosingTypeId,
+        isConstructorFormal: formalFieldIds.contains(canonical.id),
       ),
     );
   }
@@ -1526,6 +1563,7 @@ class _ResolvedDeclaration {
     this.overriddenIds = const {},
     this.enclosingTypeElementId,
     this.valuesElementId,
+    this.isConstructorFormal = false,
   });
 
   final int elementId;
@@ -1567,4 +1605,9 @@ class _ResolvedDeclaration {
   /// `null` for every other kind. [_OutgoingCollector] records this id
   /// when source reads `E.values`; [_bfs] expands it to every constant.
   final int? valuesElementId;
+
+  /// True for a field some constructor of its type assigns through
+  /// `this.<name>`. Only read when the field is reported, where it
+  /// becomes [UnusedDeclaration.writeOnly].
+  final bool isConstructorFormal;
 }

@@ -25,6 +25,19 @@ void main() {
     },
   );
 
+  test('tags a write-only field entry', () async {
+    final dir = await Directory.systemTemp.createTemp('console_reporter_wo_');
+    addTearDown(() => dir.delete(recursive: true));
+    final out = File('${dir.path}/r.txt');
+    final sink = out.openWrite();
+    ConsoleReporter().report(buildWriteOnlyReport(), sink);
+    await sink.close();
+    expect(
+      await out.readAsString(),
+      contains('[unused] field label [write-only]'),
+    );
+  });
+
   test('appends snapshot suffix when a diff filter is active', () async {
     final dir = await Directory.systemTemp.createTemp('console_reporter_snap_');
     addTearDown(() => dir.delete(recursive: true));

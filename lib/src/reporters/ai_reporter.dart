@@ -287,6 +287,7 @@ class AiReporter implements Reporter {
         ..writeln('    line: ${u.location.line}')
         ..writeln('    kind: ${unusedKindJsonName(u.kind)}')
         ..writeln('    name: ${u.name}');
+      if (u.writeOnly) buf.writeln('    writeOnly: true');
       _writeSnippet(buf, u.location.path, u.location.line);
     }
   }

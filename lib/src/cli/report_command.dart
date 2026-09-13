@@ -150,5 +150,6 @@ UnusedDeclaration _decodeUnused(Map<String, Object?> json) {
       line: json['line'] as int,
       column: 1,
     ),
+    writeOnly: json['writeOnly'] as bool? ?? false,
   );
 }

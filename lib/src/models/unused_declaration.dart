@@ -43,16 +43,25 @@ class UnusedDeclaration {
     required this.kind,
     required this.name,
     required this.location,
+    this.writeOnly = false,
   });
 
   final UnusedKind kind;
   final String name;
   final SourceLocation location;
 
+  /// True for a field a constructor assigns through `this.<name>` but
+  /// nothing ever reads. Removing it also means removing that parameter
+  /// and the argument at every call site, unlike a declaration nothing
+  /// references at all. Added in report schema 1.4; always `false` for
+  /// other kinds.
+  final bool writeOnly;
+
   Map<String, Object?> toJson() => {
     'file': location.path,
     'name': name,
     'kind': unusedKindJsonName(kind),
     'line': location.line,
+    if (writeOnly) 'writeOnly': true,
   };
 }

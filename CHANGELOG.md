@@ -7,6 +7,7 @@
 * Unused detector: declarations inside generated files (`.g.dart`, `.freezed.dart`, `.mocks.dart`, `.gen.dart`, …) are no longer reported. They still contribute edges. flutter_gen's `assets.gen.dart` / `fonts.gen.dart` accessors, for instance, used to arrive as findings under `--snapshot none` and vanish under a cache snapshot, since the snapshot's changed-file set never included generated paths.
 * Unused detector: reading `E.values` (including `E.values.byName(…)`) keeps every constant of `E` alive. The read reached only the enum type, so constants that are enumerated but never named — an alphabetical index, a picker over every option — were reported one by one.
 * `unused` / `analyze` warn on stderr when a run finds no unused declarations while `unused.exclude-exported` is `true` and the root `pubspec.yaml` sets `publish_to: none`. In an app that default roots everything under `lib/`, so the empty report said nothing about the code. The exit code is unchanged.
+* Unused detector: a reported field that a constructor assigns through `this.<name>` but nothing reads carries `writeOnly: true` (JSON / ai; `_write-only_` in md, `[write-only]` on the console, its own SARIF message). Removing one also means removing that parameter and the argument at every call site, unlike a declaration nothing references. Report schema `1.3` → `1.4`, additive.
 
 ## 1.5.0
 

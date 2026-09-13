@@ -224,7 +224,7 @@ class AnalyzeCommand extends Command<int> {
       analyzedPaths: {for (final u in units) u.path},
     );
     return AnalysisReport(
-      version: '1.3',
+      version: '1.4',
       metrics: filteredRecords,
       unused: filteredUnused,
       analyzedFiles: hashes,

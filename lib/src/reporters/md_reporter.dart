@@ -171,8 +171,9 @@ class MdReporter implements Reporter {
       )
       ..writeln();
     for (final u in report.unused) {
+      final writeOnly = u.writeOnly ? ' · _write-only_' : '';
       buf.writeln(
-        '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`',
+        '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`$writeOnly',
       );
     }
     buf.writeln();

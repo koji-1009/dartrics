@@ -251,6 +251,8 @@ dartrics:
 
 An entry that is not in `<path>::<scope>` form is a usage error (exit 64), not a silently-ignored line.
 
+A reported field that a constructor assigns through `this.<name>` but nothing reads carries `writeOnly: true`. Deleting it is a wider edit than deleting a declaration nothing references: the constructor parameter and the argument at every call site go too, and `unused --apply` leaves such a field in place (`constructor formal coupling`).
+
 ## Default relaxations — Flutter and test files
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:

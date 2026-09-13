@@ -34,3 +34,22 @@ AnalysisReport buildSampleReport({List<ExplainEntry> explanations = const []}) {
     explanations: explanations,
   )..attachAnalyzedFileCount(2);
 }
+
+/// A report holding one write-only field, for the reporters' `writeOnly`
+/// rendering.
+AnalysisReport buildWriteOnlyReport() => AnalysisReport(
+  version: '1.4',
+  metrics: const [],
+  unused: const [
+    UnusedDeclaration(
+      kind: UnusedKind.field,
+      name: 'label',
+      location: SourceLocation(
+        path: '/proj/lib/profile.dart',
+        line: 4,
+        column: 3,
+      ),
+      writeOnly: true,
+    ),
+  ],
+)..attachAnalyzedFileCount(1);

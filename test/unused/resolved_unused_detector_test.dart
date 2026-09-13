@@ -524,6 +524,44 @@ class NotEnum {
     expect(constants, ['dead']);
   });
 
+  test('a field only a constructor assigns through `this.<name>` is reported '
+      'as writeOnly', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+void main() {
+  print(Profile('a', label: 'b').id);
+  print(Level.low);
+}
+''');
+    await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Profile {
+  Profile(this.id, {required this.label, this.note});
+  final String id;
+  final String label;
+  final String? note;
+  final int counter = 0;
+}
+
+enum Level {
+  low(1);
+
+  const Level(this.code);
+  final int code;
+}
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final fields = {
+      for (final u in unused)
+        if (u.kind == UnusedKind.field) u.name: u.writeOnly,
+    };
+    expect(fields, {
+      'label': true,
+      'note': true,
+      'counter': false,
+      'code': true,
+    });
+  });
+
   test('typedef and top-level field detection still works '
       'in resolved mode', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''
