@@ -4,6 +4,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/source/line_info.dart';
 
+import '../analyzer_runner.dart';
 import '../config/config.dart';
 import '../models/analysis_report.dart';
 import '../models/call_graph_inspection.dart';
@@ -67,6 +68,10 @@ List<UnusedDeclaration> detectUnusedResolved(
   for (final d in declarations) {
     if (d.record.name.startsWith('_')) continue;
     if (reachable.contains(d.elementId)) continue;
+    // Generated declarations carry edges but are never findings: the
+    // fix is in the generator's input, and a hand deletion is undone by
+    // the next build.
+    if (AnalyzerRunner.isGeneratedDartPath(d.record.location.path)) continue;
     if (filterKinds != null && !filterKinds.contains(d.record.kind)) continue;
     out.add(
       UnusedDeclaration(

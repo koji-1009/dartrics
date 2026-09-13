@@ -137,10 +137,23 @@ class AnalyzerRunner {
   /// would otherwise abort the whole run with a `StateError` because
   /// `AnalysisContextCollection.contextFor` does not know how to map
   /// the path back to one of the supplied [roots].
+  ///
+  /// When [includeGenerated] is on, a generated file the root package's
+  /// `analyzer.exclude:` keeps out of analysis (the common
+  /// `**/*.g.dart` entry) is still resolved through the context of the
+  /// package that owns it. Consumers that load generated files for
+  /// their reachability edges would otherwise lose every edge those
+  /// files carry, with nothing in the output saying so.
   Future<ResolvedUnitResult?> resolve(String absolutePath) async {
-    final AnalysisContext context;
+    final context = _contextFor(absolutePath);
+    if (context == null) return null;
+    final result = await context.currentSession.getResolvedUnit(absolutePath);
+    return result is ResolvedUnitResult ? result : null;
+  }
+
+  AnalysisContext? _contextFor(String absolutePath) {
     try {
-      context = collection.contextFor(absolutePath);
+      return collection.contextFor(absolutePath);
       // `contextFor` throws `StateError` ("Unable to find the context …")
       // when the path lives outside every supplied root's package. The
       // standard `avoid_catching_errors` lint flags this, but the
@@ -149,10 +162,35 @@ class AnalyzerRunner {
       // fixture under the analysis root). Catching is the right move.
       // ignore: avoid_catching_errors
     } on StateError {
-      return null;
+      if (!includeGenerated || !isGeneratedDartPath(absolutePath)) return null;
+      return _excludingContextFor(absolutePath);
     }
-    final result = await context.currentSession.getResolvedUnit(absolutePath);
-    return result is ResolvedUnitResult ? result : null;
+  }
+
+  /// The context whose root contains [absolutePath] and whose package
+  /// also owns it — i.e. the path is excluded by that context's
+  /// `analyzer.exclude:` rather than living in a nested package, which
+  /// has a `pubspec.yaml` of its own and stays skipped.
+  AnalysisContext? _excludingContextFor(String absolutePath) {
+    final package = _packageDirOf(absolutePath);
+    for (final context in collection.contexts) {
+      final root = context.contextRoot.root.path;
+      if (!p.isWithin(root, absolutePath)) continue;
+      if (package != null && package == _packageDirOf(root)) return context;
+    }
+    return null;
+  }
+
+  /// Nearest ancestor directory of [path] (inclusive) holding a
+  /// `pubspec.yaml`, or `null` when there is none.
+  static String? _packageDirOf(String path) {
+    var dir = FileSystemEntity.isDirectorySync(path) ? path : p.dirname(path);
+    while (true) {
+      if (File(p.join(dir, 'pubspec.yaml')).existsSync()) return dir;
+      final parent = p.dirname(dir);
+      if (parent == dir) return null;
+      dir = parent;
+    }
   }
 
   /// Resolves every Dart file under [roots], skipping paths that the
