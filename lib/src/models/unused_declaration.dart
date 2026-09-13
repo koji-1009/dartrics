@@ -63,7 +63,7 @@ class UnusedDeclaration {
   /// declaration nothing dead references names itself; one reached from
   /// several chains lists every root and goes only once all of them go.
   /// Entries sharing a root form one deletion unit. A root can be a
-  /// private declaration, which is never reported itself. Added in
+  /// private declaration, which has no entry of its own. Added in
   /// report schema 1.4; empty on inputs that predate it.
   final List<String> chainRoots;
 

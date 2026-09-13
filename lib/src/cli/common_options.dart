@@ -247,7 +247,7 @@ class MetricsReadingOptions {
 /// the CLI supplied any value. An empty CLI list is treated as "no
 /// override" so a user who omits `--filter` keeps the YAML setting.
 /// Every other field is carried over from [base] — `--filter` narrows
-/// what is reported, never what is reachable.
+/// the output, never what is reachable.
 UnusedConfig mergeUnusedFilterFromCli({
   required UnusedConfig base,
   required List<String> cliFilter,

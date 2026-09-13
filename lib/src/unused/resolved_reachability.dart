@@ -1774,7 +1774,7 @@ class _ResolvedDeclaration {
   final int? valuesElementId;
 
   /// True for a field some constructor of its type assigns through
-  /// `this.<name>`. Only read when the field is reported, where it
+  /// `this.<name>`. Only read when the field is unused, where it
   /// becomes [UnusedDeclaration.writeOnly].
   final bool isConstructorFormal;
 }

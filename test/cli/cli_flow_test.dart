@@ -317,12 +317,12 @@ void generatedEntry() {
 
   test(
     'unused: a `.g.dart` excluded by the root analyzer.exclude still '
-    'carries its edges, and generated declarations are not reported',
+    'carries its edges, and generated declarations stay out of the output',
     () async {
       // Apps routinely list `**/*.g.dart` under `analyzer.exclude:`. The
       // analyzer then refuses a context for those files, so the only edge
       // into an enum constant decoded from JSON (`_$StatusEnumMap` in the
-      // part file) vanished and the constants were reported.
+      // part file) vanished and the constants came out as unused.
       final app = await Directory.systemTemp.createTemp('cli_gen_excluded_');
       addTearDown(() => app.delete(recursive: true));
       await Directory('${app.path}/lib').create(recursive: true);

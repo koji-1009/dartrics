@@ -196,7 +196,7 @@
           "const": true
         },
         "chainRoots": {
-          "description": "`<path>::<scope>` of each dead declaration whose deletion cascades to this one. A declaration nothing dead references names itself; one reached from several chains lists every root. Entries sharing a root form one deletion unit; a root may be a private declaration that is not itself reported. Added in `1.4`.",
+          "description": "`<path>::<scope>` of each dead declaration whose deletion cascades to this one. A declaration nothing dead references names itself; one reached from several chains lists every root. Entries sharing a root form one deletion unit; a root may be a private declaration that has no entry of its own. Added in `1.4`.",
           "type": "array",
           "minItems": 1,
           "items": { "type": "string" }

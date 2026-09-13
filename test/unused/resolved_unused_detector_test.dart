@@ -524,8 +524,8 @@ class NotEnum {
     expect(constants, ['dead']);
   });
 
-  test('a field only a constructor assigns through `this.<name>` is reported '
-      'as writeOnly', () async {
+  test('a field only a constructor assigns through `this.<name>` carries '
+      'writeOnly', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''
 import 'src/a.dart';
 void main() {
