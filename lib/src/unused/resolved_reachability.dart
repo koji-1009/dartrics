@@ -343,28 +343,45 @@ InspectionResult inspectCallGraph(
   required String query,
   required int depth,
   required InspectionDirection direction,
+}) => inspectCallGraphQueries(
+  sources,
+  queries: [query],
+  depth: depth,
+  direction: direction,
+).single;
+
+/// [inspectCallGraph] for several [queries] at once, in order. The
+/// resolved graph is indexed a single time and shared by every query,
+/// so probing N symbols costs one analysis pass instead of N.
+List<InspectionResult> inspectCallGraphQueries(
+  List<ResolvedUnusedSource> sources, {
+  required List<String> queries,
+  required int depth,
+  required InspectionDirection direction,
 }) {
   if (depth < 1) {
     throw ArgumentError.value(depth, 'depth', 'must be >= 1');
   }
   final index = _buildGraphIndex(sources);
   final inverse = _buildInverseAdjacency(index.declarations);
-  final matches = [
-    for (final anchorId in _matchedAnchorIds(index, query))
-      _inspectFromAnchor(
-        anchorId: anchorId,
+  return [
+    for (final query in queries)
+      InspectionResult(
+        query: query,
         depth: depth,
         direction: direction,
-        index: index,
-        inverse: inverse,
+        matches: [
+          for (final anchorId in _matchedAnchorIds(index, query))
+            _inspectFromAnchor(
+              anchorId: anchorId,
+              depth: depth,
+              direction: direction,
+              index: index,
+              inverse: inverse,
+            ),
+        ],
       ),
   ];
-  return InspectionResult(
-    query: query,
-    depth: depth,
-    direction: direction,
-    matches: matches,
-  );
 }
 
 /// Weighted inverse of [_ResolvedDeclaration.outgoingCounts]: target

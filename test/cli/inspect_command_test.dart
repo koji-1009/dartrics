@@ -98,7 +98,45 @@ void target() {}
       '${dir.path}/no.yaml',
     ]);
     expect(result.exitCode, isNot(0));
-    expect(result.stderr, contains('exactly one symbol'));
+    expect(result.stderr, contains('at least one symbol'));
+  });
+
+  test('several symbols share one analysis pass: json emits an array in '
+      'argument order, ai separates the reports with ---', () async {
+    final json = await runCaptured([
+      'inspect',
+      'target',
+      'caller',
+      '--root',
+      '${dir.path}/lib',
+      '--depth',
+      '1',
+      '--reporter',
+      'json',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(json.exitCode, 0);
+    final bodies = (jsonDecode(json.stdout) as List)
+        .cast<Map<String, Object?>>();
+    expect(bodies.map((b) => b['query']), ['target', 'caller']);
+
+    final ai = await runCaptured([
+      'inspect',
+      'target',
+      'caller',
+      '--root',
+      '${dir.path}/lib',
+      '--depth',
+      '1',
+      '--config',
+      '${dir.path}/no.yaml',
+    ]);
+    expect(ai.exitCode, 0);
+    final documents = ai.stdout.split('\n---\n');
+    expect(documents, hasLength(2));
+    expect(documents.first, contains('query: target'));
+    expect(documents.last, contains('query: caller'));
   });
 
   test('rejects depth < 1', () async {

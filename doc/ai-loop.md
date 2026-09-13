@@ -275,7 +275,7 @@ Inspect is **not part of the refactor / dismiss / punt decision**; it feeds that
 | Block on findings | `--fatal-warnings` | Live violations + unused declarations. Combine with `--strict-dismiss` to block on dismissed ones too |
 | Narrow a regression diff | `dartrics regression --metric <id>` | Repeatable; defaults to all lenses |
 | Delete unused public-API declarations | `dartrics unused --apply` | In-place deletion of unused top-level functions / classes / typedefs / extensions. Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
-| Probe the call graph around a symbol | `dartrics inspect <symbol>` | `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reference-only; `ai` / `json` reporters. Feeds the refactor / dismiss / punt decision with structure the metric value alone doesn't carry. |
+| Probe the call graph around a symbol | `dartrics inspect <symbol>` | Several symbols share one analysis pass. `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reference-only; `ai` / `json` reporters. Feeds the refactor / dismiss / punt decision with structure the metric value alone doesn't carry. |
 
 ## What's outside this loop
 

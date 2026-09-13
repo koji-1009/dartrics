@@ -104,10 +104,10 @@ Signals reach the AI / JSON reporters in full and the MD reporter as a top-10 re
 When the `signals:` block surfaces something interesting but the surrounding neighbourhood is what you actually need to see, use:
 
 ```bash
-dartrics inspect <symbol> [--depth N] [--direction up|down|both]
+dartrics inspect <symbol> [<symbol> ...] [--depth N] [--direction up|down|both]
 ```
 
-`<symbol>` matches by declared name. Homonym methods on different classes (`A.work`, `B.work`) stay disambiguated as separate `matches:` entries; pass `A.work` to narrow. The walker BFSs the resolved call graph from each matched anchor: `--direction up` returns the upstream callers, `--direction down` returns the downstream callees, `--direction both` (default) returns the union. `--depth` caps the number of edges from the anchor (default 2). Output is `--reporter ai` (token-shaped YAML, default) or `--reporter json` — there is no `md` or `sarif` form because `inspect` is itself a reference-only probe, not a finding list.
+`<symbol>` matches by declared name. Several symbols can be passed at once; the project is resolved a single time and each symbol gets its own report, in argument order — a `---`-separated document per symbol with `--reporter ai`, an array of result objects with `--reporter json` (a single symbol keeps the single-object shape). Homonym methods on different classes (`A.work`, `B.work`) stay disambiguated as separate `matches:` entries; pass `A.work` to narrow. The walker BFSs the resolved call graph from each matched anchor: `--direction up` returns the upstream callers, `--direction down` returns the downstream callees, `--direction both` (default) returns the union. `--depth` caps the number of edges from the anchor (default 2). Output is `--reporter ai` (token-shaped YAML, default) or `--reporter json` — there is no `md` or `sarif` form because `inspect` is itself a reference-only probe, not a finding list.
 
 Typical entry points:
 
@@ -322,7 +322,7 @@ If you have read `--reporter ai` and the destination is now a human or a CI sink
 | Verify a refactor                     | `dartrics regression`          | Runs `git worktree` for the historical side. `--metric <id>` (repeatable) restricts the diff to the named lenses                                                                                                                                  |
 | Audit your config                     | `dartrics doctor`              | Flags unknown config keys (with did-you-mean hints), unknown metric ids, and threshold mis-ordering. Read-only                                                                                                                                                                                    |
 | Delete unused public-API declarations | `dartrics unused --apply`      | In-place deletion of the reported declarations — top-level functions / classes / typedefs / extensions **and** class members (methods, getters, setters, fields). Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
-| Walk the call graph around a symbol   | `dartrics inspect <symbol>`    | Reference-only probe (no thresholds, no severity). `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reporters: `ai` (default), `json`. See [Signals — reference information, not verdicts](#signals--reference-information-not-verdicts) |
+| Walk the call graph around a symbol   | `dartrics inspect <symbol>`    | Reference-only probe (no thresholds, no severity). Several symbols share one analysis pass. `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reporters: `ai` (default), `json`. See [Signals — reference information, not verdicts](#signals--reference-information-not-verdicts) |
 
 ## Exit codes
 
