@@ -386,6 +386,39 @@ class GeneratedNobodyUses {}
     },
   );
 
+  test(
+    'unused and analyze warn when exclude-exported empties an app report',
+    () async {
+      final app = await Directory.systemTemp.createTemp('cli_app_hint_');
+      addTearDown(() => app.delete(recursive: true));
+      await Directory('${app.path}/lib').create(recursive: true);
+      await File('${app.path}/pubspec.yaml')
+          .writeAsString('name: app\npublish_to: none\n');
+      await File('${app.path}/lib/main.dart').writeAsString('''
+void main() {}
+
+class OnlyRootedByExcludeExported {}
+''');
+      for (final command in ['unused', 'analyze']) {
+        final result = await runCaptured([
+          command,
+          '--root',
+          app.path,
+          '--reporter',
+          'json',
+          '--output',
+          '${app.path}/$command.json',
+          '--snapshot',
+          'none',
+          '--config',
+          '${app.path}/no.yaml',
+        ]);
+        expect(result.exitCode, 0, reason: command);
+        expect(result.stderr, contains('publish_to: none'), reason: command);
+      }
+    },
+  );
+
   test('unused: snapshot/analyzedFiles excludes `.g.dart`', () async {
     // Generated files participate in the reachability graph but must
     // stay out of the snapshot — a `dart run build_runner build` re-emit
