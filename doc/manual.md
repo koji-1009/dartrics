@@ -237,6 +237,18 @@ A reported field that a constructor assigns through `this.<name>` but nothing re
 
 Every reported declaration also carries `chainRoots`: the `<path>::<scope>` of each root of the dead subgraph whose deletion cascades to it. A root is a dead declaration that nothing else dead references (a mutually-recursive group counts as one, named by its first declaration in source order); a type counts as referencing its members. Entries sharing a root are one deletion unit — delete the root and the rest has no reference left. A declaration reached from several roots lists each and goes only once all of them go. A root can be a private declaration, which `unused` never reports on its own (the analyzer's `unused_element` covers those).
 
+## Which files are analysed
+
+`analyze` and `unused` walk every `.dart` file under the positional paths (or `--root` when none is given), then drop:
+
+* anything under a `.dart_tool/` directory;
+* paths matching a `dartrics: { exclude: [...] }` glob, matched relative to each walked path;
+* files the analyzer itself excludes — the `analyzer: { exclude: [...] }` of the `analysis_options.yaml` the analyzer discovers for the package under analysis, not of the `--config` file.
+
+`--config` supplies the `dartrics:` block and nothing else. The `analyzer:` block of that file is not read, and `include:` is not followed, so a config kept outside the project that `include:`s the project's options inherits neither its `analyzer.exclude` nor its `dartrics:` block. To exclude `test/**` from a run, put the glob under `dartrics: { exclude: }` in the file you pass.
+
+Generated files (`.g.dart`, `.freezed.dart`, `.mocks.dart`, `.gen.dart`, …) are a separate case. `unused` and `analyze` resolve them for their reachability edges even when the package's `analyzer.exclude` lists them, but never measure, hash, count, or report them — the analysed-file count and the snapshot cover handwritten files only, so a generated file taking part in reachability does not show up in either.
+
 ## Default relaxations — Flutter and test files
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:

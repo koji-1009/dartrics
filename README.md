@@ -25,6 +25,8 @@ dartrics computes a battery of code-quality metrics — McCabe, Cognitive Comple
 dart pub global activate dartrics
 ```
 
+dartrics runs on Dart SDK 3.13 or newer. The SDK that runs dartrics does not have to be the one the analysed project is pinned to: a newer SDK analyses a project that targets an older language version. For a project pinned to an older SDK (e.g. through fvm), activate and run dartrics with the newer SDK — `fvm dart pub global run dartrics` refuses to start on an SDK below 3.13.
+
 ## Quick start
 
 ```bash
@@ -114,6 +116,8 @@ dartrics:
 ```
 
 The `dartrics:` section is read by both the CLI and the analyzer plugin. The `# yaml-language-server` directive turns on autocomplete + typo detection in editors with [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) integration. Every key (per-metric thresholds, dismissals, snapshot mode, unused-detector filters) is documented in [`schemas/dartrics-config.schema.json`](schemas/dartrics-config.schema.json) and explained in [`dartrics manual`](doc/manual.md).
+
+`--config <path>` points the CLI at a different file for the `dartrics:` block only. Which files get analysed — including why that file's `analyzer.exclude` has no effect — is covered under "Which files are analysed" in the manual.
 
 ## Analyzer plugin
 
