@@ -5,6 +5,7 @@
 * Unused detector: `--filter` on `unused` / `analyze` dropped the configured `unused.roots`, so a declaration reached only from a configured root — and everything only it reached — was reported as soon as the report was narrowed. `--filter` now narrows what is reported, never what is reachable.
 * Unused detector: a generated file listed under the root package's `analyzer.exclude:` (the common `**/*.g.dart` / `**/*.mocks.dart` entries) was silently dropped from the reachability graph, because the analyzer refuses a context for excluded paths. Every edge it carried went with it — an enum constant referenced only from json_serializable's `_$XEnumMap`, a mock interface's `call` used only from `.mocks.dart` — and those declarations were reported. Such files are now resolved through the package that owns them. Generated files inside a nested package keep being skipped.
 * Unused detector: declarations inside generated files (`.g.dart`, `.freezed.dart`, `.mocks.dart`, `.gen.dart`, …) are no longer reported. They still contribute edges. flutter_gen's `assets.gen.dart` / `fonts.gen.dart` accessors, for instance, used to arrive as findings under `--snapshot none` and vanish under a cache snapshot, since the snapshot's changed-file set never included generated paths.
+* Unused detector: reading `E.values` (including `E.values.byName(…)`) keeps every constant of `E` alive. The read reached only the enum type, so constants that are enumerated but never named — an alphabetical index, a picker over every option — were reported one by one.
 
 ## 1.5.0
 

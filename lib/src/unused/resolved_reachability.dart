@@ -63,7 +63,7 @@ List<UnusedDeclaration> detectUnusedResolved(
     sources: sources,
     config: config,
   );
-  final reachable = _bfs(roots, byId);
+  final reachable = _bfs(roots, byId, _enumValuesSuccessors(declarations));
   final out = <UnusedDeclaration>[];
   for (final d in declarations) {
     if (d.record.name.startsWith('_')) continue;
@@ -481,12 +481,38 @@ bool _matchesConfiguredRoot(
   return false;
 }
 
-Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
+/// Maps each enum's synthetic `values` field id to the ids of its
+/// constants. Reading `E.values` (and `E.values.byName(…)` on top of
+/// it) can yield any constant, so none of them is dead once `values`
+/// is reached — even though no identifier names them.
+Map<int, List<int>> _enumValuesSuccessors(
+  List<_ResolvedDeclaration> declarations,
+) {
+  final constantsByEnum = <int, List<int>>{};
+  for (final d in declarations) {
+    if (d.record.kind != UnusedKind.enumValue) continue;
+    constantsByEnum
+        .putIfAbsent(d.enclosingTypeElementId!, () => <int>[])
+        .add(d.elementId);
+  }
+  return {
+    for (final d in declarations)
+      if (d.valuesElementId != null)
+        d.valuesElementId!: constantsByEnum[d.elementId] ?? const <int>[],
+  };
+}
+
+Set<int> _bfs(
+  Iterable<int> roots,
+  Map<int, _ResolvedDeclaration> byId,
+  Map<int, List<int>> impliedSuccessors,
+) {
   final visited = <int>{};
   final queue = <int>[...roots];
   while (queue.isNotEmpty) {
     final id = queue.removeLast();
     if (!visited.add(id)) continue;
+    queue.addAll(impliedSuccessors[id] ?? const <int>[]);
     final next = byId[id];
     if (next == null) continue;
     for (final outId in next.successors) {
@@ -956,6 +982,7 @@ void _collectEnum(
       isInstanceMember: false,
       isOverride: false,
       isObjectDunder: false,
+      valuesElementId: element.getField('values')?.id,
     ),
   );
   for (final c in decl.body.constants) {
@@ -1283,6 +1310,7 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
 
   void _record(Element? referent) {
     if (referent == null) return;
+    _recordEnumValuesRead(referent);
     var e = referent.baseElement.nonSynthetic;
     while (true) {
       if (e.id != ownElementId) {
@@ -1293,6 +1321,21 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
       if (parent is LibraryElement) return;
       e = parent.baseElement.nonSynthetic;
     }
+  }
+
+  /// `E.values` resolves to the getter of a synthetic field whose
+  /// `nonSynthetic` is the enum itself, so the walk in [_record] only
+  /// reaches the type. The field's own id is recorded as well; it is
+  /// not a tracked declaration, so the fan-in / fan-out signals skip it,
+  /// and reachability expands it to the enum's constants.
+  void _recordEnumValuesRead(Element referent) {
+    if (referent is! PropertyAccessorElement) return;
+    final field = referent.baseElement.variable;
+    if (field is! FieldElement || !field.isStatic) return;
+    if (field.name != 'values' || field.enclosingElement is! EnumElement) {
+      return;
+    }
+    out.update(field.id, (n) => n + 1, ifAbsent: () => 1);
   }
 
   @override
@@ -1482,6 +1525,7 @@ class _ResolvedDeclaration {
     required this.isObjectDunder,
     this.overriddenIds = const {},
     this.enclosingTypeElementId,
+    this.valuesElementId,
   });
 
   final int elementId;
@@ -1518,4 +1562,9 @@ class _ResolvedDeclaration {
   /// rooted too because the class's annotation typically signals
   /// reflective / generated-code use.
   final int? enclosingTypeElementId;
+
+  /// Element id of the synthetic `values` field on an enum declaration,
+  /// `null` for every other kind. [_OutgoingCollector] records this id
+  /// when source reads `E.values`; [_bfs] expands it to every constant.
+  final int? valuesElementId;
 }

@@ -499,6 +499,31 @@ enum E { used, neverUsed }
     expect(byKind[UnusedKind.enumValue], isNot(contains('used')));
   });
 
+  test('reading `E.values` keeps every constant of E alive', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+void main() {
+  print(Letters.values);
+  print(Status.values.byName('on'));
+  print(NotEnum.values);
+}
+''');
+    await File('${dir.path}/lib/src/a.dart').writeAsString('''
+enum Letters { a, b }
+enum Status { on, off }
+enum Untouched { dead }
+class NotEnum {
+  static const values = 0;
+}
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final constants = unused
+        .where((u) => u.kind == UnusedKind.enumValue)
+        .map((u) => u.name)
+        .toList();
+    expect(constants, ['dead']);
+  });
+
   test('typedef and top-level field detection still works '
       'in resolved mode', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''
