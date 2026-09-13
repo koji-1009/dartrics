@@ -25,7 +25,7 @@ dartrics computes a battery of code-quality metrics — McCabe, Cognitive Comple
 dart pub global activate dartrics
 ```
 
-dartrics runs on Dart SDK 3.13 or newer. The SDK that runs dartrics does not have to be the one the analysed project is pinned to: a newer SDK analyses a project that targets an older language version. For a project pinned to an older SDK (e.g. through fvm), activate and run dartrics with the newer SDK — `fvm dart pub global run dartrics` refuses to start on an SDK below 3.13.
+dartrics runs on Dart SDK 3.13 or newer, and can analyse projects that target an older SDK.
 
 ## Quick start
 
