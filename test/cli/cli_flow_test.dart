@@ -77,6 +77,50 @@ class UnusedThing {}
     },
   );
 
+  test('unused --filter keeps the configured roots', () async {
+    // `--filter` rebuilds the unused config to swap in the CLI kinds.
+    // It used to drop `roots` on the way, so a class reached only from a
+    // configured root turned into a finding as soon as `--filter` was
+    // passed.
+    await File('${dir.path}/lib/app.dart').writeAsString('''
+void boot() {
+  Wired();
+}
+
+class Wired {}
+''');
+    final config = File('${dir.path}/roots.yaml');
+    await config.writeAsString('''
+dartrics:
+  unused:
+    entry-points: []
+    exclude-exported: false
+    roots: ["lib/app.dart::boot"]
+''');
+    final outFile = File('${dir.path}/u-filter-roots.json');
+    final code = await runQuietly([
+      'unused',
+      '${dir.path}/lib',
+      '--reporter',
+      'json',
+      '--output',
+      outFile.path,
+      '--filter',
+      'class',
+      '--snapshot',
+      'none',
+      '--config',
+      config.path,
+    ]);
+    expect(code, 0);
+    final body = jsonDecode(outFile.readAsStringSync()) as Map<String, Object?>;
+    final names = (body['unused']! as List<Object?>)
+        .map((e) => (e! as Map<String, Object?>)['name'])
+        .toSet();
+    expect(names, contains('UnusedThing'));
+    expect(names, isNot(contains('Wired')));
+  });
+
   test(
     'unused --filter rejects unknown kind names with usage exit code',
     () async {
@@ -270,6 +314,110 @@ void generatedEntry() {
         .map((e) => (e! as Map<String, Object?>)['path']! as String);
     expect(analyzed.where((f) => f.endsWith('.g.dart')), isEmpty);
   });
+
+  test(
+    'unused: a `.g.dart` excluded by the root analyzer.exclude still '
+    'carries its edges, and generated declarations stay out of the output',
+    () async {
+      // Apps routinely list `**/*.g.dart` under `analyzer.exclude:`. The
+      // analyzer then refuses a context for those files, so the only edge
+      // into an enum constant decoded from JSON (`_$StatusEnumMap` in the
+      // part file) vanished and the constants came out as unused.
+      final app = await Directory.systemTemp.createTemp('cli_gen_excluded_');
+      addTearDown(() => app.delete(recursive: true));
+      await Directory('${app.path}/lib').create(recursive: true);
+      await File('${app.path}/pubspec.yaml')
+          .writeAsString('name: app\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${app.path}/analysis_options.yaml').writeAsString('''
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+dartrics:
+  unused:
+    exclude-exported: false
+''');
+      await File('${app.path}/lib/main.dart').writeAsString('''
+part 'main.g.dart';
+
+void main() {
+  Model.fromJson({});
+}
+
+enum Status { active, inactive }
+
+class Model {
+  Model(this.status);
+  factory Model.fromJson(Map<String, dynamic> json) => _\$ModelFromJson(json);
+  final Status status;
+}
+''');
+      await File('${app.path}/lib/main.g.dart').writeAsString('''
+part of 'main.dart';
+
+Model _\$ModelFromJson(Map<String, dynamic> json) =>
+    Model(_\$StatusEnumMap.keys.first);
+
+const _\$StatusEnumMap = {Status.active: 'active', Status.inactive: 'inactive'};
+
+class GeneratedNobodyUses {}
+''');
+      final out = File('${app.path}/u.json');
+      final code = await runQuietly([
+        'unused',
+        '--root',
+        app.path,
+        '--reporter',
+        'json',
+        '--output',
+        out.path,
+        '--snapshot',
+        'none',
+        '--config',
+        '${app.path}/analysis_options.yaml',
+      ]);
+      expect(code, 0);
+      final body = jsonDecode(out.readAsStringSync()) as Map<String, Object?>;
+      final names = (body['unused']! as List<Object?>)
+          .map((e) => (e! as Map<String, Object?>)['name'])
+          .toSet();
+      expect(names, isNot(contains('active')));
+      expect(names, isNot(contains('inactive')));
+      expect(names, isNot(contains('GeneratedNobodyUses')));
+    },
+  );
+
+  test(
+    'unused and analyze warn when exclude-exported empties an app report',
+    () async {
+      final app = await Directory.systemTemp.createTemp('cli_app_hint_');
+      addTearDown(() => app.delete(recursive: true));
+      await Directory('${app.path}/lib').create(recursive: true);
+      await File('${app.path}/pubspec.yaml')
+          .writeAsString('name: app\npublish_to: none\n');
+      await File('${app.path}/lib/main.dart').writeAsString('''
+void main() {}
+
+class OnlyRootedByExcludeExported {}
+''');
+      for (final command in ['unused', 'analyze']) {
+        final result = await runCaptured([
+          command,
+          '--root',
+          app.path,
+          '--reporter',
+          'json',
+          '--output',
+          '${app.path}/$command.json',
+          '--snapshot',
+          'none',
+          '--config',
+          '${app.path}/no.yaml',
+        ]);
+        expect(result.exitCode, 0, reason: command);
+        expect(result.stderr, contains('publish_to: none'), reason: command);
+      }
+    },
+  );
 
   test('unused: snapshot/analyzedFiles excludes `.g.dart`', () async {
     // Generated files participate in the reachability graph but must

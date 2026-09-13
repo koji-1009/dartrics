@@ -171,8 +171,12 @@ class MdReporter implements Reporter {
       )
       ..writeln();
     for (final u in report.unused) {
+      final writeOnly = u.writeOnly ? ' · _write-only_' : '';
+      final chain = u.chainRoots.isEmpty
+          ? ''
+          : ' · chain root ${u.chainRoots.map((r) => '`$r`').join(', ')}';
       buf.writeln(
-        '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`',
+        '- `${u.location.path}:${u.location.line}` — ${unusedKindJsonName(u.kind)} `${u.name}`$writeOnly$chain',
       );
     }
     buf.writeln();

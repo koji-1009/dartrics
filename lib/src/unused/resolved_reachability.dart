@@ -4,6 +4,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/source/line_info.dart';
 
+import '../analyzer_runner.dart';
 import '../config/config.dart';
 import '../models/analysis_report.dart';
 import '../models/call_graph_inspection.dart';
@@ -62,21 +63,176 @@ List<UnusedDeclaration> detectUnusedResolved(
     sources: sources,
     config: config,
   );
-  final reachable = _bfs(roots, byId);
+  final enumValues = _enumValuesSuccessors(declarations);
+  final reachable = _bfs(roots, byId, enumValues);
+  final chainRoots = _chainRoots(
+    declarations: declarations,
+    byId: byId,
+    reachable: reachable,
+    enumValues: enumValues,
+  );
   final out = <UnusedDeclaration>[];
   for (final d in declarations) {
     if (d.record.name.startsWith('_')) continue;
     if (reachable.contains(d.elementId)) continue;
+    // Generated declarations carry edges but are never findings: the
+    // fix is in the generator's input, and a hand deletion is undone by
+    // the next build.
+    if (AnalyzerRunner.isGeneratedDartPath(d.record.location.path)) continue;
     if (filterKinds != null && !filterKinds.contains(d.record.kind)) continue;
     out.add(
       UnusedDeclaration(
         kind: d.record.kind,
         name: d.record.name,
         location: d.record.location,
+        writeOnly: d.isConstructorFormal,
+        chainRoots: chainRoots[d.elementId]!,
       ),
     );
   }
   return out;
+}
+
+/// For every unreachable declaration, the `<path>::<scope>` names of the
+/// dead-subgraph roots whose deletion cascades to it.
+///
+/// The dead subgraph holds the unreachable declarations (private ones
+/// included — they still chain) with two kinds of edge: references, and
+/// type → member, since deleting a type deletes its members. Its
+/// strongly connected components with no edge arriving from another
+/// component are the roots: nothing dead keeps them, so they are where
+/// a deletion starts. A component's first declaration in source order
+/// names it. A declaration reached from several roots lists each; it
+/// only goes once all of them go.
+Map<int, List<String>> _chainRoots({
+  required List<_ResolvedDeclaration> declarations,
+  required Map<int, _ResolvedDeclaration> byId,
+  required Set<int> reachable,
+  required Map<int, List<int>> enumValues,
+}) {
+  final dead = [
+    for (final d in declarations)
+      if (!reachable.contains(d.elementId)) d.elementId,
+  ];
+  final successors = _deadSuccessors(dead, byId, enumValues);
+  final components = _stronglyConnectedComponents(dead, successors);
+  final componentOf = <int, int>{
+    for (final (i, component) in components.indexed)
+      for (final id in component) id: i,
+  };
+  final entered = <int>{
+    for (final MapEntry(key: from, value: targets) in successors.entries)
+      for (final to in targets)
+        if (componentOf[from] != componentOf[to]) componentOf[to]!,
+  };
+  final order = {for (final (i, id) in dead.indexed) id: i};
+  final rootComponents = [
+    for (final (i, component) in components.indexed)
+      if (!entered.contains(i))
+        component..sort((a, b) => order[a]!.compareTo(order[b]!)),
+  ]..sort((a, b) => order[a.first]!.compareTo(order[b.first]!));
+  final labels = <int, List<String>>{for (final id in dead) id: <String>[]};
+  for (final component in rootComponents) {
+    final root = byId[component.first]!;
+    final label =
+        '${root.record.location.path}::${_scopeRefFor(root, byId).name}';
+    final seen = <int>{...component};
+    final queue = [...component];
+    while (queue.isNotEmpty) {
+      final id = queue.removeLast();
+      labels[id]!.add(label);
+      for (final next in successors[id]!) {
+        if (seen.add(next)) queue.add(next);
+      }
+    }
+  }
+  return labels;
+}
+
+/// Adjacency of the dead subgraph over [dead]: each declaration's
+/// references (with `E.values` expanded to the constants) plus, for a
+/// type, its members.
+Map<int, Set<int>> _deadSuccessors(
+  List<int> dead,
+  Map<int, _ResolvedDeclaration> byId,
+  Map<int, List<int>> enumValues,
+) {
+  final deadIds = dead.toSet();
+  final successors = <int, Set<int>>{
+    for (final id in dead)
+      id: {
+        for (final target in byId[id]!.outgoingCounts.keys) ...[
+          target,
+          ...?enumValues[target],
+        ],
+      }..retainWhere((t) => t != id && deadIds.contains(t)),
+  };
+  for (final id in dead) {
+    final enclosing = byId[id]!.enclosingTypeElementId;
+    if (enclosing != null && deadIds.contains(enclosing)) {
+      successors[enclosing]!.add(id);
+    }
+  }
+  return successors;
+}
+
+/// Kosaraju's algorithm over [nodes], iterative so a long dead chain
+/// cannot overflow the stack. Components come back in no particular
+/// order.
+List<List<int>> _stronglyConnectedComponents(
+  List<int> nodes,
+  Map<int, Set<int>> successors,
+) {
+  final predecessors = <int, List<int>>{for (final id in nodes) id: <int>[]};
+  successors.forEach((from, targets) {
+    for (final to in targets) {
+      predecessors[to]!.add(from);
+    }
+  });
+  final assigned = <int>{};
+  return [
+    for (final start in _finishOrder(nodes, successors).reversed)
+      if (assigned.add(start)) _reverseReach(start, predecessors, assigned),
+  ];
+}
+
+/// [nodes] in the order a depth-first walk over [successors] finishes
+/// them — the first pass of [_stronglyConnectedComponents].
+List<int> _finishOrder(List<int> nodes, Map<int, Set<int>> successors) {
+  final finished = <int>[];
+  final visited = <int>{};
+  for (final start in nodes) {
+    if (!visited.add(start)) continue;
+    final stack = [(start, successors[start]!.iterator)];
+    while (stack.isNotEmpty) {
+      final (node, targets) = stack.last;
+      if (!targets.moveNext()) {
+        stack.removeLast();
+        finished.add(node);
+      } else if (visited.add(targets.current)) {
+        stack.add((targets.current, successors[targets.current]!.iterator));
+      }
+    }
+  }
+  return finished;
+}
+
+/// Every node reaching [start] through [predecessors] that no earlier
+/// component has claimed — the second pass of
+/// [_stronglyConnectedComponents]. Claims each node it returns in
+/// [assigned].
+List<int> _reverseReach(
+  int start,
+  Map<int, List<int>> predecessors,
+  Set<int> assigned,
+) {
+  final component = [start];
+  for (var i = 0; i < component.length; i++) {
+    for (final previous in predecessors[component[i]]!) {
+      if (assigned.add(previous)) component.add(previous);
+    }
+  }
+  return component;
 }
 
 /// Snapshot of the resolved-reachability pass keyed for fast lookup by
@@ -187,28 +343,45 @@ InspectionResult inspectCallGraph(
   required String query,
   required int depth,
   required InspectionDirection direction,
+}) => inspectCallGraphQueries(
+  sources,
+  queries: [query],
+  depth: depth,
+  direction: direction,
+).single;
+
+/// [inspectCallGraph] for several [queries] at once, in order. The
+/// resolved graph is indexed a single time and shared by every query,
+/// so probing N symbols costs one analysis pass instead of N.
+List<InspectionResult> inspectCallGraphQueries(
+  List<ResolvedUnusedSource> sources, {
+  required List<String> queries,
+  required int depth,
+  required InspectionDirection direction,
 }) {
   if (depth < 1) {
     throw ArgumentError.value(depth, 'depth', 'must be >= 1');
   }
   final index = _buildGraphIndex(sources);
   final inverse = _buildInverseAdjacency(index.declarations);
-  final matches = [
-    for (final anchorId in _matchedAnchorIds(index, query))
-      _inspectFromAnchor(
-        anchorId: anchorId,
+  return [
+    for (final query in queries)
+      InspectionResult(
+        query: query,
         depth: depth,
         direction: direction,
-        index: index,
-        inverse: inverse,
+        matches: [
+          for (final anchorId in _matchedAnchorIds(index, query))
+            _inspectFromAnchor(
+              anchorId: anchorId,
+              depth: depth,
+              direction: direction,
+              index: index,
+              inverse: inverse,
+            ),
+        ],
       ),
   ];
-  return InspectionResult(
-    query: query,
-    depth: depth,
-    direction: direction,
-    matches: matches,
-  );
 }
 
 /// Weighted inverse of [_ResolvedDeclaration.outgoingCounts]: target
@@ -476,12 +649,38 @@ bool _matchesConfiguredRoot(
   return false;
 }
 
-Set<int> _bfs(Iterable<int> roots, Map<int, _ResolvedDeclaration> byId) {
+/// Maps each enum's synthetic `values` field id to the ids of its
+/// constants. Reading `E.values` (and `E.values.byName(…)` on top of
+/// it) can yield any constant, so none of them is dead once `values`
+/// is reached — even though no identifier names them.
+Map<int, List<int>> _enumValuesSuccessors(
+  List<_ResolvedDeclaration> declarations,
+) {
+  final constantsByEnum = <int, List<int>>{};
+  for (final d in declarations) {
+    if (d.record.kind != UnusedKind.enumValue) continue;
+    constantsByEnum
+        .putIfAbsent(d.enclosingTypeElementId!, () => <int>[])
+        .add(d.elementId);
+  }
+  return {
+    for (final d in declarations)
+      if (d.valuesElementId != null)
+        d.valuesElementId!: constantsByEnum[d.elementId] ?? const <int>[],
+  };
+}
+
+Set<int> _bfs(
+  Iterable<int> roots,
+  Map<int, _ResolvedDeclaration> byId,
+  Map<int, List<int>> impliedSuccessors,
+) {
   final visited = <int>{};
   final queue = <int>[...roots];
   while (queue.isNotEmpty) {
     final id = queue.removeLast();
     if (!visited.add(id)) continue;
+    queue.addAll(impliedSuccessors[id] ?? const <int>[]);
     final next = byId[id];
     if (next == null) continue;
     for (final outId in next.successors) {
@@ -857,10 +1056,30 @@ void _collectInterfaceLike({
       isObjectDunder: false,
     ),
   );
+  final formalFieldIds = _constructorFormalFieldIds(members);
   for (final m in members) {
-    _collectMember(m, ctx: ctx, out: out, enclosingTypeId: element.id);
+    _collectMember(
+      m,
+      ctx: ctx,
+      out: out,
+      enclosingTypeId: element.id,
+      formalFieldIds: formalFieldIds,
+    );
   }
 }
+
+/// Ids of the fields some constructor among [members] assigns through
+/// an initializing formal (`this.<name>`). Such a parameter names the
+/// field only as a token, so it carries no edge: a field nothing else
+/// reads stays unreachable, and this set is what marks it write-only.
+Set<int> _constructorFormalFieldIds(NodeList<ClassMember> members) => {
+  for (final m in members)
+    if (m is ConstructorDeclaration)
+      for (final parameter in m.parameters.parameters)
+        if (parameter.declaredFragment?.element
+            case FieldFormalParameterElement(:final field?))
+          field.baseElement.nonSynthetic.id,
+};
 
 /// Outgoing edges for a class-like declaration:
 /// - the type-level surface (annotations, supertypes, generics) — via
@@ -951,6 +1170,7 @@ void _collectEnum(
       isInstanceMember: false,
       isOverride: false,
       isObjectDunder: false,
+      valuesElementId: element.getField('values')?.id,
     ),
   );
   for (final c in decl.body.constants) {
@@ -976,8 +1196,15 @@ void _collectEnum(
       ),
     );
   }
+  final formalFieldIds = _constructorFormalFieldIds(decl.body.members);
   for (final m in decl.body.members) {
-    _collectMember(m, ctx: ctx, out: out, enclosingTypeId: element.id);
+    _collectMember(
+      m,
+      ctx: ctx,
+      out: out,
+      enclosingTypeId: element.id,
+      formalFieldIds: formalFieldIds,
+    );
   }
 }
 
@@ -986,12 +1213,19 @@ void _collectMember(
   required _CollectionContext ctx,
   required List<_ResolvedDeclaration> out,
   required int enclosingTypeId,
+  Set<int> formalFieldIds = const {},
 }) {
   switch (member) {
     case MethodDeclaration():
       _emitMethod(member, ctx: ctx, out: out, enclosingTypeId: enclosingTypeId);
     case FieldDeclaration():
-      _emitFields(member, ctx: ctx, out: out, enclosingTypeId: enclosingTypeId);
+      _emitFields(
+        member,
+        ctx: ctx,
+        out: out,
+        enclosingTypeId: enclosingTypeId,
+        formalFieldIds: formalFieldIds,
+      );
     case _:
       // ConstructorDeclaration / PrimaryConstructorBody — constructors
       // fold into the class's reachability, since a class being
@@ -1046,6 +1280,7 @@ void _emitFields(
   required _CollectionContext ctx,
   required List<_ResolvedDeclaration> out,
   required int enclosingTypeId,
+  required Set<int> formalFieldIds,
 }) {
   final isOverride = decl.metadata.any((a) => a.name.name == 'override');
   final annotations = decl.metadata.map((a) => a.name.name).toList();
@@ -1077,6 +1312,7 @@ void _emitFields(
         isObjectDunder: false,
         overriddenIds: _overriddenIds(canonical),
         enclosingTypeElementId: enclosingTypeId,
+        isConstructorFormal: formalFieldIds.contains(canonical.id),
       ),
     );
   }
@@ -1278,6 +1514,7 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
 
   void _record(Element? referent) {
     if (referent == null) return;
+    _recordEnumValuesRead(referent);
     var e = referent.baseElement.nonSynthetic;
     while (true) {
       if (e.id != ownElementId) {
@@ -1288,6 +1525,21 @@ class _OutgoingCollector extends RecursiveAstVisitor<void> {
       if (parent is LibraryElement) return;
       e = parent.baseElement.nonSynthetic;
     }
+  }
+
+  /// `E.values` resolves to the getter of a synthetic field whose
+  /// `nonSynthetic` is the enum itself, so the walk in [_record] only
+  /// reaches the type. The field's own id is recorded as well; it is
+  /// not a tracked declaration, so the fan-in / fan-out signals skip it,
+  /// and reachability expands it to the enum's constants.
+  void _recordEnumValuesRead(Element referent) {
+    if (referent is! PropertyAccessorElement) return;
+    final field = referent.baseElement.variable;
+    if (field is! FieldElement || !field.isStatic) return;
+    if (field.name != 'values' || field.enclosingElement is! EnumElement) {
+      return;
+    }
+    out.update(field.id, (n) => n + 1, ifAbsent: () => 1);
   }
 
   @override
@@ -1477,6 +1729,8 @@ class _ResolvedDeclaration {
     required this.isObjectDunder,
     this.overriddenIds = const {},
     this.enclosingTypeElementId,
+    this.valuesElementId,
+    this.isConstructorFormal = false,
   });
 
   final int elementId;
@@ -1513,4 +1767,14 @@ class _ResolvedDeclaration {
   /// rooted too because the class's annotation typically signals
   /// reflective / generated-code use.
   final int? enclosingTypeElementId;
+
+  /// Element id of the synthetic `values` field on an enum declaration,
+  /// `null` for every other kind. [_OutgoingCollector] records this id
+  /// when source reads `E.values`; [_bfs] expands it to every constant.
+  final int? valuesElementId;
+
+  /// True for a field some constructor of its type assigns through
+  /// `this.<name>`. Only read when the field is unused, where it
+  /// becomes [UnusedDeclaration.writeOnly].
+  final bool isConstructorFormal;
 }

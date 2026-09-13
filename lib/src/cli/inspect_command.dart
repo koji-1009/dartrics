@@ -51,21 +51,19 @@ class InspectCommand extends Command<int> {
 
   @override
   String get invocation =>
-      'dartrics inspect <symbol> [--depth N] [--direction up|down|both]';
+      'dartrics inspect <symbol> [<symbol> ...] [--depth N] '
+      '[--direction up|down|both]';
 
   @override
   Future<int> run() async {
     final io = IoOptions.from(this);
     final analysis = AnalysisOptions.from(this);
-    final rest = io.rest;
-    if (rest.length != 1) {
-      DartricsIO.stderrSink.writeln(
-        'inspect: pass exactly one symbol name (got ${rest.length})',
-      );
+    final symbols = io.rest;
+    if (symbols.isEmpty) {
+      DartricsIO.stderrSink.writeln('inspect: pass at least one symbol name');
       DartricsIO.stderrSink.writeln(invocation);
       return ExitCode.usage.code;
     }
-    final symbol = rest.single;
     final int depth;
     try {
       depth = _parsePositiveInt(argResults!['depth'] as String, 'depth');
@@ -82,9 +80,9 @@ class InspectCommand extends Command<int> {
       concurrency: analysis.concurrency,
     );
     final units = await runner.resolveAll();
-    final result = inspectCallGraph(
+    final results = inspectCallGraphQueries(
       [for (final u in units) (path: u.path, unit: u.unit)],
-      query: symbol,
+      queries: symbols,
       depth: depth,
       direction: direction,
     );
@@ -99,9 +97,12 @@ class InspectCommand extends Command<int> {
     }
     try {
       if (io.reporter == 'json') {
-        _emitJson(result, sink);
+        _emitJson(results, sink);
       } else {
-        _emitAi(result, sink);
+        for (final (i, result) in results.indexed) {
+          if (i > 0) sink.writeln('---');
+          _emitAi(result, sink);
+        }
       }
     } finally {
       if (ownsSink) await sink.close();
@@ -118,9 +119,14 @@ int _parsePositiveInt(String raw, String name) {
   return n;
 }
 
-void _emitJson(InspectionResult result, IOSink sink) {
+/// One symbol keeps the single-object shape; several become an array of
+/// those objects, in argument order.
+void _emitJson(List<InspectionResult> results, IOSink sink) {
   const encoder = JsonEncoder.withIndent('  ');
-  sink.writeln(encoder.convert(result.toJson()));
+  final Object body = results.length == 1
+      ? results.single.toJson()
+      : [for (final r in results) r.toJson()];
+  sink.writeln(encoder.convert(body));
 }
 
 void _emitAi(InspectionResult result, IOSink sink) {

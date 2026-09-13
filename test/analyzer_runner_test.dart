@@ -127,6 +127,53 @@ void main() {
     });
   });
 
+  group('generated files under analyzer.exclude', () {
+    Future<void> writeExcludingPackage(String root) async {
+      await File('$root/pubspec.yaml')
+          .writeAsString('name: gen\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('$root/analysis_options.yaml')
+          .writeAsString('analyzer:\n  exclude:\n    - "**/*.g.dart"\n');
+    }
+
+    test(
+      'resolve through the owning package when includeGenerated is on '
+      '— the root package excluding them must not drop their edges',
+      () async {
+        await writeExcludingPackage(dir.path);
+        await File('${dir.path}/lib/a.g.dart').writeAsString('class AGen {}');
+        final runner = AnalyzerRunner(
+          roots: [dir.path],
+          includeGenerated: true,
+        );
+        final paths = (await runner.resolveAll()).map((u) => u.path).toList();
+        expect(paths.any((p) => p.endsWith('a.g.dart')), isTrue);
+        expect(paths.any((p) => p.endsWith('a.dart')), isTrue);
+      },
+    );
+
+    test('stay skipped when they live in a nested excluded package', () async {
+      await writeExcludingPackage(dir.path);
+      await File('${dir.path}/analysis_options.yaml')
+          .writeAsString('analyzer:\n  exclude:\n    - sub/**\n');
+      await Directory('${dir.path}/sub/lib').create(recursive: true);
+      await File('${dir.path}/sub/pubspec.yaml')
+          .writeAsString('name: inner\nenvironment:\n  sdk: ^3.10.0\n');
+      await File('${dir.path}/sub/lib/c.g.dart').writeAsString('class C {}');
+      final runner = AnalyzerRunner(roots: [dir.path], includeGenerated: true);
+      final paths = (await runner.resolveAll()).map((u) => u.path).toList();
+      expect(paths.any((p) => p.endsWith('c.g.dart')), isFalse);
+    });
+
+    test('stay skipped when no pubspec.yaml owns them', () async {
+      await File('${dir.path}/analysis_options.yaml')
+          .writeAsString('analyzer:\n  exclude:\n    - "**/*.g.dart"\n');
+      await File('${dir.path}/lib/a.g.dart').writeAsString('class AGen {}');
+      final runner = AnalyzerRunner(roots: [dir.path], includeGenerated: true);
+      final paths = (await runner.resolveAll()).map((u) => u.path).toList();
+      expect(paths.any((p) => p.endsWith('a.g.dart')), isFalse);
+    });
+  });
+
   group('nested sub-package fallout', () {
     test(
       'resolveAll skips files in a sub-pubspec excluded by analyzer.exclude',

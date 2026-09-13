@@ -499,6 +499,133 @@ enum E { used, neverUsed }
     expect(byKind[UnusedKind.enumValue], isNot(contains('used')));
   });
 
+  test('reading `E.values` keeps every constant of E alive', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+void main() {
+  print(Letters.values);
+  print(Status.values.byName('on'));
+  print(NotEnum.values);
+}
+''');
+    await File('${dir.path}/lib/src/a.dart').writeAsString('''
+enum Letters { a, b }
+enum Status { on, off }
+enum Untouched { dead }
+class NotEnum {
+  static const values = 0;
+}
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final constants = unused
+        .where((u) => u.kind == UnusedKind.enumValue)
+        .map((u) => u.name)
+        .toList();
+    expect(constants, ['dead']);
+  });
+
+  test('a field only a constructor assigns through `this.<name>` carries '
+      'writeOnly', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+import 'src/a.dart';
+void main() {
+  print(Profile('a', label: 'b').id);
+  print(Level.low);
+}
+''');
+    await File('${dir.path}/lib/src/a.dart').writeAsString('''
+class Profile {
+  Profile(this.id, {required this.label, this.note});
+  final String id;
+  final String label;
+  final String? note;
+  final int counter = 0;
+}
+
+enum Level {
+  low(1);
+
+  const Level(this.code);
+  final int code;
+}
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final fields = {
+      for (final u in unused)
+        if (u.kind == UnusedKind.field) u.name: u.writeOnly,
+    };
+    expect(fields, {
+      'label': true,
+      'note': true,
+      'counter': false,
+      'code': true,
+    });
+  });
+
+  test('chainRoots groups each dead declaration under the roots whose '
+      'deletion cascades to it', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+void main() {}
+
+void sheet() {
+  helper();
+}
+
+void helper() {
+  Leaf();
+}
+
+class Leaf {
+  void member() {}
+}
+
+void otherScreen() {
+  shared();
+}
+
+void shared() {}
+
+void loopA() {
+  loopB();
+  shared();
+}
+
+void loopB() {
+  loopA();
+}
+
+void _privateRoot() {
+  PrivatelyHeld();
+}
+
+class PrivatelyHeld {}
+
+void reader() {
+  print(Letter.values);
+}
+
+enum Letter { a }
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final path = '${dir.path}/lib/foo.dart';
+    final roots = {
+      for (final u in unused)
+        u.name: [for (final r in u.chainRoots) r.replaceFirst('$path::', '')],
+    };
+    expect(roots['sheet'], ['sheet']);
+    expect(roots['helper'], ['sheet']);
+    expect(roots['Leaf'], ['sheet']);
+    expect(roots['member'], ['sheet']);
+    expect(roots['otherScreen'], ['otherScreen']);
+    expect(roots['shared'], ['otherScreen', 'loopA']);
+    expect(roots['loopA'], ['loopA']);
+    expect(roots['loopB'], ['loopA']);
+    expect(roots['PrivatelyHeld'], ['_privateRoot']);
+    expect(roots['reader'], ['reader']);
+    expect(roots['Letter'], ['reader']);
+    expect(roots['a'], ['reader']);
+  });
+
   test('typedef and top-level field detection still works '
       'in resolved mode', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''

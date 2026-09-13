@@ -29,7 +29,9 @@ class ConsoleReporter implements Reporter {
     for (final u in report.unused) {
       sink.writeln(
         '${u.location.path}:${u.location.line} '
-        '[unused] ${unusedKindJsonName(u.kind)} ${u.name}',
+        '[unused] ${unusedKindJsonName(u.kind)} ${u.name}'
+        '${u.writeOnly ? ' [write-only]' : ''}'
+        '${u.chainRoots.isEmpty ? '' : ' [chain root: ${u.chainRoots.join(', ')}]'}',
       );
     }
   }

@@ -42,6 +42,14 @@ void main() {
             'kind': 'function',
             'line': 5,
           },
+          {
+            'file': '/proj/lib/u.dart',
+            'name': 'label',
+            'kind': 'field',
+            'line': 9,
+            'writeOnly': true,
+            'chainRoots': ['/proj/lib/u.dart::Profile'],
+          },
         ],
       }),
     );
@@ -58,6 +66,12 @@ void main() {
     final body = await out.readAsString();
     expect(body, contains('cyclomatic-complexity'));
     expect(body, contains('leftover'));
+    expect(
+      body,
+      contains(
+        '`label` · _write-only_ · chain root `/proj/lib/u.dart::Profile`',
+      ),
+    );
   });
 
   test('exits 64 when no input file argument is given', () async {

@@ -246,6 +246,8 @@ class MetricsReadingOptions {
 /// Returns a copy of [base] with `filter` overridden by [cliFilter] when
 /// the CLI supplied any value. An empty CLI list is treated as "no
 /// override" so a user who omits `--filter` keeps the YAML setting.
+/// Every other field is carried over from [base] — `--filter` narrows
+/// the output, never what is reachable.
 UnusedConfig mergeUnusedFilterFromCli({
   required UnusedConfig base,
   required List<String> cliFilter,
@@ -255,6 +257,7 @@ UnusedConfig mergeUnusedFilterFromCli({
     entryPoints: base.entryPoints,
     excludeExported: base.excludeExported,
     ignoreAnnotations: base.ignoreAnnotations,
+    roots: base.roots,
     filter: cliFilter,
   );
 }

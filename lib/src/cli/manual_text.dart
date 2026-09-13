@@ -122,10 +122,10 @@ Signals reach the AI / JSON reporters in full and the MD reporter as a top-10 re
 When the `signals:` block surfaces something interesting but the surrounding neighbourhood is what you actually need to see, use:
 
 ```bash
-dartrics inspect <symbol> [--depth N] [--direction up|down|both]
+dartrics inspect <symbol> [<symbol> ...] [--depth N] [--direction up|down|both]
 ```
 
-`<symbol>` matches by declared name. Homonym methods on different classes (`A.work`, `B.work`) stay disambiguated as separate `matches:` entries; pass `A.work` to narrow. The walker BFSs the resolved call graph from each matched anchor: `--direction up` returns the upstream callers, `--direction down` returns the downstream callees, `--direction both` (default) returns the union. `--depth` caps the number of edges from the anchor (default 2). Output is `--reporter ai` (token-shaped YAML, default) or `--reporter json` — there is no `md` or `sarif` form because `inspect` is itself a reference-only probe, not a finding list.
+`<symbol>` matches by declared name. Several symbols can be passed at once; the project is resolved a single time and each symbol gets its own report, in argument order — a `---`-separated document per symbol with `--reporter ai`, an array of result objects with `--reporter json` (a single symbol keeps the single-object shape). Homonym methods on different classes (`A.work`, `B.work`) stay disambiguated as separate `matches:` entries; pass `A.work` to narrow. The walker BFSs the resolved call graph from each matched anchor: `--direction up` returns the upstream callers, `--direction down` returns the downstream callees, `--direction both` (default) returns the union. `--depth` caps the number of edges from the anchor (default 2). Output is `--reporter ai` (token-shaped YAML, default) or `--reporter json` — there is no `md` or `sarif` form because `inspect` is itself a reference-only probe, not a finding list.
 
 Typical entry points:
 
@@ -242,7 +242,7 @@ dartrics:
       - "test/flutter_test_config.dart::testExecutable"
 ```
 
-* **`exclude-exported`** (default `true`) roots the package's public API — anything under `lib/` outside `lib/src/`, plus the members an exported type exposes. Set to `false` for strict mode, where even an exported declaration needs a caller.
+* **`exclude-exported`** (default `true`) roots the package's public API — anything under `lib/` outside `lib/src/`, plus the members an exported type exposes. Set to `false` for strict mode, where even an exported declaration needs a caller. An app usually keeps its code under `lib/` without a `lib/src/` split, so the default roots all of it and the report comes back empty; when that happens in a package whose `pubspec.yaml` sets `publish_to: none`, `unused` and `analyze` say so on stderr. Apps want `exclude-exported: false`.
 * **`entry-points`** roots any **top-level** declaration carrying one of these simple names, in any file. `@pragma:`-prefixed entries match the pragma instead of the name. Broad by design: `main` should be a root wherever it appears.
 * **`ignore-annotations`** roots any declaration carrying one of these annotations, and — on a type — every member of it, since a codegen / reflection marker means the real callers live in generated or runtime code. Every shipped codegen preset (freezed, json_serializable, drift, riverpod, …) is always honoured on top of this list.
 * **`roots`** pins one declaration in one file, in `<path suffix>::<scope>` form. The path matches as a `/`-boundary suffix of the analysed path, so it is written project-relative; the scope is the same dotted name the `signals:` block and `dartrics inspect` print — `topLevelFn` for a top-level declaration, `Type.member` for a class member. Use it when `entry-points` would be too broad, or when the entry point is a member rather than a top-level declaration.
@@ -250,6 +250,22 @@ dartrics:
 `roots` ships with `test/flutter_test_config.dart::testExecutable` pre-seeded: `flutter_test` loads that file by filename and calls `testExecutable` from a bootstrap it generates at run time, so nothing in the source tree references it. Packages without the file are unaffected. Supplying your own `roots:` list replaces the default one — re-list the preset entry if you still want it, the same way `entry-points` behaves.
 
 An entry that is not in `<path>::<scope>` form is a usage error (exit 64), not a silently-ignored line.
+
+An unused field that a constructor assigns through `this.<name>` but nothing reads carries `writeOnly: true`. Deleting it is a wider edit than deleting a declaration nothing references: the constructor parameter and the argument at every call site go too, and `unused --apply` leaves such a field in place (`constructor formal coupling`).
+
+Every unused entry also carries `chainRoots`: the `<path>::<scope>` of each root of the dead subgraph whose deletion cascades to it. A root is a dead declaration that nothing else dead references (a mutually-recursive group counts as one, named by its first declaration in source order); a type counts as referencing its members. Entries sharing a root are one deletion unit — delete the root and the rest has no reference left. A declaration reached from several roots lists each and goes only once all of them go. A root can be a private declaration, which gets no entry of its own (the analyzer's `unused_element` covers those).
+
+## Which files are analysed
+
+`analyze` and `unused` walk every `.dart` file under the positional paths (or `--root` when none is given), then drop:
+
+* anything under a `.dart_tool/` directory;
+* paths matching a `dartrics: { exclude: [...] }` glob, matched relative to each walked path;
+* files the analyzer itself excludes — the `analyzer: { exclude: [...] }` of the `analysis_options.yaml` the analyzer discovers for the package under analysis, not of the `--config` file.
+
+`--config` supplies the `dartrics:` block and nothing else. The `analyzer:` block of that file is not read, and `include:` is not followed, so a config kept outside the project that `include:`s the project's options inherits neither its `analyzer.exclude` nor its `dartrics:` block. To exclude `test/**` from a run, put the glob under `dartrics: { exclude: }` in the file you pass.
+
+Generated files (`.g.dart`, `.freezed.dart`, `.mocks.dart`, `.gen.dart`, …) are a separate case. `unused` and `analyze` resolve them for their reachability edges even when the package's `analyzer.exclude` lists them, but never measure, hash, count, or report them — the analysed-file count and the snapshot cover handwritten files only, so a generated file taking part in reachability does not show up in either.
 
 ## Default relaxations — Flutter and test files
 
@@ -336,7 +352,7 @@ If you have read `--reporter ai` and the destination is now a human or a CI sink
 | Verify a refactor                     | `dartrics regression`          | Runs `git worktree` for the historical side. `--metric <id>` (repeatable) restricts the diff to the named lenses                                                                                                                                  |
 | Audit your config                     | `dartrics doctor`              | Flags unknown config keys (with did-you-mean hints), unknown metric ids, and threshold mis-ordering. Read-only                                                                                                                                                                                    |
 | Delete unused public-API declarations | `dartrics unused --apply`      | In-place deletion of the reported declarations — top-level functions / classes / typedefs / extensions **and** class members (methods, getters, setters, fields). Refuses on a dirty git tree (override `--force`). `test/` excluded by default (override `--include-tests`). Run `dart fix --apply` afterwards to clean imports |
-| Walk the call graph around a symbol   | `dartrics inspect <symbol>`    | Reference-only probe (no thresholds, no severity). `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reporters: `ai` (default), `json`. See [Signals — reference information, not verdicts](#signals--reference-information-not-verdicts) |
+| Walk the call graph around a symbol   | `dartrics inspect <symbol>`    | Reference-only probe (no thresholds, no severity). Several symbols share one analysis pass. `--depth N` (default 2), `--direction up\|down\|both` (default `both`). Reporters: `ai` (default), `json`. See [Signals — reference information, not verdicts](#signals--reference-information-not-verdicts) |
 
 ## Exit codes
 

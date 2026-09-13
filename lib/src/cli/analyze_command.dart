@@ -18,6 +18,7 @@ import '../metrics/metric_catalogue.dart';
 import '../metrics/metric_engine.dart';
 import '../models/analysis_report.dart';
 import '../reporters/reporters.dart';
+import '../unused/exclude_exported_hint.dart';
 import '../unused/resolved_reachability.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
@@ -171,6 +172,12 @@ class AnalyzeCommand extends Command<int> {
     final unused = await const UnusedDetector().detectResolved([
       for (final u in allUnits) (path: u.path, unit: u.unit),
     ], req.unusedConfig);
+    writeExcludeExportedAppHint(
+      DartricsIO.stderrSink,
+      root: req.analysis.root,
+      config: req.unusedConfig,
+      findingCount: unused.length,
+    );
     final signals = computeCallGraphSignals([
       for (final u in units) (path: u.path, unit: u.unit),
     ]);
@@ -217,7 +224,7 @@ class AnalyzeCommand extends Command<int> {
       analyzedPaths: {for (final u in units) u.path},
     );
     return AnalysisReport(
-      version: '1.3',
+      version: '1.4',
       metrics: filteredRecords,
       unused: filteredUnused,
       analyzedFiles: hashes,

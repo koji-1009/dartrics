@@ -74,6 +74,21 @@ void main() {
     expect(body, contains('_legacyFormatter'));
   });
 
+  test('marks a write-only field entry', () async {
+    final tmp = Directory.systemTemp.createTempSync();
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final temp = File('${tmp.path}/ai.yaml');
+    final sink = temp.openWrite();
+    AiReporter(sourceLoader: (path) => {path: 'class Profile {}'})
+        .report(buildWriteOnlyReport(), sink);
+    await sink.close();
+    final body = await temp.readAsString();
+    expect(body, contains('name: label'));
+    expect(body, contains('writeOnly: true'));
+    expect(body, contains('chainRoots:'));
+    expect(body, contains('- "/proj/lib/profile.dart::Profile"'));
+  });
+
   test('counts block reports per-section entry totals', () async {
     // The four sections all start entries with the same `  - file:`
     // shape, so agents that grep to count violations over-count by the

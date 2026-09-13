@@ -10,6 +10,7 @@ import '../models/analysis_report.dart';
 import '../models/unused_declaration.dart';
 import '../reporters/reporters.dart';
 import '../unused/apply.dart';
+import '../unused/exclude_exported_hint.dart';
 import '../unused/resolved_reachability.dart';
 import '../unused/unused_detector.dart';
 import 'common_options.dart';
@@ -112,6 +113,12 @@ class UnusedCommand extends Command<int> {
     final unused = await const UnusedDetector().detectResolved([
       for (final u in units) (path: u.path, unit: u.unit),
     ], unusedConfig);
+    writeExcludeExportedAppHint(
+      DartricsIO.stderrSink,
+      root: analysis.root,
+      config: unusedConfig,
+      findingCount: unused.length,
+    );
 
     final handwrittenUnits = [
       for (final u in units)
@@ -133,7 +140,7 @@ class UnusedCommand extends Command<int> {
     final activeFilter = changed ?? snapshotChanged;
     final filtered = _filterUnused(unused, activeFilter);
     final report = AnalysisReport(
-      version: '1.3',
+      version: '1.4',
       metrics: const [],
       unused: filtered,
       analyzedFiles: hashes,

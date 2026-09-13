@@ -25,6 +25,8 @@ dartrics computes a battery of code-quality metrics — McCabe, Cognitive Comple
 dart pub global activate dartrics
 ```
 
+dartrics runs on Dart SDK 3.13 or newer, and can analyse projects that target an older SDK.
+
 ## Quick start
 
 ```bash
@@ -45,7 +47,7 @@ dartrics manual
 | --- | --- |
 | `analyze` | Every metric + the public-API unused detector. Emits `signals:` (call-graph fan-in / fan-out per declaration) as reference information alongside the thresholded metrics. |
 | `unused` | Public-API reachability only (fast path). |
-| `inspect <symbol>` | Walk the resolved call graph around a named declaration; `--depth` / `--direction up\|down\|both` configure the walk. Reference-only output; emits `ai` (default) or `json`. |
+| `inspect <symbol> [<symbol> ...]` | Walk the resolved call graph around one or more named declarations in a single analysis pass; `--depth` / `--direction up\|down\|both` configure the walk. Reference-only output; emits `ai` (default) or `json`. |
 | `report <input.json>` | Re-emit a previously saved JSON report in another format. |
 | `rules` | Catalogue every metric with rationale, refactor hints, and references. |
 | `regression` | Compare metrics between two git states; classify each delta as improved / regressed / unchanged / added / removed. |
@@ -114,6 +116,8 @@ dartrics:
 ```
 
 The `dartrics:` section is read by both the CLI and the analyzer plugin. The `# yaml-language-server` directive turns on autocomplete + typo detection in editors with [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) integration. Every key (per-metric thresholds, dismissals, snapshot mode, unused-detector filters) is documented in [`schemas/dartrics-config.schema.json`](schemas/dartrics-config.schema.json) and explained in [`dartrics manual`](doc/manual.md).
+
+`--config <path>` points the CLI at a different file for the `dartrics:` block only. Which files get analysed — including why that file's `analyzer.exclude` has no effect — is covered under "Which files are analysed" in the manual.
 
 ## Analyzer plugin
 

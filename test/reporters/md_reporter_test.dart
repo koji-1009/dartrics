@@ -29,6 +29,21 @@ void main() {
     expect(body, contains('snapshot mode'));
   });
 
+  test('tags a write-only field entry', () async {
+    final temp = await File.fromUri(
+      Uri.file('${Directory.systemTemp.createTempSync().path}/r.md'),
+    ).create();
+    final sink = temp.openWrite();
+    MdReporter().report(buildWriteOnlyReport(), sink);
+    await sink.close();
+    expect(
+      await temp.readAsString(),
+      contains(
+        '`label` · _write-only_ · chain root `/proj/lib/profile.dart::Profile`',
+      ),
+    );
+  });
+
   test(
     'summary surfaces snapshot diff filter with `no new findings` hint',
     () async {
