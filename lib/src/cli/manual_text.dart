@@ -253,6 +253,8 @@ An entry that is not in `<path>::<scope>` form is a usage error (exit 64), not a
 
 A reported field that a constructor assigns through `this.<name>` but nothing reads carries `writeOnly: true`. Deleting it is a wider edit than deleting a declaration nothing references: the constructor parameter and the argument at every call site go too, and `unused --apply` leaves such a field in place (`constructor formal coupling`).
 
+Every reported declaration also carries `chainRoots`: the `<path>::<scope>` of each root of the dead subgraph whose deletion cascades to it. A root is a dead declaration that nothing else dead references (a mutually-recursive group counts as one, named by its first declaration in source order); a type counts as referencing its members. Entries sharing a root are one deletion unit — delete the root and the rest has no reference left. A declaration reached from several roots lists each and goes only once all of them go. A root can be a private declaration, which `unused` never reports on its own (the analyzer's `unused_element` covers those).
+
 ## Default relaxations — Flutter and test files
 
 Two ergonomics defaults are on out of the box so AI loops don't waste cycles refactoring code shapes that are legitimately load-bearing:

@@ -8,6 +8,7 @@
 * Unused detector: reading `E.values` (including `E.values.byName(…)`) keeps every constant of `E` alive. The read reached only the enum type, so constants that are enumerated but never named — an alphabetical index, a picker over every option — were reported one by one.
 * `unused` / `analyze` warn on stderr when a run finds no unused declarations while `unused.exclude-exported` is `true` and the root `pubspec.yaml` sets `publish_to: none`. In an app that default roots everything under `lib/`, so the empty report said nothing about the code. The exit code is unchanged.
 * Unused detector: a reported field that a constructor assigns through `this.<name>` but nothing reads carries `writeOnly: true` (JSON / ai; `_write-only_` in md, `[write-only]` on the console, its own SARIF message). Removing one also means removing that parameter and the argument at every call site, unlike a declaration nothing references. Report schema `1.3` → `1.4`, additive.
+* Unused detector: every reported declaration carries `chainRoots` — the `<path>::<scope>` of each dead-subgraph root whose deletion cascades to it (JSON / ai; appended in md and on the console). Entries that share a root form one deletion unit, so a chain of twenty files that dies with one widget reads off the report instead of being traced by hand. A declaration nothing dead references names itself; a root can be a private declaration, which is not reported itself. Report schema `1.4`, additive.
 
 ## 1.5.0
 

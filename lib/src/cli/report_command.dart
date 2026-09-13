@@ -151,5 +151,6 @@ UnusedDeclaration _decodeUnused(Map<String, Object?> json) {
       column: 1,
     ),
     writeOnly: json['writeOnly'] as bool? ?? false,
+    chainRoots: ((json['chainRoots'] as List?) ?? const []).cast<String>(),
   );
 }

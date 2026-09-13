@@ -279,7 +279,10 @@ class AiReporter implements Reporter {
         '# (declared but never reached — possible wiring gap). Confirm '
         'against intent',
       )
-      ..writeln('# before acting.')
+      ..writeln(
+        '# before acting. Entries sharing a chainRoots entry go together:',
+      )
+      ..writeln('# deleting the root leaves the rest unreferenced.')
       ..writeln('unused:');
     for (final u in kept) {
       buf
@@ -288,6 +291,12 @@ class AiReporter implements Reporter {
         ..writeln('    kind: ${unusedKindJsonName(u.kind)}')
         ..writeln('    name: ${u.name}');
       if (u.writeOnly) buf.writeln('    writeOnly: true');
+      if (u.chainRoots.isNotEmpty) {
+        buf.writeln('    chainRoots:');
+        for (final root in u.chainRoots) {
+          buf.writeln('      - ${yamlInlineScalar(root)}');
+        }
+      }
       _writeSnippet(buf, u.location.path, u.location.line);
     }
   }

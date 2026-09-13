@@ -85,6 +85,8 @@ void main() {
     final body = await temp.readAsString();
     expect(body, contains('name: label'));
     expect(body, contains('writeOnly: true'));
+    expect(body, contains('chainRoots:'));
+    expect(body, contains('- "/proj/lib/profile.dart::Profile"'));
   });
 
   test('counts block reports per-section entry totals', () async {

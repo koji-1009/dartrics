@@ -34,7 +34,10 @@ void main() {
     await sink.close();
     expect(
       await out.readAsString(),
-      contains('[unused] field label [write-only]'),
+      contains(
+        '[unused] field label [write-only] '
+        '[chain root: /proj/lib/profile.dart::Profile]',
+      ),
     );
   });
 

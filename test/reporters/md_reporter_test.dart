@@ -36,7 +36,12 @@ void main() {
     final sink = temp.openWrite();
     MdReporter().report(buildWriteOnlyReport(), sink);
     await sink.close();
-    expect(await temp.readAsString(), contains('`label` · _write-only_'));
+    expect(
+      await temp.readAsString(),
+      contains(
+        '`label` · _write-only_ · chain root `/proj/lib/profile.dart::Profile`',
+      ),
+    );
   });
 
   test(

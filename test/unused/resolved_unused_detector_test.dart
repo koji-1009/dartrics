@@ -562,6 +562,70 @@ enum Level {
     });
   });
 
+  test('chainRoots groups each dead declaration under the roots whose '
+      'deletion cascades to it', () async {
+    await File('${dir.path}/lib/foo.dart').writeAsString('''
+void main() {}
+
+void sheet() {
+  helper();
+}
+
+void helper() {
+  Leaf();
+}
+
+class Leaf {
+  void member() {}
+}
+
+void otherScreen() {
+  shared();
+}
+
+void shared() {}
+
+void loopA() {
+  loopB();
+  shared();
+}
+
+void loopB() {
+  loopA();
+}
+
+void _privateRoot() {
+  PrivatelyHeld();
+}
+
+class PrivatelyHeld {}
+
+void reader() {
+  print(Letter.values);
+}
+
+enum Letter { a }
+''');
+    final unused = await detectIn(const UnusedConfig(excludeExported: false));
+    final path = '${dir.path}/lib/foo.dart';
+    final roots = {
+      for (final u in unused)
+        u.name: [for (final r in u.chainRoots) r.replaceFirst('$path::', '')],
+    };
+    expect(roots['sheet'], ['sheet']);
+    expect(roots['helper'], ['sheet']);
+    expect(roots['Leaf'], ['sheet']);
+    expect(roots['member'], ['sheet']);
+    expect(roots['otherScreen'], ['otherScreen']);
+    expect(roots['shared'], ['otherScreen', 'loopA']);
+    expect(roots['loopA'], ['loopA']);
+    expect(roots['loopB'], ['loopA']);
+    expect(roots['PrivatelyHeld'], ['_privateRoot']);
+    expect(roots['reader'], ['reader']);
+    expect(roots['Letter'], ['reader']);
+    expect(roots['a'], ['reader']);
+  });
+
   test('typedef and top-level field detection still works '
       'in resolved mode', () async {
     await File('${dir.path}/lib/foo.dart').writeAsString('''

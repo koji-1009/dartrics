@@ -35,8 +35,8 @@ AnalysisReport buildSampleReport({List<ExplainEntry> explanations = const []}) {
   )..attachAnalyzedFileCount(2);
 }
 
-/// A report holding one write-only field, for the reporters' `writeOnly`
-/// rendering.
+/// A report holding one write-only field inside a dead chain, for the
+/// reporters' `writeOnly` / `chainRoots` rendering.
 AnalysisReport buildWriteOnlyReport() => AnalysisReport(
   version: '1.4',
   metrics: const [],
@@ -50,6 +50,7 @@ AnalysisReport buildWriteOnlyReport() => AnalysisReport(
         column: 3,
       ),
       writeOnly: true,
+      chainRoots: ['/proj/lib/profile.dart::Profile'],
     ),
   ],
 )..attachAnalyzedFileCount(1);

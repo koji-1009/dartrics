@@ -55,16 +55,19 @@ void main() {
     expect(unusedJson.first['name'], 'orphan');
     expect(unusedJson.first['line'], 2);
     expect(unusedJson.first.containsKey('writeOnly'), isFalse);
+    expect(unusedJson.first.containsKey('chainRoots'), isFalse);
   });
 
-  test('UnusedDeclaration.toJson carries writeOnly only when set', () {
+  test('UnusedDeclaration.toJson carries writeOnly / chainRoots when set', () {
     const field = UnusedDeclaration(
       kind: UnusedKind.field,
       name: 'label',
       location: SourceLocation(path: 'b.dart', line: 4, column: 3),
       writeOnly: true,
+      chainRoots: ['b.dart::Profile'],
     );
     expect(field.toJson()['writeOnly'], isTrue);
+    expect(field.toJson()['chainRoots'], ['b.dart::Profile']);
   });
 
   test('hasSeverityAtLeast returns true at the worst encountered severity', () {
