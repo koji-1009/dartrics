@@ -21,7 +21,7 @@ import 'version.dart';
 /// - any other uncaught error     → `70 EX_SOFTWARE`
 Future<void> runApp(List<String> arguments) async {
   if (isVersionRequest(arguments)) {
-    DartricsIO.stdoutSink.writeln('dartrics $dartricsVersion');
+    DartricsIO.stdoutSink.writeln('dartrics $packageVersion');
     exitCode = ExitCode.success.code;
     return;
   }

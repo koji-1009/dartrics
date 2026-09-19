@@ -1,3 +1,2 @@
-/// Build-time version string. Kept in sync with `pubspec.yaml`'s
-/// `version:` field by hand; bump both files together.
-const String dartricsVersion = '1.6.0';
+// Generated code. Do not modify.
+const packageVersion = '1.6.0';

@@ -5,6 +5,7 @@
 * CLI: logger records at every level go to stderr. INFO-and-below records used to go to stdout, where they would mix into `--output -` report payload.
 * CLI: an unhandled error prints `Unhandled error: <error>` on stderr and exits 70 as before; the stack trace is printed only with `-v` / `--verbose`, and in terse form (`package:stack_trace`).
 * CLI: options are read through `ArgResults.flag` / `option` / `multiOption` instead of casting `ArgResults[]`. No behaviour change.
+* Build: `lib/src/version.dart` is generated from `pubspec.yaml` by `package:build_version` (`dart run build_runner build`). The public `dartricsVersion` constant is unchanged.
 
 ## 1.6.0
 

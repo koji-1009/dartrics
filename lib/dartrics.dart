@@ -15,6 +15,8 @@
 /// before reaching into `package:dartrics/src/`.
 library;
 
+import 'src/version.dart';
+
 export 'src/metrics/function/cognitive_complexity.dart'
     show CognitiveComplexity;
 export 'src/metrics/function/cyclomatic_complexity.dart'
@@ -25,4 +27,7 @@ export 'src/metrics/function/number_of_parameters.dart' show NumberOfParameters;
 export 'src/metrics/function/source_lines_of_code.dart' show SourceLinesOfCode;
 export 'src/metrics/metric.dart'
     show FunctionMetric, FunctionMetricInput, MetricPolarity;
-export 'src/version.dart' show dartricsVersion;
+
+/// The dartrics package version, generated from `pubspec.yaml`'s
+/// `version:` field by `package:build_version`.
+const String dartricsVersion = packageVersion;
