@@ -97,12 +97,12 @@ void main() {
       expect(captured.stderr, equals('SEVERE: oops\n'));
     });
 
-    test('INFO and below go to the resolved stdout sink', () async {
+    test('INFO and below also go to stderr, keeping stdout clean', () async {
       final captured = await _captureRoute(
         () => routeLogRecord(LogRecord(Level.INFO, 'note', 'logger')),
       );
-      expect(captured.stdout, equals('INFO: note\n'));
-      expect(captured.stderr, isEmpty);
+      expect(captured.stderr, equals('INFO: note\n'));
+      expect(captured.stdout, isEmpty);
     });
   });
 

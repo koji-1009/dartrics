@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* CLI: logger records at every level go to stderr. INFO-and-below records used to go to stdout, where they would mix into `--output -` report payload.
 * CLI: options are read through `ArgResults.flag` / `option` / `multiOption` instead of casting `ArgResults[]`. No behaviour change.
 
 ## 1.6.0
