@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.6.1
+
+CLI stream hygiene: log records no longer reach stdout, and an unhandled error prints its stack trace only under `--verbose`. The version string is now generated from `pubspec.yaml`. No metric, threshold, report-schema, exit-code, or public-API change.
 
 * CLI: logger records at every level go to stderr. INFO-and-below records used to go to stdout, where they would mix into `--output -` report payload.
 * CLI: an unhandled error prints `Unhandled error: <error>` on stderr and exits 70 as before; the stack trace is printed only with `-v` / `--verbose`, and in terse form (`package:stack_trace`).
