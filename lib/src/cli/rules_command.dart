@@ -42,8 +42,8 @@ class RulesCommand extends Command<int> {
   @override
   Future<int> run() async {
     final results = argResults!;
-    final reporter = results['reporter'] as String;
-    final output = results['output'] as String;
+    final reporter = results.option('reporter')!;
+    final output = results.option('output')!;
     final descriptions = collectRuleDescriptions();
     final IOSink sink;
     final bool ownsSink;

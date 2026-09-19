@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.1
+
+CLI stream hygiene: log records no longer reach stdout, and an unhandled error prints its stack trace only under `--verbose`. The version string is now generated from `pubspec.yaml`. No metric, threshold, report-schema, exit-code, or public-API change.
+
+* CLI: logger records at every level go to stderr. INFO-and-below records used to go to stdout, where they would mix into `--output -` report payload.
+* CLI: an unhandled error prints `Unhandled error: <error>` on stderr and exits 70 as before; the stack trace is printed only with `-v` / `--verbose`, and in terse form (`package:stack_trace`).
+* CLI: options are read through `ArgResults.flag` / `option` / `multiOption` instead of casting `ArgResults[]`. No behaviour change.
+* Build: `lib/src/version.dart` is generated from `pubspec.yaml` by `package:build_version` (`dart run build_runner build`). The public `dartricsVersion` constant is unchanged.
+
 ## 1.6.0
 
 Unused-detector false positives from `--filter`, from generated files under `analyzer.exclude`, and from `E.values`; two new annotations on unused entries (`writeOnly`, `chainRoots`); multi-symbol `inspect`; and documentation of how the analysed file set is chosen. Findings can disappear on unchanged code. Report schema `1.3` → `1.4`, additive. No metric, threshold, or exit-code change.

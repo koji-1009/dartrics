@@ -33,7 +33,7 @@ class AiLoopCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final output = argResults!['output'] as String;
+    final output = argResults!.option('output')!;
     if (output == '-') {
       DartricsIO.stdoutSink.write(aiLoopText);
     } else {

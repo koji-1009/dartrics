@@ -67,7 +67,7 @@ class AnalyzeCommand extends Command<int> {
     final paths = io.rest.isNotEmpty ? io.rest : <String>[analysis.root];
     final unusedConfig = mergeUnusedFilterFromCli(
       base: config.unused,
-      cliFilter: argResults!['filter'] as List<String>,
+      cliFilter: argResults!.multiOption('filter'),
     );
     try {
       parseUnusedFilter(unusedConfig.filter);

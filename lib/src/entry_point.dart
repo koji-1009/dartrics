@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:io/io.dart' show ExitCode;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 import 'cli/io_sinks.dart';
 import 'cli/runner.dart';
@@ -20,7 +21,7 @@ import 'version.dart';
 /// - any other uncaught error     → `70 EX_SOFTWARE`
 Future<void> runApp(List<String> arguments) async {
   if (isVersionRequest(arguments)) {
-    DartricsIO.stdoutSink.writeln('dartrics $dartricsVersion');
+    DartricsIO.stdoutSink.writeln('dartrics $packageVersion');
     exitCode = ExitCode.success.code;
     return;
   }
@@ -29,7 +30,7 @@ Future<void> runApp(List<String> arguments) async {
     try {
       try {
         final runner = buildCommandRunner();
-        final code = await runner.run(arguments) ?? 0;
+        final code = await runner.run(arguments) ?? ExitCode.success.code;
         exitCode = code;
       } on ConfigException catch (e) {
         DartricsIO.stderrSink.writeln(e.toString());
@@ -45,15 +46,24 @@ Future<void> runApp(List<String> arguments) async {
       // N times, once per attached subscription.
       await logSub.cancel();
     }
-  }, handleUncaughtZoneError);
+  }, uncaughtZoneErrorHandler(arguments));
 }
 
-/// Surfaces an unhandled async error from the [runApp] zone as an
-/// `EX_SOFTWARE` exit.
+/// Builds the handler that surfaces an unhandled async error from the
+/// [runApp] zone as an `EX_SOFTWARE` exit. The terse stack trace is
+/// printed only when [arguments] carries `-v` / `--verbose`.
 @visibleForTesting
-void handleUncaughtZoneError(Object error, StackTrace stack) {
-  DartricsIO.stderrSink.writeln('Unhandled error: $error\n$stack');
-  exitCode = ExitCode.software.code;
+void Function(Object, StackTrace) uncaughtZoneErrorHandler(
+  List<String> arguments,
+) {
+  final verbose = arguments.contains('-v') || arguments.contains('--verbose');
+  return (error, stack) {
+    DartricsIO.stderrSink.writeln('Unhandled error: $error');
+    if (verbose) {
+      DartricsIO.stderrSink.writeln(Trace.from(stack).terse);
+    }
+    exitCode = ExitCode.software.code;
+  };
 }
 
 /// Returns true when [arguments] requests the version flag at the top
@@ -71,9 +81,8 @@ bool isVersionRequest(List<String> arguments) {
 }
 
 /// Installs a logger listener that routes records to
-/// [DartricsIO.stdoutSink] / [DartricsIO.stderrSink] via
-/// [routeLogRecord]. Returns the subscription so [runApp] can cancel
-/// it on exit.
+/// [DartricsIO.stderrSink] via [routeLogRecord]. Returns the
+/// subscription so [runApp] can cancel it on exit.
 @visibleForTesting
 StreamSubscription<LogRecord> setupLogging() {
   Logger.root.level = Level.INFO;
@@ -81,14 +90,9 @@ StreamSubscription<LogRecord> setupLogging() {
 }
 
 /// Per-record dispatch for the listener installed by [setupLogging].
-/// Routes WARNING-or-higher records to stderr and everything else to
-/// stdout.
+/// Routes every record to stderr so stdout carries only report
+/// payload.
 @visibleForTesting
 void routeLogRecord(LogRecord record) {
-  final line = '${record.level.name}: ${record.message}';
-  if (record.level >= Level.WARNING) {
-    DartricsIO.stderrSink.writeln(line);
-  } else {
-    DartricsIO.stdoutSink.writeln(line);
-  }
+  DartricsIO.stderrSink.writeln('${record.level.name}: ${record.message}');
 }

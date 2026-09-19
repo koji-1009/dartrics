@@ -63,7 +63,7 @@ void main() {
   test('runApp finishes without rethrow on a no-op input', () async {
     // We can't easily provoke an actual uncaught zone error from outside
     // (every internal failure is caught by the inner try/catch). The
-    // dedicated `handleUncaughtZoneError` test below covers the handler
+    // dedicated `uncaughtZoneErrorHandler` tests below cover the handler
     // body; this test just confirms the zone wrapping doesn't swallow a
     // plain successful path.
     final code = await runAppQuietly([
@@ -97,12 +97,12 @@ void main() {
       expect(captured.stderr, equals('SEVERE: oops\n'));
     });
 
-    test('INFO and below go to the resolved stdout sink', () async {
+    test('INFO and below also go to stderr, keeping stdout clean', () async {
       final captured = await _captureRoute(
         () => routeLogRecord(LogRecord(Level.INFO, 'note', 'logger')),
       );
-      expect(captured.stdout, equals('INFO: note\n'));
-      expect(captured.stderr, isEmpty);
+      expect(captured.stderr, equals('INFO: note\n'));
+      expect(captured.stdout, isEmpty);
     });
   });
 
@@ -119,21 +119,31 @@ void main() {
     expect(Logger.root.level, Level.INFO);
   });
 
-  test('handleUncaughtZoneError sets EX_SOFTWARE', () async {
-    final saved = exitCode;
-    addTearDown(() => exitCode = saved);
-    // The handler writes a stack-trace line to stderr; redirect into a
-    // discard sink so it does not leak into the test reporter's stream.
-    final ctl = StreamController<List<int>>();
-    unawaited(ctl.stream.drain<void>());
-    final sink = IOSink(ctl.sink);
-    await withDartricsIO(
-      () => handleUncaughtZoneError('boom', StackTrace.current),
-      stderrSink: sink,
-    );
-    await sink.close();
-    await ctl.close();
-    expect(exitCode, ExitCode.software.code);
+  group('uncaughtZoneErrorHandler', () {
+    test('sets EX_SOFTWARE and omits the stack trace by default', () async {
+      final saved = exitCode;
+      addTearDown(() => exitCode = saved);
+      final captured = await _captureRoute(
+        () => uncaughtZoneErrorHandler(['analyze'])('boom', StackTrace.current),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(captured.stderr, equals('Unhandled error: boom\n'));
+      expect(captured.stdout, isEmpty);
+    });
+
+    test('appends the terse stack trace when verbose', () async {
+      final saved = exitCode;
+      addTearDown(() => exitCode = saved);
+      final captured = await _captureRoute(
+        () => uncaughtZoneErrorHandler(['analyze', '--verbose'])(
+          'boom',
+          StackTrace.current,
+        ),
+      );
+      expect(exitCode, ExitCode.software.code);
+      expect(captured.stderr, startsWith('Unhandled error: boom\n'));
+      expect(captured.stderr, contains('entry_point_test.dart'));
+    });
   });
 }
 

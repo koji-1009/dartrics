@@ -98,7 +98,7 @@ The CLI and analyzer plugin both read from a `dartrics:` section inside `analysi
 
 ## Release flow
 
-1. Bump `version:` in `pubspec.yaml` and `dartricsVersion` in `lib/src/version.dart` in lockstep — they're separate sources by design (the version string is compiled into the binary), so they drift if you forget one.
+1. Bump `version:` in `pubspec.yaml`, then run `dart run build_runner build` to regenerate `lib/src/version.dart` (`package:build_version`). The generated file is committed because the version string is compiled into the binary; `test/cli/version_test.dart` fails if it drifts from `pubspec.yaml`.
 2. Add a `## X.Y.Z` section to `CHANGELOG.md` covering every breaking change, citation correction, and feature.
 3. Verify `.pubignore` excludes `test/`, `tool/`, `coverage/`, `.claude/`, `tmp/`, `AGENTS.md`, and any other dev-only artefact. Run `dart pub publish --dry-run` to confirm the package contents.
 4. The release commit is `chore(release): X.Y.Z` and is the final commit on a `release/vX.Y.Z` branch. Merge via PR.

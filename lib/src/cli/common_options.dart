@@ -70,10 +70,10 @@ class IoOptions {
 
   factory IoOptions.from(Command<int> command) {
     final results = command.argResults!;
-    if (results['verbose'] as bool) {
+    if (results.flag('verbose')) {
       Logger.root.level = Level.FINE;
     }
-    final limitRaw = results['limit'] as String?;
+    final limitRaw = results.option('limit');
     final int? limit;
     if (limitRaw == null) {
       limit = null;
@@ -87,8 +87,8 @@ class IoOptions {
       limit = parsed;
     }
     return IoOptions(
-      reporter: results['reporter'] as String,
-      output: results['output'] as String,
+      reporter: results.option('reporter')!,
+      output: results.option('output')!,
       limit: limit,
       rest: results.rest,
     );
@@ -164,7 +164,7 @@ class AnalysisOptions {
 
   factory AnalysisOptions.from(Command<int> command) {
     final results = command.argResults!;
-    final concurrencyRaw = results['concurrency'] as String?;
+    final concurrencyRaw = results.option('concurrency');
     final int? concurrency;
     if (concurrencyRaw == null) {
       concurrency = null;
@@ -178,12 +178,12 @@ class AnalysisOptions {
       concurrency = parsed;
     }
     return AnalysisOptions(
-      configPath: results['config'] as String,
-      root: results['root'] as String,
-      since: results['since'] as String?,
-      snapshot: results['snapshot'] as String?,
+      configPath: results.option('config')!,
+      root: results.option('root')!,
+      since: results.option('since'),
+      snapshot: results.option('snapshot'),
       concurrency: concurrency,
-      fatalWarnings: results['fatal-warnings'] as bool,
+      fatalWarnings: results.flag('fatal-warnings'),
     );
   }
 
@@ -234,8 +234,8 @@ class MetricsReadingOptions {
   factory MetricsReadingOptions.from(Command<int> command) {
     final results = command.argResults!;
     return MetricsReadingOptions(
-      coverage: results['coverage'] as String?,
-      strictDismiss: results['strict-dismiss'] as bool,
+      coverage: results.option('coverage'),
+      strictDismiss: results.flag('strict-dismiss'),
     );
   }
 
