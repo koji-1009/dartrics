@@ -5,6 +5,7 @@ import 'package:args/command_runner.dart';
 import 'package:io/io.dart' show ExitCode;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
+import 'package:stack_trace/stack_trace.dart';
 
 import 'cli/io_sinks.dart';
 import 'cli/runner.dart';
@@ -45,15 +46,24 @@ Future<void> runApp(List<String> arguments) async {
       // N times, once per attached subscription.
       await logSub.cancel();
     }
-  }, handleUncaughtZoneError);
+  }, uncaughtZoneErrorHandler(arguments));
 }
 
-/// Surfaces an unhandled async error from the [runApp] zone as an
-/// `EX_SOFTWARE` exit.
+/// Builds the handler that surfaces an unhandled async error from the
+/// [runApp] zone as an `EX_SOFTWARE` exit. The terse stack trace is
+/// printed only when [arguments] carries `-v` / `--verbose`.
 @visibleForTesting
-void handleUncaughtZoneError(Object error, StackTrace stack) {
-  DartricsIO.stderrSink.writeln('Unhandled error: $error\n$stack');
-  exitCode = ExitCode.software.code;
+void Function(Object, StackTrace) uncaughtZoneErrorHandler(
+  List<String> arguments,
+) {
+  final verbose = arguments.contains('-v') || arguments.contains('--verbose');
+  return (error, stack) {
+    DartricsIO.stderrSink.writeln('Unhandled error: $error');
+    if (verbose) {
+      DartricsIO.stderrSink.writeln(Trace.from(stack).terse);
+    }
+    exitCode = ExitCode.software.code;
+  };
 }
 
 /// Returns true when [arguments] requests the version flag at the top
