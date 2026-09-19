@@ -29,7 +29,7 @@ Future<void> runApp(List<String> arguments) async {
     try {
       try {
         final runner = buildCommandRunner();
-        final code = await runner.run(arguments) ?? 0;
+        final code = await runner.run(arguments) ?? ExitCode.success.code;
         exitCode = code;
       } on ConfigException catch (e) {
         DartricsIO.stderrSink.writeln(e.toString());

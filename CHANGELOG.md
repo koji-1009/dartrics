@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* CLI: options are read through `ArgResults.flag` / `option` / `multiOption` instead of casting `ArgResults[]`. No behaviour change.
+
 ## 1.6.0
 
 Unused-detector false positives from `--filter`, from generated files under `analyzer.exclude`, and from `E.values`; two new annotations on unused entries (`writeOnly`, `chainRoots`); multi-symbol `inspect`; and documentation of how the analysed file set is chosen. Findings can disappear on unchanged code. Report schema `1.3` → `1.4`, additive. No metric, threshold, or exit-code change.

@@ -50,8 +50,8 @@ class DoctorCommand extends Command<int> {
 
   @override
   Future<int> run() async {
-    final path = argResults!['config'] as String;
-    final root = argResults!['root'] as String;
+    final path = argResults!.option('config')!;
+    final root = argResults!.option('root')!;
     final Config config;
     final List<Dismissal> sidecar;
     try {

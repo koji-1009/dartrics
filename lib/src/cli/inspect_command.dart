@@ -66,13 +66,13 @@ class InspectCommand extends Command<int> {
     }
     final int depth;
     try {
-      depth = _parsePositiveInt(argResults!['depth'] as String, 'depth');
+      depth = _parsePositiveInt(argResults!.option('depth')!, 'depth');
     } on FormatException catch (e) {
       DartricsIO.stderrSink.writeln('dartrics inspect: ${e.message}');
       return ExitCode.usage.code;
     }
     final direction = InspectionDirection.values.byName(
-      argResults!['direction'] as String,
+      argResults!.option('direction')!,
     );
 
     final runner = AnalyzerRunner(

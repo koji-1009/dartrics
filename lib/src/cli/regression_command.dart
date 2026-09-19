@@ -74,13 +74,13 @@ class RegressionCommand extends Command<int> {
   @override
   Future<int> run() async {
     final results = argResults!;
-    final beforeRef = results['before'] as String;
-    final afterRef = results['after'] as String?;
-    final metricIds = (results['metric'] as List<String>).toSet();
-    final configPath = results['config'] as String;
-    final reporter = results['reporter'] as String;
-    final output = results['output'] as String;
-    final root = results['root'] as String;
+    final beforeRef = results.option('before')!;
+    final afterRef = results.option('after');
+    final metricIds = results.multiOption('metric').toSet();
+    final configPath = results.option('config')!;
+    final reporter = results.option('reporter')!;
+    final output = results.option('output')!;
+    final root = results.option('root')!;
 
     final config = await loadConfig(configPath);
 

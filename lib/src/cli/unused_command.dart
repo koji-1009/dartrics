@@ -79,7 +79,7 @@ class UnusedCommand extends Command<int> {
     final paths = io.rest.isNotEmpty ? io.rest : <String>[analysis.root];
     final unusedConfig = mergeUnusedFilterFromCli(
       base: config.unused,
-      cliFilter: argResults!['filter'] as List<String>,
+      cliFilter: argResults!.multiOption('filter'),
     );
     try {
       parseUnusedFilter(unusedConfig.filter);
@@ -219,10 +219,10 @@ class UnusedCommand extends Command<int> {
     AnalysisOptions analysis,
     List<UnusedDeclaration> filtered,
   ) async {
-    final applyMode = argResults!['apply'] as bool;
+    final applyMode = argResults!.flag('apply');
     if (!applyMode) return null;
-    final force = argResults!['force'] as bool;
-    final includeTests = argResults!['include-tests'] as bool;
+    final force = argResults!.flag('force');
+    final includeTests = argResults!.flag('include-tests');
     if (!force && !isGitTreeClean(analysis.root)) {
       DartricsIO.stderrSink.writeln(
         'dartrics unused: refusing to apply on a dirty git tree. '
